@@ -3,7 +3,6 @@ import { useParams, useNavigate } from "react-router-dom";
 import { ArrowLeft, Coins, TrendingUp, Plus, Minus, ShieldBan, ShieldCheck } from "lucide-react";
 import { base44 } from "@/api/base44Client";
 import { useToast } from "@/components/ui/use-toast";
-import PageHeader from "@/components/perk/PageHeader";
 import RankBadge from "@/components/perk/RankBadge";
 import StatusBadge from "@/components/perk/StatusBadge";
 import EmptyState from "@/components/perk/EmptyState";

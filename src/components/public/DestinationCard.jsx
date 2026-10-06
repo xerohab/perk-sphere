@@ -2,7 +2,6 @@ import React from "react";
 import { Link } from "react-router-dom";
 import { Globe, Youtube, Twitter, ExternalLink, Coins, TrendingUp } from "lucide-react";
 import EligibilityBadge from "@/components/perk/EligibilityBadge";
-import { cn } from "@/lib/utils";
 
 const PLATFORM_ICON = {
   Website: Globe,

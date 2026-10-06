@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { Coins, Globe, Share2, Info } from "lucide-react";
+import { Globe, Share2, Info } from "lucide-react";
 import { base44 } from "@/api/base44Client";
 import PageHeader from "@/components/perk/PageHeader";
 import EmptyState from "@/components/perk/EmptyState";

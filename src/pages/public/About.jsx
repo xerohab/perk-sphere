@@ -1,6 +1,6 @@
 import React from "react";
 import { Link } from "react-router-dom";
-import { ShieldCheck, Coins, TrendingUp, Gift, Award, Globe, Lock } from "lucide-react";
+import { ShieldCheck, Coins, TrendingUp, Gift, Globe, Lock } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 const VALUES = [

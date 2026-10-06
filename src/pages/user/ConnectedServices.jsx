@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { base44 } from "@/api/base44Client";
 import { useAuth } from "@/lib/AuthContext";
-import { Plug, Info } from "lucide-react";
+import { Info } from "lucide-react";
 import PageHeader from "@/components/perk/PageHeader";
 import StatusBadge from "@/components/perk/StatusBadge";
 

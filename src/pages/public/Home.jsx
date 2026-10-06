@@ -1,8 +1,8 @@
 import React, { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import {
-  UserPlus, LogIn, ArrowRight, Coins, TrendingUp, Gift, Award,
-  Globe, Youtube, Twitter, ShieldCheck, Sparkles, CheckCircle2
+  UserPlus, ArrowRight, Coins, TrendingUp, Gift, Award,
+  Globe, ShieldCheck, Sparkles
 } from "lucide-react";
 import { base44 } from "@/api/base44Client";
 import { useAuth } from "@/lib/AuthContext";
@@ -10,7 +10,6 @@ import { usePublicDestinations } from "@/hooks/usePublicDestinations";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import DestinationCard from "@/components/public/DestinationCard";
-import EligibilityBadge from "@/components/perk/EligibilityBadge";
 import EmptyState from "@/components/perk/EmptyState";
 
 const STEPS = [
