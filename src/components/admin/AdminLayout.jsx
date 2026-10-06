@@ -3,7 +3,7 @@ import { Outlet, Navigate } from "react-router-dom";
 import {
   LayoutDashboard, Users, Coins, TrendingUp, Gift, ClipboardCheck, Globe,
   AtSign, Share2, ListChecks, ScrollText, Megaphone, Award, Ban, ShieldAlert,
-  Bell, BarChart3, History, Lock, Settings
+  Bell, BarChart3, History, Lock, Settings, ClipboardList
 } from "lucide-react";
 import SidebarLayout from "@/components/perk/SidebarLayout";
 import AccessGate from "@/components/perk/AccessGate";
@@ -24,6 +24,7 @@ const navItems = [
   { label: "Activities", path: "/admin/activities", icon: ListChecks, permission: "activity.view" },
   { label: "Rules", path: "/admin/rules", icon: ScrollText, permission: "rules.view" },
   { label: "Campaigns", path: "/admin/campaigns", icon: Megaphone, permission: "campaigns.view" },
+  { label: "Tasks", path: "/admin/tasks", icon: ClipboardList, permission: "tasks.view" },
   { label: "Achievements", path: "/admin/achievements", icon: Award, permission: "achievements.view" },
   { label: "Restrictions", path: "/admin/restrictions", icon: Ban, permission: "restrictions.view" },
   { label: "Fraud Review", path: "/admin/fraud", icon: ShieldAlert, permission: "fraud.view" },

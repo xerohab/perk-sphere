@@ -1,0 +1,172 @@
+{
+  "name": "Task",
+  "type": "object",
+  "properties": {
+    "name": {
+      "type": "string"
+    },
+    "description": {
+      "type": "string"
+    },
+    "image": {
+      "type": "string"
+    },
+    "task_type": {
+      "type": "string",
+      "enum": [
+        "visit_website",
+        "visit_page",
+        "watch_video",
+        "live_stream",
+        "spend_time",
+        "daily_visit",
+        "complete_activity",
+        "campaign_task",
+        "custom"
+      ],
+      "default": "custom"
+    },
+    "destination_id": {
+      "type": "string"
+    },
+    "destination_type": {
+      "type": "string",
+      "enum": [
+        "website",
+        "tracked_account"
+      ]
+    },
+    "destination_name": {
+      "type": "string"
+    },
+    "destination_platform": {
+      "type": "string"
+    },
+    "content_id": {
+      "type": "string"
+    },
+    "content_url": {
+      "type": "string"
+    },
+    "content_title": {
+      "type": "string"
+    },
+    "channel_name": {
+      "type": "string"
+    },
+    "required_seconds": {
+      "type": "number",
+      "default": 0
+    },
+    "required_percentage": {
+      "type": "number",
+      "default": 0
+    },
+    "require_continuous": {
+      "type": "boolean",
+      "default": false
+    },
+    "event_start": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "event_end": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "available_from": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "available_until": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "timezone": {
+      "type": "string"
+    },
+    "points_reward": {
+      "type": "number",
+      "default": 0
+    },
+    "xp_reward": {
+      "type": "number",
+      "default": 0
+    },
+    "achievement_id": {
+      "type": "string"
+    },
+    "reward_type": {
+      "type": "string",
+      "enum": [
+        "none",
+        "points",
+        "xp",
+        "points_xp",
+        "achievement"
+      ],
+      "default": "none"
+    },
+    "completion_limit_type": {
+      "type": "string",
+      "enum": [
+        "once_ever",
+        "once_daily",
+        "once_weekly",
+        "once_campaign",
+        "unlimited",
+        "custom_max"
+      ],
+      "default": "once_ever"
+    },
+    "max_completions": {
+      "type": "number",
+      "default": 0
+    },
+    "cooldown_seconds": {
+      "type": "number",
+      "default": 0
+    },
+    "active": {
+      "type": "boolean",
+      "default": true
+    },
+    "publicly_visible": {
+      "type": "boolean",
+      "default": true
+    },
+    "featured": {
+      "type": "boolean",
+      "default": false
+    },
+    "archived": {
+      "type": "boolean",
+      "default": false
+    },
+    "terms": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "name",
+    "task_type"
+  ],
+  "rls": {
+    "read": {},
+    "create": {
+      "user_condition": {
+        "role": "service_only"
+      }
+    },
+    "update": {
+      "user_condition": {
+        "role": "service_only"
+      }
+    },
+    "delete": {
+      "user_condition": {
+        "role": "service_only"
+      }
+    }
+  }
+}

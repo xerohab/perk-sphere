@@ -2,7 +2,7 @@ import React, { Suspense } from "react";
 import { Outlet } from "react-router-dom";
 import {
   LayoutDashboard, Gift, Coins, Activity, Award, History, TrendingUp,
-  Bell, Plug, Smartphone, User, ShieldCheck
+  Bell, Plug, Smartphone, User, ShieldCheck, Target
 } from "lucide-react";
 import SidebarLayout from "@/components/perk/SidebarLayout";
 import PageTransition, { ContentSpinner } from "@/components/perk/PageTransition";
@@ -10,6 +10,7 @@ import PageTransition, { ContentSpinner } from "@/components/perk/PageTransition
 const navItems = [
   { label: "Dashboard", path: "/dashboard", icon: LayoutDashboard },
   { label: "Earn", path: "/earn", icon: Coins },
+  { label: "Tasks", path: "/tasks", icon: Target },
   { label: "Rewards", path: "/rewards", icon: Gift },
   { label: "Activity", path: "/activity", icon: Activity },
   { label: "Achievements", path: "/achievements", icon: Award },

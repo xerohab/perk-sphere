@@ -1,0 +1,129 @@
+{
+  "name": "TaskProgress",
+  "type": "object",
+  "properties": {
+    "user_id": {
+      "type": "string"
+    },
+    "task_id": {
+      "type": "string"
+    },
+    "task_name": {
+      "type": "string"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "not_started",
+        "in_progress",
+        "completed",
+        "failed",
+        "expired",
+        "cancelled"
+      ],
+      "default": "not_started"
+    },
+    "progress_amount": {
+      "type": "number",
+      "default": 0
+    },
+    "progress_percentage": {
+      "type": "number",
+      "default": 0
+    },
+    "eligible_seconds": {
+      "type": "number",
+      "default": 0
+    },
+    "required_seconds": {
+      "type": "number",
+      "default": 0
+    },
+    "started_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "last_activity": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "completed_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "reward_issued": {
+      "type": "boolean",
+      "default": false
+    },
+    "points_issued": {
+      "type": "number",
+      "default": 0
+    },
+    "xp_issued": {
+      "type": "number",
+      "default": 0
+    },
+    "completion_number": {
+      "type": "number",
+      "default": 0
+    },
+    "verification_status": {
+      "type": "string",
+      "enum": [
+        "pending",
+        "verified",
+        "rejected",
+        "manual"
+      ],
+      "default": "pending"
+    },
+    "source": {
+      "type": "string"
+    },
+    "session_ids": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "related_activity_ids": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    }
+  },
+  "required": [
+    "user_id",
+    "task_id"
+  ],
+  "rls": {
+    "read": {
+      "$or": [
+        {
+          "data.user_id": "{{user.id}}"
+        },
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        }
+      ]
+    },
+    "create": {
+      "user_condition": {
+        "role": "service_only"
+      }
+    },
+    "update": {
+      "user_condition": {
+        "role": "service_only"
+      }
+    },
+    "delete": {
+      "user_condition": {
+        "role": "service_only"
+      }
+    }
+  }
+}

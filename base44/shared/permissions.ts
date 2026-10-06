@@ -27,14 +27,15 @@ const VIEW = [
   'dashboard.view', 'users.view', 'ledger.view', 'rewards.view', 'redemptions.view',
   'destinations.view', 'activity.view', 'rules.view', 'campaigns.view', 'achievements.view',
   'loyalty.view', 'restrictions.view', 'fraud.view', 'analytics.view', 'audit.view',
-  'settings.view', 'staff.view'
+  'settings.view', 'staff.view', 'tasks.view'
 ];
 
 const MANAGE = [
   'users.status', 'points.adjust', 'xp.adjust', 'rewards.manage', 'redemptions.manage',
   'destinations.manage', 'activity.record', 'rules.manage', 'campaigns.manage',
   'achievements.manage', 'loyalty.manage', 'restrictions.manage', 'fraud.review',
-  'notifications.send'
+  'notifications.send',
+  'tasks.create', 'tasks.edit', 'tasks.publish', 'tasks.archive', 'tasks.viewParticipants', 'tasks.viewAnalytics'
 ];
 
 export const ROLE_PERMISSIONS = {
@@ -43,18 +44,21 @@ export const ROLE_PERMISSIONS = {
   rewards_manager: [
     'dashboard.view', 'users.view', 'ledger.view', 'rewards.view', 'rewards.manage',
     'redemptions.view', 'redemptions.manage', 'loyalty.view', 'achievements.view',
-    'campaigns.view', 'destinations.view', 'analytics.view'
+    'campaigns.view', 'destinations.view', 'analytics.view',
+    'tasks.view', 'tasks.create', 'tasks.edit', 'tasks.publish', 'tasks.viewParticipants', 'tasks.viewAnalytics'
   ],
   support: [
     'dashboard.view', 'users.view', 'users.status', 'ledger.view', 'rewards.view',
     'redemptions.view', 'redemptions.manage', 'activity.view', 'destinations.view',
     'restrictions.view', 'restrictions.manage', 'fraud.view', 'notifications.send',
-    'achievements.view', 'loyalty.view'
+    'achievements.view', 'loyalty.view',
+    'tasks.view', 'tasks.viewParticipants'
   ],
   analyst: [
     'dashboard.view', 'users.view', 'ledger.view', 'rewards.view', 'redemptions.view',
     'activity.view', 'destinations.view', 'rules.view', 'campaigns.view', 'achievements.view',
-    'loyalty.view', 'fraud.view', 'analytics.view', 'audit.view'
+    'loyalty.view', 'fraud.view', 'analytics.view', 'audit.view',
+    'tasks.view', 'tasks.viewAnalytics'
   ]
 };
 

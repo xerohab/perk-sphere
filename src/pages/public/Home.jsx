@@ -10,6 +10,7 @@ import { usePublicDestinations } from "@/hooks/usePublicDestinations";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import DestinationCard from "@/components/public/DestinationCard";
+import TaskCard from "@/components/perk/TaskCard";
 import EmptyState from "@/components/perk/EmptyState";
 
 const STEPS = [
@@ -24,18 +25,21 @@ export default function Home() {
   const navigate = useNavigate();
   const [rewards, setRewards] = useState([]);
   const [levels, setLevels] = useState([]);
+  const [featuredTasks, setFeaturedTasks] = useState([]);
   const [loading, setLoading] = useState(true);
   const { destinations } = usePublicDestinations();
 
   useEffect(() => {
     (async () => {
       try {
-        const [r, l] = await Promise.all([
+        const [r, l, ft] = await Promise.all([
           base44.entities.Reward.list('-created_date', 8),
-          base44.entities.LoyaltyLevel.list('display_order', 50)
+          base44.entities.LoyaltyLevel.list('display_order', 50),
+          base44.entities.Task.list('-created_date', 8)
         ]);
         setRewards((r || []).filter((x) => x.active !== false));
         setLevels((l || []).filter((x) => x.active !== false).sort((a, b) => (a.minimum_xp || 0) - (b.minimum_xp || 0)));
+        setFeaturedTasks((ft || []).filter((x) => x.active !== false && !x.archived && x.publicly_visible !== false && x.featured));
       } finally {
         setLoading(false);
       }
@@ -161,6 +165,27 @@ export default function Home() {
           )}
         </div>
       </section>
+
+      {/* Featured Tasks */}
+      {featuredTasks.length > 0 && (
+        <section className="mx-auto max-w-6xl px-4 py-16 sm:px-6 sm:py-20">
+          <div className="flex items-end justify-between">
+            <div>
+              <h2 className="text-3xl font-bold tracking-tight">Featured Tasks</h2>
+              <p className="mt-2 text-muted-foreground">Complete tasks to earn Points, Loyalty XP and achievements.</p>
+            </div>
+            <Link to="/tasks" className="hidden text-sm font-medium text-indigo-600 hover:underline dark:text-indigo-400 sm:inline">View Tasks</Link>
+          </div>
+          <div className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            {featuredTasks.map((t) => (
+              <TaskCard key={t.id} task={t} isAuthed={isAuthenticated} onSignIn={() => navigate("/login")} />
+            ))}
+          </div>
+          <div className="mt-6 text-center sm:hidden">
+            <Link to="/tasks"><Button variant="outline" size="sm">View Tasks</Button></Link>
+          </div>
+        </section>
+      )}
 
       {/* Loyalty Levels */}
       <section className="border-y border-border bg-card">

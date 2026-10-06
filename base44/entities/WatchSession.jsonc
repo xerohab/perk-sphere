@@ -1,0 +1,93 @@
+{
+  "name": "WatchSession",
+  "type": "object",
+  "properties": {
+    "session_id": {
+      "type": "string"
+    },
+    "user_id": {
+      "type": "string"
+    },
+    "task_id": {
+      "type": "string"
+    },
+    "destination_id": {
+      "type": "string"
+    },
+    "content_id": {
+      "type": "string"
+    },
+    "stream_id": {
+      "type": "string"
+    },
+    "started_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "last_heartbeat": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "ended_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "total_elapsed_seconds": {
+      "type": "number",
+      "default": 0
+    },
+    "eligible_active_seconds": {
+      "type": "number",
+      "default": 0
+    },
+    "verification_state": {
+      "type": "string",
+      "enum": [
+        "active",
+        "ended",
+        "invalidated"
+      ],
+      "default": "active"
+    },
+    "client_device": {
+      "type": "string"
+    },
+    "completion_contribution": {
+      "type": "number",
+      "default": 0
+    }
+  },
+  "required": [
+    "user_id",
+    "task_id"
+  ],
+  "rls": {
+    "read": {
+      "$or": [
+        {
+          "data.user_id": "{{user.id}}"
+        },
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        }
+      ]
+    },
+    "create": {
+      "user_condition": {
+        "role": "service_only"
+      }
+    },
+    "update": {
+      "user_condition": {
+        "role": "service_only"
+      }
+    },
+    "delete": {
+      "user_condition": {
+        "role": "service_only"
+      }
+    }
+  }
+}

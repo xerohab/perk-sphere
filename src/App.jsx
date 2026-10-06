@@ -37,6 +37,7 @@ const ConnectedServices = lazy(() => import('@/pages/user/ConnectedServices'));
 const Devices = lazy(() => import('@/pages/user/Devices'));
 const Profile = lazy(() => import('@/pages/user/Profile'));
 const Privacy = lazy(() => import('@/pages/user/Privacy'));
+const Tasks = lazy(() => import('@/pages/user/Tasks'));
 
 // Admin panel - lazy loaded
 const AdminLayout = lazy(() => import('@/components/admin/AdminLayout'));
@@ -62,6 +63,7 @@ const AdminAuditLog = lazy(() => import('@/pages/admin/AdminAuditLog'));
 const AdminRoles = lazy(() => import('@/pages/admin/AdminRoles'));
 const AdminSettings = lazy(() => import('@/pages/admin/AdminSettings'));
 const AdminDestinations = lazy(() => import('@/pages/admin/AdminDestinations'));
+const AdminTasks = lazy(() => import('@/pages/admin/AdminTasks'));
 
 const PageSpinner = () => (
   <div className="fixed inset-0 flex items-center justify-center">
@@ -89,6 +91,7 @@ const AppRoutes = () => (
         <Route element={<UserLayout />}>
           <Route path="/dashboard" element={<Dashboard />} />
           <Route path="/earn" element={<Earn />} />
+          <Route path="/tasks" element={<Tasks />} />
           <Route path="/rewards" element={<Rewards />} />
           <Route path="/activity" element={<Activity />} />
           <Route path="/achievements" element={<Achievements />} />
@@ -105,6 +108,7 @@ const AppRoutes = () => (
           <Route path="/admin/users" element={<AdminUsers />} />
           <Route path="/admin/users/:id" element={<AdminUserDetail />} />
           <Route path="/admin/destinations" element={<AdminDestinations />} />
+          <Route path="/admin/tasks" element={<AdminTasks />} />
           <Route path="/admin/points" element={<AdminPoints />} />
           <Route path="/admin/loyalty" element={<AdminLoyaltyXP />} />
           <Route path="/admin/rewards" element={<AdminRewards />} />

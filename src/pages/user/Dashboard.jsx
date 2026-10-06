@@ -12,6 +12,7 @@ import StatusBadge from "@/components/perk/StatusBadge";
 import EmptyState from "@/components/perk/EmptyState";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import DestinationCard from "@/components/public/DestinationCard";
+import TaskCard from "@/components/perk/TaskCard";
 import PullToRefresh from "@/components/perk/PullToRefresh";
 
 function startOfDay(d = new Date()) {
@@ -27,6 +28,8 @@ export default function Dashboard() {
   const [activities, setActivities] = useState([]);
   const [rewards, setRewards] = useState([]);
   const [achievements, setAchievements] = useState([]);
+  const [tasks, setTasks] = useState([]);
+  const [taskProgress, setTaskProgress] = useState([]);
   const [loading, setLoading] = useState(true);
   const { destinations } = usePublicDestinations();
 
@@ -36,18 +39,22 @@ export default function Dashboard() {
   const loadData = async () => {
     setLoading(true);
     try {
-      const [lv, t, a, r, ua] = await Promise.all([
+      const [lv, t, a, r, ua, tk, tp] = await Promise.all([
         base44.entities.LoyaltyLevel.list('-minimum_xp', 50),
         base44.entities.PointsTransaction.list('-created_date', 6),
         base44.entities.Activity.list('-created_date', 6),
         base44.entities.Reward.list('-created_date', 4),
-        base44.entities.UserAchievement.list('-created_date', 4)
+        base44.entities.UserAchievement.list('-created_date', 4),
+        base44.entities.Task.list('-created_date', 20),
+        base44.entities.TaskProgress.filter({ user_id: user?.id })
       ]);
       setLevels(lv || []);
       setTxns(t || []);
       setActivities(a || []);
       setRewards((r || []).filter((x) => x.active !== false));
       setAchievements(ua || []);
+      setTasks((tk || []).filter((x) => x.active !== false && !x.archived));
+      setTaskProgress(tp || []);
     } finally {
       setLoading(false);
     }
@@ -198,6 +205,31 @@ export default function Dashboard() {
             </div>
           )}
         </div>
+
+        {/* Your Tasks */}
+        {tasks.length > 0 && (
+          <div className="mt-6">
+            <div className="mb-4 flex items-center justify-between">
+              <h3 className="text-sm font-semibold">Your Tasks</h3>
+              <Link to="/tasks" className="flex items-center gap-1 text-xs text-indigo-600 hover:underline dark:text-indigo-400">
+                View All Tasks <ArrowRight className="h-3 w-3" />
+              </Link>
+            </div>
+            {(() => {
+              const pmap = {};
+              taskProgress.forEach((p) => { if (!pmap[p.task_id] || new Date(p.last_activity || p.created_date) > new Date(pmap[p.task_id].last_activity || pmap[p.task_id].created_date)) pmap[p.task_id] = p; });
+              const inProg = tasks.filter((t) => pmap[t.id]?.status === "in_progress");
+              const avail = tasks.filter((t) => !pmap[t.id]);
+              const nearlyDone = inProg.filter((t) => (pmap[t.id]?.progress_percentage || 0) >= 75);
+              const shown = [...nearlyDone, ...inProg.filter((t) => (pmap[t.id]?.progress_percentage || 0) < 75), ...avail].slice(0, 3);
+              return shown.length === 0 ? <EmptyState title="No tasks available" /> : (
+                <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                  {shown.map((t) => <TaskCard key={t.id} task={t} progress={pmap[t.id]} isAuthed />)}
+                </div>
+              );
+            })()}
+          </div>
+        )}
 
         {/* Destinations */}
         <div className="mt-6">
