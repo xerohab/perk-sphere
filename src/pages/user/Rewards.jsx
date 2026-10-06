@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import PageHeader from "@/components/perk/PageHeader";
 import RankBadge from "@/components/perk/RankBadge";
 import EmptyState from "@/components/perk/EmptyState";
+import PullToRefresh from "@/components/perk/PullToRefresh";
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter, DialogClose
 } from "@/components/ui/dialog";
