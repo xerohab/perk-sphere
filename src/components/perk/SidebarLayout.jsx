@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { Menu, X, LogOut, ChevronRight } from "lucide-react";
 import { useAuth } from "@/lib/AuthContext";
+import { useIsMobile } from "@/hooks/use-mobile";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import RankBadge from "@/components/perk/RankBadge";
@@ -12,6 +13,7 @@ export default function SidebarLayout({ brand, navItems, accentFrom, accentTo, c
   const location = useLocation();
   const navigate = useNavigate();
   const { user, logout } = useAuth();
+  const isMobile = useIsMobile();
 
   const isActive = (path) => location.pathname === path || location.pathname.startsWith(path + "/");
 
@@ -20,7 +22,18 @@ export default function SidebarLayout({ brand, navItems, accentFrom, accentTo, c
     navigate("/login");
   };
 
+  const handleTabClick = (path, e) => {
+    // Re-selecting active tab resets to that tab's root route
+    if (isActive(path)) {
+      e.preventDefault();
+      navigate(path, { replace: true });
+    }
+  };
+
   const displayName = user?.display_name || user?.username || user?.full_name || user?.email || "Member";
+
+  // First 5 nav items for the bottom tab bar
+  const bottomTabs = navItems.slice(0, 5);
 
   const NavList = () => (
     <nav className="flex flex-1 flex-col gap-1 px-3 py-4">
@@ -86,8 +99,8 @@ export default function SidebarLayout({ brand, navItems, accentFrom, accentTo, c
 
   return (
     <div className="min-h-screen bg-background">
-      {/* Mobile top bar */}
-      <div className="sticky top-0 z-30 flex items-center justify-between border-b border-border bg-background/95 px-4 py-3 backdrop-blur lg:hidden">
+      {/* Mobile top bar with safe-area-inset-top */}
+      <div className="safe-top sticky top-0 z-30 flex items-center justify-between border-b border-border bg-background/95 px-4 pb-3 pt-[calc(env(safe-area-inset-top)+0.75rem)] backdrop-blur lg:hidden">
         <div className="flex items-center gap-2">
           <div className="flex h-8 w-8 items-center justify-center rounded-lg text-white" style={{ background: `linear-gradient(135deg, ${accentFrom}, ${accentTo})` }}>
             <span className="text-xs font-bold">P</span>
@@ -125,10 +138,37 @@ export default function SidebarLayout({ brand, navItems, accentFrom, accentTo, c
 
       {/* Content */}
       <div className="lg:pl-64">
-        <main className="mx-auto max-w-6xl px-4 py-6 sm:px-6 lg:px-10 lg:py-10">
+        <main className="mx-auto max-w-6xl px-4 pb-24 pt-6 sm:px-6 lg:px-10 lg:py-10 lg:pb-10">
           {children}
         </main>
       </div>
+
+      {/* Mobile bottom tab bar with safe-area-inset-bottom */}
+      {isMobile && (
+        <nav
+          className="safe-bottom fixed bottom-0 left-0 right-0 z-50 flex items-stretch justify-around border-t border-border bg-background/95 backdrop-blur"
+          style={{ paddingBottom: "env(safe-area-inset-bottom)" }}
+        >
+          {bottomTabs.map((item) => {
+            const active = isActive(item.path);
+            const Icon = item.icon;
+            return (
+              <Link
+                key={item.path}
+                to={item.path}
+                onClick={(e) => handleTabClick(item.path, e)}
+                className={cn(
+                  "flex flex-1 flex-col items-center gap-0.5 px-1 py-2 text-[10px] font-medium transition-colors",
+                  active ? "text-foreground" : "text-muted-foreground"
+                )}
+              >
+                <Icon className={cn("h-5 w-5", active && "text-foreground")} />
+                <span className="truncate">{item.label}</span>
+              </Link>
+            );
+          })}
+        </nav>
+      )}
     </div>
   );
 }

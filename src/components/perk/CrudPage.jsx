@@ -129,39 +129,66 @@ export default function CrudPage({ title, description, entity, columns, fields, 
       {items.length === 0 ? (
         <EmptyState title="Nothing here yet" description="Create your first item to get started." />
       ) : (
-        <div className="overflow-x-auto rounded-2xl border border-border bg-card shadow-sm">
-          <table className="w-full text-sm">
-            <thead className="bg-secondary/50 text-left text-xs uppercase tracking-wide text-muted-foreground">
-              <tr>
-                {columns.map((c) => (
-                  <th key={c.key} className={`px-4 py-3 font-medium ${c.align === "right" ? "text-right" : ""}`}>{c.label}</th>
-                ))}
-                <th className="px-4 py-3 text-right font-medium">Actions</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-border">
-              {items.map((item) => (
-                <tr key={item.id} className="hover:bg-secondary/30">
+        <>
+          {/* Desktop table */}
+          <div className="hidden overflow-x-auto rounded-2xl border border-border bg-card shadow-sm sm:block">
+            <table className="w-full text-sm">
+              <thead className="bg-secondary/50 text-left text-xs uppercase tracking-wide text-muted-foreground">
+                <tr>
                   {columns.map((c) => (
-                    <td key={c.key} className={`px-4 py-3 ${c.align === "right" ? "text-right" : ""} ${c.mono ? "font-mono text-xs" : ""}`}>
-                      {c.render ? c.render(item) : (item[c.key] ?? "—")}
-                    </td>
+                    <th key={c.key} className={`px-4 py-3 font-medium ${c.align === "right" ? "text-right" : ""}`}>{c.label}</th>
                   ))}
-                  <td className="px-4 py-3 text-right">
-                    <div className="flex justify-end gap-1">
-                      <Button variant="ghost" size="icon" onClick={() => openEdit(item)}><Pencil className="h-4 w-4" /></Button>
-                      <ConfirmDialog
-                        trigger={<Button variant="ghost" size="icon"><Trash2 className="h-4 w-4 text-red-500" /></Button>}
-                        title="Delete this item?" description="This action cannot be undone." confirmLabel="Delete" destructive
-                        onConfirm={() => remove(item)}
-                      />
-                    </div>
-                  </td>
+                  <th className="px-4 py-3 text-right font-medium">Actions</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+              </thead>
+              <tbody className="divide-y divide-border">
+                {items.map((item) => (
+                  <tr key={item.id} className="hover:bg-secondary/30">
+                    {columns.map((c) => (
+                      <td key={c.key} className={`px-4 py-3 ${c.align === "right" ? "text-right" : ""} ${c.mono ? "font-mono text-xs" : ""}`}>
+                        {c.render ? c.render(item) : (item[c.key] ?? "—")}
+                      </td>
+                    ))}
+                    <td className="px-4 py-3 text-right">
+                      <div className="flex justify-end gap-1">
+                        <Button variant="ghost" size="icon" onClick={() => openEdit(item)}><Pencil className="h-4 w-4" /></Button>
+                        <ConfirmDialog
+                          trigger={<Button variant="ghost" size="icon"><Trash2 className="h-4 w-4 text-red-500" /></Button>}
+                          title="Delete this item?" description="This action cannot be undone." confirmLabel="Delete" destructive
+                          onConfirm={() => remove(item)}
+                        />
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+
+          {/* Mobile card list */}
+          <div className="space-y-3 sm:hidden">
+            {items.map((item) => (
+              <div key={item.id} className="rounded-2xl border border-border bg-card p-4 shadow-sm">
+                {columns.map((c) => (
+                  <div key={c.key} className="flex items-start justify-between gap-3 border-b border-border py-2 last:border-0">
+                    <span className="text-xs font-medium uppercase tracking-wide text-muted-foreground">{c.label}</span>
+                    <span className={`text-right text-sm ${c.mono ? "font-mono text-xs" : ""}`}>
+                      {c.render ? c.render(item) : (item[c.key] ?? "—")}
+                    </span>
+                  </div>
+                ))}
+                <div className="mt-3 flex justify-end gap-1">
+                  <Button variant="outline" size="sm" onClick={() => openEdit(item)}><Pencil className="mr-1 h-3.5 w-3.5" /> Edit</Button>
+                  <ConfirmDialog
+                    trigger={<Button variant="outline" size="sm"><Trash2 className="mr-1 h-3.5 w-3.5 text-red-500" /> Delete</Button>}
+                    title="Delete this item?" description="This action cannot be undone." confirmLabel="Delete" destructive
+                    onConfirm={() => remove(item)}
+                  />
+                </div>
+              </div>
+            ))}
+          </div>
+        </>
       )}
 
       <Dialog open={!!editing} onOpenChange={(o) => !o && setEditing(null)}>

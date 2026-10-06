@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/lib/AuthContext";
 import { base44 } from "@/api/base44Client";
 import { useToast } from "@/components/ui/use-toast";
@@ -8,16 +9,26 @@ import { Label } from "@/components/ui/label";
 import PageHeader from "@/components/perk/PageHeader";
 import RankBadge from "@/components/perk/RankBadge";
 import StatusBadge from "@/components/perk/StatusBadge";
+import { useTheme } from "@/lib/ThemeContext";
+import { Sun, Moon, Monitor, Trash2 } from "lucide-react";
+import { cn } from "@/lib/utils";
+import {
+  Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter, DialogClose
+} from "@/components/ui/dialog";
 
 export default function Profile() {
-  const { user, checkUserAuth } = useAuth();
+  const { user, checkUserAuth, logout } = useAuth();
   const { toast } = useToast();
+  const navigate = useNavigate();
+  const { theme, setTheme } = useTheme();
   const [form, setForm] = useState({
     username: user?.username || "",
     display_name: user?.display_name || "",
     profile_image: user?.profile_image || ""
   });
   const [saving, setSaving] = useState(false);
+  const [deleteOpen, setDeleteOpen] = useState(false);
+  const [deleting, setDeleting] = useState(false);
 
   const save = async () => {
     setSaving(true);
@@ -31,6 +42,26 @@ export default function Profile() {
       setSaving(false);
     }
   };
+
+  const handleDeleteAccount = async () => {
+    setDeleting(true);
+    try {
+      await base44.entities.User.delete(user.id);
+      toast({ title: "Account deleted" });
+      await logout(false);
+      navigate("/login", { replace: true });
+    } catch (e) {
+      toast({ title: "Deletion failed", description: e.message, variant: "destructive" });
+    } finally {
+      setDeleting(false);
+    }
+  };
+
+  const themeOptions = [
+    { value: "light", label: "Light", icon: Sun },
+    { value: "dark", label: "Dark", icon: Moon },
+    { value: "system", label: "System", icon: Monitor }
+  ];
 
   return (
     <div>
@@ -72,8 +103,64 @@ export default function Profile() {
             </div>
             <Button onClick={save} disabled={saving}>{saving ? "Saving..." : "Save Changes"}</Button>
           </div>
+
+          {/* Appearance / Theme */}
+          <div className="mt-6 border-t border-border pt-6">
+            <h3 className="text-sm font-semibold">Appearance</h3>
+            <p className="mt-1 text-xs text-muted-foreground">Choose how Perk Sphere looks to you.</p>
+            <div className="mt-3 flex gap-2">
+              {themeOptions.map((opt) => {
+                const Icon = opt.icon;
+                const activeTheme = theme || "system";
+                return (
+                  <button
+                    key={opt.value}
+                    onClick={() => setTheme(opt.value)}
+                    className={cn(
+                      "flex flex-1 flex-col items-center gap-1.5 rounded-xl border px-3 py-3 text-xs font-medium transition-colors",
+                      activeTheme === opt.value
+                        ? "border-foreground bg-secondary text-foreground"
+                        : "border-border bg-card text-muted-foreground hover:bg-accent hover:text-foreground"
+                    )}
+                  >
+                    <Icon className="h-4 w-4" />
+                    {opt.label}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
         </div>
       </div>
+
+      {/* Danger Zone */}
+      <div className="mt-6 rounded-2xl border border-red-200 bg-red-50/50 p-6 dark:border-red-900/50 dark:bg-red-950/20">
+        <h3 className="text-sm font-semibold text-red-700 dark:text-red-400">Danger Zone</h3>
+        <p className="mt-1 text-xs text-muted-foreground">Permanently delete your account and all associated data. This action cannot be undone.</p>
+        <div className="mt-4">
+          <Button variant="destructive" onClick={() => setDeleteOpen(true)}>
+            <Trash2 className="mr-1 h-4 w-4" /> Delete Account
+          </Button>
+        </div>
+      </div>
+
+      {/* Delete confirmation dialog */}
+      <Dialog open={deleteOpen} onOpenChange={(o) => !o && setDeleteOpen(false)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Delete account permanently?</DialogTitle>
+            <DialogDescription>
+              This will permanently delete your account, including all points, XP, activity history, redemptions, achievements, and connected services. This action <strong>cannot</strong> be undone.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <DialogClose asChild><Button variant="outline" disabled={deleting}>Cancel</Button></DialogClose>
+            <Button variant="destructive" onClick={handleDeleteAccount} disabled={deleting}>
+              {deleting ? "Deleting..." : "Yes, delete my account"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

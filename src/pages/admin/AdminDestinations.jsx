@@ -125,6 +125,9 @@ export default function AdminDestinations() {
   }, [rows, q, eligFilter, platFilter]);
 
   const quickEligibility = async (row, eligibility) => {
+    // Optimistic update: update local row state immediately
+    const prevEligibility = row.eligibility;
+    setRows((prev) => prev.map((r) => r.id === row.id && r.kind === row.kind ? { ...r, eligibility } : r));
     try {
       if (row.kind === "website") {
         await base44.entities.Website.update(row.id, { eligibility });
@@ -132,23 +135,27 @@ export default function AdminDestinations() {
         await base44.entities.TrackedAccount.update(row.id, { eligibility });
       }
       toast({ title: `Marked as ${eligibility}` });
-      load();
     } catch (e) {
+      // Revert on error
+      setRows((prev) => prev.map((r) => r.id === row.id && r.kind === row.kind ? { ...r, eligibility: prevEligibility } : r));
       toast({ title: "Update failed", description: e.message, variant: "destructive" });
     }
   };
 
   const toggleActive = async (row) => {
+    // Optimistic update: update local row state immediately
+    const newVal = !row.active;
+    setRows((prev) => prev.map((r) => r.id === row.id && r.kind === row.kind ? { ...r, active: newVal } : r));
     try {
-      const newVal = !row.active;
       if (row.kind === "website") {
         await base44.entities.Website.update(row.id, { status: newVal ? "active" : "inactive" });
       } else {
         await base44.entities.TrackedAccount.update(row.id, { active: newVal });
       }
       toast({ title: newVal ? "Enabled" : "Disabled" });
-      load();
     } catch (e) {
+      // Revert on error
+      setRows((prev) => prev.map((r) => r.id === row.id && r.kind === row.kind ? { ...r, active: !newVal } : r));
       toast({ title: "Update failed", description: e.message, variant: "destructive" });
     }
   };
@@ -243,57 +250,91 @@ export default function AdminDestinations() {
       {filtered.length === 0 ? (
         <EmptyState title="No destinations found" description="Add destinations via Sites & Domains or Tracked Accounts, or adjust your filters." />
       ) : (
-        <div className="overflow-x-auto rounded-2xl border border-border bg-card shadow-sm">
-          <table className="w-full text-sm">
-            <thead className="bg-secondary/50 text-left text-xs uppercase tracking-wide text-muted-foreground">
-              <tr>
-                <th className="px-4 py-3 font-medium">Name</th>
-                <th className="px-4 py-3 font-medium">Platform</th>
-                <th className="px-4 py-3 font-medium">Domain / Handle</th>
-                <th className="px-4 py-3 font-medium">Status</th>
-                <th className="px-4 py-3 font-medium">Tracking</th>
-                <th className="px-4 py-3 font-medium">Pts / XP</th>
-                <th className="px-4 py-3 font-medium">Updated</th>
-                <th className="px-4 py-3 text-right font-medium">Actions</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-border">
-              {filtered.map((r) => (
-                <tr key={`${r.kind}-${r.id}`} className="hover:bg-secondary/30">
-                  <td className="px-4 py-3">
-                    <p className="font-medium">{r.name}</p>
-                    {r.url && <a href={r.url} target="_blank" rel="noopener noreferrer" className="text-xs text-indigo-600 hover:underline dark:text-indigo-400">{r.url}</a>}
-                  </td>
-                  <td className="px-4 py-3"><span className="capitalize">{r.platform}</span></td>
-                  <td className="px-4 py-3 text-muted-foreground">{r.domainOrHandle}</td>
-                  <td className="px-4 py-3">
-                    <Select value={r.eligibility} onValueChange={(v) => quickEligibility(r, v)}>
-                      <SelectTrigger className="h-8 w-32 border-0 bg-transparent px-1 shadow-none focus:ring-0"><EligibilityBadge eligibility={r.eligibility} /></SelectTrigger>
-                      <SelectContent>
-                        {ELIG_OPTS.map((o) => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}
-                      </SelectContent>
-                    </Select>
-                  </td>
-                  <td className="px-4 py-3">
-                    <span className={`text-xs ${r.tracking_enabled ? "text-emerald-600 dark:text-emerald-400" : "text-muted-foreground"}`}>{r.tracking_enabled ? "On" : "Off"}</span>
-                    {!r.active && <span className="ml-2 text-xs text-red-600 dark:text-red-400">inactive</span>}
-                  </td>
-                  <td className="px-4 py-3 text-xs text-muted-foreground">
-                    {r.points_eligible ? "Pts ✓" : "Pts ✕"} {r.xp_eligible ? "XP ✓" : "XP ✕"}
-                  </td>
-                  <td className="px-4 py-3 text-xs text-muted-foreground">{r.updated ? new Date(r.updated).toLocaleDateString() : "—"}</td>
-                  <td className="px-4 py-3 text-right">
-                    <div className="flex justify-end gap-1">
-                      <Button variant="ghost" size="icon" title="Edit" onClick={() => openEdit(r)}><Pencil className="h-4 w-4" /></Button>
-                      <Button variant="ghost" size="icon" title={r.active ? "Disable" : "Enable"} onClick={() => toggleActive(r)}><Power className="h-4 w-4" /></Button>
-                      <Button variant="ghost" size="icon" title="View activity" onClick={() => navigate("/admin/activities")}><Activity className="h-4 w-4" /></Button>
-                    </div>
-                  </td>
+        <>
+          {/* Desktop table */}
+          <div className="hidden overflow-x-auto rounded-2xl border border-border bg-card shadow-sm sm:block">
+            <table className="w-full text-sm">
+              <thead className="bg-secondary/50 text-left text-xs uppercase tracking-wide text-muted-foreground">
+                <tr>
+                  <th className="px-4 py-3 font-medium">Name</th>
+                  <th className="px-4 py-3 font-medium">Platform</th>
+                  <th className="px-4 py-3 font-medium">Domain / Handle</th>
+                  <th className="px-4 py-3 font-medium">Status</th>
+                  <th className="px-4 py-3 font-medium">Tracking</th>
+                  <th className="px-4 py-3 font-medium">Pts / XP</th>
+                  <th className="px-4 py-3 font-medium">Updated</th>
+                  <th className="px-4 py-3 text-right font-medium">Actions</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+              </thead>
+              <tbody className="divide-y divide-border">
+                {filtered.map((r) => (
+                  <tr key={`${r.kind}-${r.id}`} className="hover:bg-secondary/30">
+                    <td className="px-4 py-3">
+                      <p className="font-medium">{r.name}</p>
+                      {r.url && <a href={r.url} target="_blank" rel="noopener noreferrer" className="text-xs text-indigo-600 hover:underline dark:text-indigo-400">{r.url}</a>}
+                    </td>
+                    <td className="px-4 py-3"><span className="capitalize">{r.platform}</span></td>
+                    <td className="px-4 py-3 text-muted-foreground">{r.domainOrHandle}</td>
+                    <td className="px-4 py-3">
+                      <Select value={r.eligibility} onValueChange={(v) => quickEligibility(r, v)}>
+                        <SelectTrigger className="h-8 w-32 border-0 bg-transparent px-1 shadow-none focus:ring-0"><EligibilityBadge eligibility={r.eligibility} /></SelectTrigger>
+                        <SelectContent>
+                          {ELIG_OPTS.map((o) => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}
+                        </SelectContent>
+                      </Select>
+                    </td>
+                    <td className="px-4 py-3">
+                      <span className={`text-xs ${r.tracking_enabled ? "text-emerald-600 dark:text-emerald-400" : "text-muted-foreground"}`}>{r.tracking_enabled ? "On" : "Off"}</span>
+                      {!r.active && <span className="ml-2 text-xs text-red-600 dark:text-red-400">inactive</span>}
+                    </td>
+                    <td className="px-4 py-3 text-xs text-muted-foreground">
+                      {r.points_eligible ? "Pts ✓" : "Pts ✕"} {r.xp_eligible ? "XP ✓" : "XP ✕"}
+                    </td>
+                    <td className="px-4 py-3 text-xs text-muted-foreground">{r.updated ? new Date(r.updated).toLocaleDateString() : "—"}</td>
+                    <td className="px-4 py-3 text-right">
+                      <div className="flex justify-end gap-1">
+                        <Button variant="ghost" size="icon" title="Edit" onClick={() => openEdit(r)}><Pencil className="h-4 w-4" /></Button>
+                        <Button variant="ghost" size="icon" title={r.active ? "Disable" : "Enable"} onClick={() => toggleActive(r)}><Power className="h-4 w-4" /></Button>
+                        <Button variant="ghost" size="icon" title="View activity" onClick={() => navigate("/admin/activities")}><Activity className="h-4 w-4" /></Button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+
+          {/* Mobile card list */}
+          <div className="space-y-3 sm:hidden">
+            {filtered.map((r) => (
+              <div key={`${r.kind}-${r.id}`} className="rounded-2xl border border-border bg-card p-4 shadow-sm">
+                <div className="flex items-start justify-between gap-2">
+                  <div className="min-w-0">
+                    <p className="truncate font-medium">{r.name}</p>
+                    <p className="text-xs capitalize text-muted-foreground">{r.platform}</p>
+                    <p className="text-xs text-muted-foreground">{r.domainOrHandle}</p>
+                  </div>
+                  <Select value={r.eligibility} onValueChange={(v) => quickEligibility(r, v)}>
+                    <SelectTrigger className="h-8 w-28 border-0 bg-transparent px-1 shadow-none focus:ring-0"><EligibilityBadge eligibility={r.eligibility} /></SelectTrigger>
+                    <SelectContent>
+                      {ELIG_OPTS.map((o) => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="mt-3 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+                  <span className={r.tracking_enabled ? "text-emerald-600 dark:text-emerald-400" : ""}>Tracking: {r.tracking_enabled ? "On" : "Off"}</span>
+                  {!r.active && <span className="text-red-600 dark:text-red-400">inactive</span>}
+                  <span>· {r.points_eligible ? "Pts ✓" : "Pts ✕"} {r.xp_eligible ? "XP ✓" : "XP ✕"}</span>
+                  {r.updated && <span>· {new Date(r.updated).toLocaleDateString()}</span>}
+                </div>
+                <div className="mt-3 flex justify-end gap-1">
+                  <Button variant="outline" size="sm" onClick={() => openEdit(r)}><Pencil className="mr-1 h-3.5 w-3.5" /> Edit</Button>
+                  <Button variant="outline" size="sm" onClick={() => toggleActive(r)}><Power className="mr-1 h-3.5 w-3.5" /> {r.active ? "Disable" : "Enable"}</Button>
+                </div>
+              </div>
+            ))}
+          </div>
+        </>
       )}
 
       {/* Edit dialog */}
