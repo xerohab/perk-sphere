@@ -3,12 +3,15 @@ import { Link } from "react-router-dom";
 import { Coins, TrendingUp, Flame, Gift, Award, ArrowRight } from "lucide-react";
 import { base44 } from "@/api/base44Client";
 import { useAuth } from "@/lib/AuthContext";
+import { usePublicDestinations } from "@/hooks/usePublicDestinations";
 import PageHeader from "@/components/perk/PageHeader";
 import StatCard from "@/components/perk/StatCard";
 import ProgressBar from "@/components/perk/ProgressBar";
 import RankBadge from "@/components/perk/RankBadge";
 import StatusBadge from "@/components/perk/StatusBadge";
 import EmptyState from "@/components/perk/EmptyState";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import DestinationCard from "@/components/public/DestinationCard";
 
 function startOfDay(d = new Date()) {
   const x = new Date(d);
@@ -24,6 +27,10 @@ export default function Dashboard() {
   const [rewards, setRewards] = useState([]);
   const [achievements, setAchievements] = useState([]);
   const [loading, setLoading] = useState(true);
+  const { destinations } = usePublicDestinations();
+
+  const allowedDestinations = destinations.filter((d) => d.eligibility === "allowed").slice(0, 6);
+  const disallowedDestinations = destinations.filter((d) => d.eligibility === "disallowed").slice(0, 6);
 
   useEffect(() => {
     (async () => {
@@ -187,6 +194,40 @@ export default function Dashboard() {
             ))}
           </div>
         )}
+      </div>
+
+      {/* Destinations */}
+      <div className="mt-6">
+        <div className="mb-4 flex items-center justify-between">
+          <h3 className="text-sm font-semibold">Destinations</h3>
+          <Link to="/destinations" className="flex items-center gap-1 text-xs text-indigo-600 hover:underline dark:text-indigo-400">
+            View All Destinations <ArrowRight className="h-3 w-3" />
+          </Link>
+        </div>
+        <Tabs defaultValue="allowed">
+          <TabsList>
+            <TabsTrigger value="allowed">Allowed</TabsTrigger>
+            <TabsTrigger value="disallowed">Disallowed</TabsTrigger>
+          </TabsList>
+          <TabsContent value="allowed" className="mt-4">
+            {allowedDestinations.length === 0 ? (
+              <EmptyState title="No allowed destinations" description="Allowed destinations will appear here once added." />
+            ) : (
+              <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                {allowedDestinations.map((d) => <DestinationCard key={d.id} destination={d} />)}
+              </div>
+            )}
+          </TabsContent>
+          <TabsContent value="disallowed" className="mt-4">
+            {disallowedDestinations.length === 0 ? (
+              <EmptyState title="No disallowed destinations" description="There are no disallowed destinations configured." />
+            ) : (
+              <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                {disallowedDestinations.map((d) => <DestinationCard key={d.id} destination={d} />)}
+              </div>
+            )}
+          </TabsContent>
+        </Tabs>
       </div>
 
       {/* Achievements */}

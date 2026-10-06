@@ -17,6 +17,9 @@
     "external_platform_id": {
       "type": "string"
     },
+    "description": {
+      "type": "string"
+    },
     "category": {
       "type": "string",
       "enum": [
@@ -28,7 +31,32 @@
       ],
       "default": "neutral"
     },
+    "eligibility": {
+      "type": "string",
+      "enum": [
+        "allowed",
+        "neutral",
+        "disallowed"
+      ],
+      "default": "neutral"
+    },
     "active": {
+      "type": "boolean",
+      "default": true
+    },
+    "publicly_visible": {
+      "type": "boolean",
+      "default": true
+    },
+    "tracking_enabled": {
+      "type": "boolean",
+      "default": true
+    },
+    "points_eligible": {
+      "type": "boolean",
+      "default": true
+    },
+    "xp_eligible": {
       "type": "boolean",
       "default": true
     },

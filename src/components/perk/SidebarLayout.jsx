@@ -5,6 +5,7 @@ import { useAuth } from "@/lib/AuthContext";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import RankBadge from "@/components/perk/RankBadge";
+import ThemeToggle from "@/components/perk/ThemeToggle";
 
 export default function SidebarLayout({ brand, navItems, accentFrom, accentTo, children }) {
   const [open, setOpen] = useState(false);
@@ -75,6 +76,7 @@ export default function SidebarLayout({ brand, navItems, accentFrom, accentTo, c
             )}
           </div>
         </div>
+        <ThemeToggle />
         <Button variant="ghost" size="icon" className="h-8 w-8" onClick={handleLogout} title="Sign out">
           <LogOut className="h-4 w-4" />
         </Button>

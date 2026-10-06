@@ -4,6 +4,7 @@ import { queryClientInstance } from '@/lib/query-client'
 import { BrowserRouter as Router, Route, Routes, Navigate } from 'react-router-dom';
 import PageNotFound from './lib/PageNotFound';
 import { AuthProvider, useAuth } from '@/lib/AuthContext';
+import { ThemeProvider } from '@/lib/ThemeContext';
 import UserNotRegisteredError from '@/components/UserNotRegisteredError';
 import ScrollToTop from './components/ScrollToTop';
 import ProtectedRoute from '@/components/ProtectedRoute';
@@ -11,6 +12,13 @@ import Login from '@/pages/Login';
 import Register from '@/pages/Register';
 import ForgotPassword from '@/pages/ForgotPassword';
 import ResetPassword from '@/pages/ResetPassword';
+
+// Public pages
+import PublicLayout from '@/components/public/PublicLayout';
+import Home from '@/pages/public/Home';
+import PublicDestinations from '@/pages/public/Destinations';
+import DestinationDetail from '@/pages/public/DestinationDetail';
+import About from '@/pages/public/About';
 
 // User portal
 import UserLayout from '@/components/user/UserLayout';
@@ -50,6 +58,7 @@ import AdminAnalytics from '@/pages/admin/AdminAnalytics';
 import AdminAuditLog from '@/pages/admin/AdminAuditLog';
 import AdminRoles from '@/pages/admin/AdminRoles';
 import AdminSettings from '@/pages/admin/AdminSettings';
+import AdminDestinations from '@/pages/admin/AdminDestinations';
 
 const AuthenticatedApp = () => {
   const { isLoadingAuth, isLoadingPublicSettings, authError, navigateToLogin } = useAuth();
@@ -78,8 +87,15 @@ const AuthenticatedApp = () => {
       <Route path="/forgot-password" element={<ForgotPassword />} />
       <Route path="/reset-password" element={<ResetPassword />} />
 
+      {/* Public site */}
+      <Route element={<PublicLayout />}>
+        <Route path="/" element={<Home />} />
+        <Route path="/destinations" element={<PublicDestinations />} />
+        <Route path="/destinations/:id" element={<DestinationDetail />} />
+        <Route path="/about" element={<About />} />
+      </Route>
+
       <Route element={<ProtectedRoute unauthenticatedElement={<Navigate to="/login" replace />} />}>
-        <Route path="/" element={<Navigate to="/dashboard" replace />} />
         <Route element={<UserLayout />}>
           <Route path="/dashboard" element={<Dashboard />} />
           <Route path="/earn" element={<Earn />} />
@@ -98,6 +114,7 @@ const AuthenticatedApp = () => {
           <Route path="/admin" element={<AdminDashboard />} />
           <Route path="/admin/users" element={<AdminUsers />} />
           <Route path="/admin/users/:id" element={<AdminUserDetail />} />
+          <Route path="/admin/destinations" element={<AdminDestinations />} />
           <Route path="/admin/points" element={<AdminPoints />} />
           <Route path="/admin/loyalty" element={<AdminLoyaltyXP />} />
           <Route path="/admin/rewards" element={<AdminRewards />} />
@@ -128,15 +145,17 @@ const AuthenticatedApp = () => {
 function App() {
 
   return (
-    <AuthProvider>
-      <QueryClientProvider client={queryClientInstance}>
-        <Router>
-          <ScrollToTop />
-          <AuthenticatedApp />
-        </Router>
-        <Toaster />
-      </QueryClientProvider>
-    </AuthProvider>
+    <ThemeProvider>
+      <AuthProvider>
+        <QueryClientProvider client={queryClientInstance}>
+          <Router>
+            <ScrollToTop />
+            <AuthenticatedApp />
+          </Router>
+          <Toaster />
+        </QueryClientProvider>
+      </AuthProvider>
+    </ThemeProvider>
   )
 }
 

@@ -4,8 +4,20 @@
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="https://base44.com/logo_v2.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="description" content="Perk Sphere brings rewards, loyalty and participating online destinations together. Earn points, build Loyalty XP, unlock ranks and redeem rewards." />
     <link rel="manifest" href="/manifest.json" />
-    <title>Base44 APP</title>
+    <title>Perk Sphere — Your activity. Your loyalty. Your rewards.</title>
+    <script>
+      (function () {
+        try {
+          var stored = localStorage.getItem('perk-theme');
+          var theme = stored || 'system';
+          var systemDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+          var isDark = theme === 'dark' || (theme === 'system' && systemDark) || (!theme && systemDark);
+          if (isDark) document.documentElement.classList.add('dark');
+        } catch (e) {}
+      })();
+    </script>
   </head>
   <body>
     <div id="root"></div>

@@ -14,6 +14,10 @@
     "description": {
       "type": "string"
     },
+    "platform": {
+      "type": "string",
+      "default": "Website"
+    },
     "category": {
       "type": "string",
       "enum": [
@@ -21,6 +25,15 @@
         "partner",
         "neutral",
         "other"
+      ],
+      "default": "neutral"
+    },
+    "eligibility": {
+      "type": "string",
+      "enum": [
+        "allowed",
+        "neutral",
+        "disallowed"
       ],
       "default": "neutral"
     },
@@ -32,6 +45,10 @@
         "pending"
       ],
       "default": "active"
+    },
+    "publicly_visible": {
+      "type": "boolean",
+      "default": true
     },
     "tracking_enabled": {
       "type": "boolean",

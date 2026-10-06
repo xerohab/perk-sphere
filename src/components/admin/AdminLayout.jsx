@@ -15,6 +15,7 @@ const navItems = [
   { label: "Loyalty XP", path: "/admin/loyalty", icon: TrendingUp },
   { label: "Rewards", path: "/admin/rewards", icon: Gift },
   { label: "Redemptions", path: "/admin/redemptions", icon: ClipboardCheck },
+  { label: "Destinations", path: "/admin/destinations", icon: Globe },
   { label: "Sites & Domains", path: "/admin/sites", icon: Globe },
   { label: "Tracked Accounts", path: "/admin/tracked-accounts", icon: AtSign },
   { label: "Social Activity", path: "/admin/social", icon: Share2 },

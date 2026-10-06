@@ -56,6 +56,15 @@
     "streak_last_qualifying_date": {
       "type": "string",
       "format": "date"
+    },
+    "theme_preference": {
+      "type": "string",
+      "enum": [
+        "system",
+        "light",
+        "dark"
+      ],
+      "default": "system"
     }
   }
 }
