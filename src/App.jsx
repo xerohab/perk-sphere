@@ -1,9 +1,8 @@
 import { Toaster } from "@/components/ui/toaster"
 import { QueryClientProvider } from '@tanstack/react-query'
 import { queryClientInstance } from '@/lib/query-client'
-import { BrowserRouter as Router, Route, Routes, Navigate, useLocation } from 'react-router-dom';
+import { BrowserRouter as Router, Route, Routes, Navigate } from 'react-router-dom';
 import { Suspense, lazy } from 'react';
-import { AnimatePresence, motion } from 'framer-motion';
 import PageNotFound from './lib/PageNotFound';
 import { AuthProvider, useAuth } from '@/lib/AuthContext';
 import { ThemeProvider } from '@/lib/ThemeContext';
@@ -11,11 +10,11 @@ import UserNotRegisteredError from '@/components/UserNotRegisteredError';
 import ScrollToTop from './components/ScrollToTop';
 import ProtectedRoute from '@/components/ProtectedRoute';
 
-// Auth pages (loaded eagerly - needed before app can render)
-import Login from '@/pages/Login';
-import Register from '@/pages/Register';
-import ForgotPassword from '@/pages/ForgotPassword';
-import ResetPassword from '@/pages/ResetPassword';
+// Auth pages - lazy loaded
+const Login = lazy(() => import('@/pages/Login'));
+const Register = lazy(() => import('@/pages/Register'));
+const ForgotPassword = lazy(() => import('@/pages/ForgotPassword'));
+const ResetPassword = lazy(() => import('@/pages/ResetPassword'));
 
 // Public pages - lazy loaded
 const PublicLayout = lazy(() => import('@/components/public/PublicLayout'));
@@ -66,77 +65,71 @@ const AdminDestinations = lazy(() => import('@/pages/admin/AdminDestinations'));
 
 const PageSpinner = () => (
   <div className="fixed inset-0 flex items-center justify-center">
-    <div className="w-8 h-8 border-4 border-slate-200 border-t-slate-800 rounded-full animate-spin"></div>
+    <div className="w-8 h-8 border-4 border-secondary border-t-foreground rounded-full animate-spin"></div>
   </div>
 );
 
-const AnimatedRoutes = () => {
-  const location = useLocation();
+const AppRoutes = () => (
+  <Suspense fallback={<PageSpinner />}>
+    <Routes>
+      <Route path="/login" element={<Login />} />
+      <Route path="/register" element={<Register />} />
+      <Route path="/forgot-password" element={<ForgotPassword />} />
+      <Route path="/reset-password" element={<ResetPassword />} />
 
-  return (
-    <Suspense fallback={<PageSpinner />}>
-      <AnimatePresence mode="wait">
-        <Routes location={location} key={location.pathname}>
-          <Route path="/login" element={<Login />} />
-          <Route path="/register" element={<Register />} />
-          <Route path="/forgot-password" element={<ForgotPassword />} />
-          <Route path="/reset-password" element={<ResetPassword />} />
+      {/* Public site */}
+      <Route element={<PublicLayout />}>
+        <Route path="/" element={<Home />} />
+        <Route path="/destinations" element={<PublicDestinations />} />
+        <Route path="/destinations/:id" element={<DestinationDetail />} />
+        <Route path="/about" element={<About />} />
+      </Route>
 
-          {/* Public site */}
-          <Route element={<PublicLayout />}>
-            <Route path="/" element={<Home />} />
-            <Route path="/destinations" element={<PublicDestinations />} />
-            <Route path="/destinations/:id" element={<DestinationDetail />} />
-            <Route path="/about" element={<About />} />
-          </Route>
+      <Route element={<ProtectedRoute unauthenticatedElement={<Navigate to="/login" replace />} />}>
+        <Route element={<UserLayout />}>
+          <Route path="/dashboard" element={<Dashboard />} />
+          <Route path="/earn" element={<Earn />} />
+          <Route path="/rewards" element={<Rewards />} />
+          <Route path="/activity" element={<Activity />} />
+          <Route path="/achievements" element={<Achievements />} />
+          <Route path="/points-history" element={<PointsHistory />} />
+          <Route path="/loyalty" element={<Loyalty />} />
+          <Route path="/notifications" element={<Notifications />} />
+          <Route path="/connected-services" element={<ConnectedServices />} />
+          <Route path="/devices" element={<Devices />} />
+          <Route path="/profile" element={<Profile />} />
+          <Route path="/privacy" element={<Privacy />} />
+        </Route>
+        <Route element={<AdminLayout />}>
+          <Route path="/admin" element={<AdminDashboard />} />
+          <Route path="/admin/users" element={<AdminUsers />} />
+          <Route path="/admin/users/:id" element={<AdminUserDetail />} />
+          <Route path="/admin/destinations" element={<AdminDestinations />} />
+          <Route path="/admin/points" element={<AdminPoints />} />
+          <Route path="/admin/loyalty" element={<AdminLoyaltyXP />} />
+          <Route path="/admin/rewards" element={<AdminRewards />} />
+          <Route path="/admin/redemptions" element={<AdminRedemptions />} />
+          <Route path="/admin/sites" element={<AdminSites />} />
+          <Route path="/admin/tracked-accounts" element={<AdminTrackedAccounts />} />
+          <Route path="/admin/social" element={<AdminSocialActivity />} />
+          <Route path="/admin/activities" element={<AdminActivities />} />
+          <Route path="/admin/rules" element={<AdminRules />} />
+          <Route path="/admin/campaigns" element={<AdminCampaigns />} />
+          <Route path="/admin/achievements" element={<AdminAchievements />} />
+          <Route path="/admin/restrictions" element={<AdminRestrictions />} />
+          <Route path="/admin/fraud" element={<AdminFraud />} />
+          <Route path="/admin/notifications" element={<AdminNotifications />} />
+          <Route path="/admin/analytics" element={<AdminAnalytics />} />
+          <Route path="/admin/audit" element={<AdminAuditLog />} />
+          <Route path="/admin/roles" element={<AdminRoles />} />
+          <Route path="/admin/settings" element={<AdminSettings />} />
+        </Route>
+      </Route>
 
-          <Route element={<ProtectedRoute unauthenticatedElement={<Navigate to="/login" replace />} />}>
-            <Route element={<UserLayout />}>
-              <Route path="/dashboard" element={<Dashboard />} />
-              <Route path="/earn" element={<Earn />} />
-              <Route path="/rewards" element={<Rewards />} />
-              <Route path="/activity" element={<Activity />} />
-              <Route path="/achievements" element={<Achievements />} />
-              <Route path="/points-history" element={<PointsHistory />} />
-              <Route path="/loyalty" element={<Loyalty />} />
-              <Route path="/notifications" element={<Notifications />} />
-              <Route path="/connected-services" element={<ConnectedServices />} />
-              <Route path="/devices" element={<Devices />} />
-              <Route path="/profile" element={<Profile />} />
-              <Route path="/privacy" element={<Privacy />} />
-            </Route>
-            <Route element={<AdminLayout />}>
-              <Route path="/admin" element={<AdminDashboard />} />
-              <Route path="/admin/users" element={<AdminUsers />} />
-              <Route path="/admin/users/:id" element={<AdminUserDetail />} />
-              <Route path="/admin/destinations" element={<AdminDestinations />} />
-              <Route path="/admin/points" element={<AdminPoints />} />
-              <Route path="/admin/loyalty" element={<AdminLoyaltyXP />} />
-              <Route path="/admin/rewards" element={<AdminRewards />} />
-              <Route path="/admin/redemptions" element={<AdminRedemptions />} />
-              <Route path="/admin/sites" element={<AdminSites />} />
-              <Route path="/admin/tracked-accounts" element={<AdminTrackedAccounts />} />
-              <Route path="/admin/social" element={<AdminSocialActivity />} />
-              <Route path="/admin/activities" element={<AdminActivities />} />
-              <Route path="/admin/rules" element={<AdminRules />} />
-              <Route path="/admin/campaigns" element={<AdminCampaigns />} />
-              <Route path="/admin/achievements" element={<AdminAchievements />} />
-              <Route path="/admin/restrictions" element={<AdminRestrictions />} />
-              <Route path="/admin/fraud" element={<AdminFraud />} />
-              <Route path="/admin/notifications" element={<AdminNotifications />} />
-              <Route path="/admin/analytics" element={<AdminAnalytics />} />
-              <Route path="/admin/audit" element={<AdminAuditLog />} />
-              <Route path="/admin/roles" element={<AdminRoles />} />
-              <Route path="/admin/settings" element={<AdminSettings />} />
-            </Route>
-          </Route>
-
-          <Route path="*" element={<PageNotFound />} />
-        </Routes>
-      </AnimatePresence>
-    </Suspense>
-  );
-};
+      <Route path="*" element={<PageNotFound />} />
+    </Routes>
+  </Suspense>
+);
 
 const AuthenticatedApp = () => {
   const { isLoadingAuth, isLoadingPublicSettings, authError, navigateToLogin } = useAuth();
@@ -154,14 +147,13 @@ const AuthenticatedApp = () => {
     }
   }
 
-  return <AnimatedRoutes />;
+  return <AppRoutes />;
 };
-
 
 function App() {
   return (
-    <ThemeProvider>
-      <AuthProvider>
+    <AuthProvider>
+      <ThemeProvider>
         <QueryClientProvider client={queryClientInstance}>
           <Router>
             <ScrollToTop />
@@ -169,8 +161,8 @@ function App() {
           </Router>
           <Toaster />
         </QueryClientProvider>
-      </AuthProvider>
-    </ThemeProvider>
+      </ThemeProvider>
+    </AuthProvider>
   )
 }
 

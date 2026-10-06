@@ -35,7 +35,7 @@ export default function ConnectedServices() {
   return (
     <div>
       <PageHeader title="Connected Services" description="Manage third-party accounts linked to your Perk Sphere profile" />
-      <div className="mb-6 flex items-start gap-3 rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800">
+      <div className="mb-6 flex items-start gap-3 rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800 dark:border-amber-900/50 dark:bg-amber-950/20 dark:text-amber-300">
         <Info className="mt-0.5 h-4 w-4 flex-shrink-0" />
         <p>OAuth integrations are not yet configured. Connecting a service will be available once the official API integration is added. No connections are active right now.</p>
       </div>

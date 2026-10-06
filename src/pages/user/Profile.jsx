@@ -21,11 +21,7 @@ export default function Profile() {
   const { toast } = useToast();
   const navigate = useNavigate();
   const { theme, setTheme } = useTheme();
-  const [form, setForm] = useState({
-    username: user?.username || "",
-    display_name: user?.display_name || "",
-    profile_image: user?.profile_image || ""
-  });
+  const [form, setForm] = useState({ username: user?.username || "", display_name: user?.display_name || "", profile_image: user?.profile_image || "" });
   const [saving, setSaving] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [deleting, setDeleting] = useState(false);
@@ -34,7 +30,7 @@ export default function Profile() {
     setSaving(true);
     try {
       await base44.auth.updateMe(form);
-      await checkUserAuth();
+      if (checkUserAuth) await checkUserAuth();
       toast({ title: "Profile updated" });
     } catch (e) {
       toast({ title: "Update failed", description: e.message, variant: "destructive" });
@@ -46,12 +42,12 @@ export default function Profile() {
   const handleDeleteAccount = async () => {
     setDeleting(true);
     try {
-      await base44.entities.User.delete(user.id);
+      await base44.functions.invoke("deleteAccount", { confirm: true });
       toast({ title: "Account deleted" });
       await logout(false);
       navigate("/login", { replace: true });
     } catch (e) {
-      toast({ title: "Deletion failed", description: e.message, variant: "destructive" });
+      toast({ title: "Deletion failed", description: e?.response?.data?.error || e.message, variant: "destructive" });
     } finally {
       setDeleting(false);
     }
@@ -89,42 +85,22 @@ export default function Profile() {
         <div className="rounded-2xl border border-border bg-card p-6 shadow-sm lg:col-span-2">
           <h3 className="text-sm font-semibold">Edit Profile</h3>
           <div className="mt-4 space-y-4">
-            <div>
-              <Label htmlFor="username">Username</Label>
-              <Input id="username" value={form.username} onChange={(e) => setForm({ ...form, username: e.target.value })} className="mt-1.5" />
-            </div>
-            <div>
-              <Label htmlFor="display_name">Display Name</Label>
-              <Input id="display_name" value={form.display_name} onChange={(e) => setForm({ ...form, display_name: e.target.value })} className="mt-1.5" />
-            </div>
-            <div>
-              <Label htmlFor="profile_image">Profile Image URL</Label>
-              <Input id="profile_image" value={form.profile_image} onChange={(e) => setForm({ ...form, profile_image: e.target.value })} className="mt-1.5" placeholder="https://..." />
-            </div>
+            <div><Label htmlFor="username">Username</Label><Input id="username" value={form.username} onChange={(e) => setForm({ ...form, username: e.target.value })} className="mt-1.5" /></div>
+            <div><Label htmlFor="display_name">Display Name</Label><Input id="display_name" value={form.display_name} onChange={(e) => setForm({ ...form, display_name: e.target.value })} className="mt-1.5" /></div>
+            <div><Label htmlFor="profile_image">Profile Image URL</Label><Input id="profile_image" value={form.profile_image} onChange={(e) => setForm({ ...form, profile_image: e.target.value })} className="mt-1.5" placeholder="https://..." /></div>
             <Button onClick={save} disabled={saving}>{saving ? "Saving..." : "Save Changes"}</Button>
           </div>
 
-          {/* Appearance / Theme */}
           <div className="mt-6 border-t border-border pt-6">
             <h3 className="text-sm font-semibold">Appearance</h3>
-            <p className="mt-1 text-xs text-muted-foreground">Choose how Perk Sphere looks to you.</p>
+            <p className="mt-1 text-xs text-muted-foreground">Choose how Perk Sphere looks to you. Your choice is saved to your account.</p>
             <div className="mt-3 flex gap-2">
               {themeOptions.map((opt) => {
                 const Icon = opt.icon;
                 const activeTheme = theme || "system";
                 return (
-                  <button
-                    key={opt.value}
-                    onClick={() => setTheme(opt.value)}
-                    className={cn(
-                      "flex flex-1 flex-col items-center gap-1.5 rounded-xl border px-3 py-3 text-xs font-medium transition-colors",
-                      activeTheme === opt.value
-                        ? "border-foreground bg-secondary text-foreground"
-                        : "border-border bg-card text-muted-foreground hover:bg-accent hover:text-foreground"
-                    )}
-                  >
-                    <Icon className="h-4 w-4" />
-                    {opt.label}
+                  <button key={opt.value} onClick={() => setTheme(opt.value)} className={cn("flex flex-1 flex-col items-center gap-1.5 rounded-xl border px-3 py-3 text-xs font-medium transition-colors", activeTheme === opt.value ? "border-foreground bg-secondary text-foreground" : "border-border bg-card text-muted-foreground hover:bg-accent hover:text-foreground")}>
+                    <Icon className="h-4 w-4" />{opt.label}
                   </button>
                 );
               })}
@@ -133,18 +109,12 @@ export default function Profile() {
         </div>
       </div>
 
-      {/* Danger Zone */}
       <div className="mt-6 rounded-2xl border border-red-200 bg-red-50/50 p-6 dark:border-red-900/50 dark:bg-red-950/20">
         <h3 className="text-sm font-semibold text-red-700 dark:text-red-400">Danger Zone</h3>
         <p className="mt-1 text-xs text-muted-foreground">Permanently delete your account and all associated data. This action cannot be undone.</p>
-        <div className="mt-4">
-          <Button variant="destructive" onClick={() => setDeleteOpen(true)}>
-            <Trash2 className="mr-1 h-4 w-4" /> Delete Account
-          </Button>
-        </div>
+        <div className="mt-4"><Button variant="destructive" onClick={() => setDeleteOpen(true)}><Trash2 className="mr-1 h-4 w-4" /> Delete Account</Button></div>
       </div>
 
-      {/* Delete confirmation dialog */}
       <Dialog open={deleteOpen} onOpenChange={(o) => !o && setDeleteOpen(false)}>
         <DialogContent>
           <DialogHeader>
@@ -155,9 +125,7 @@ export default function Profile() {
           </DialogHeader>
           <DialogFooter>
             <DialogClose asChild><Button variant="outline" disabled={deleting}>Cancel</Button></DialogClose>
-            <Button variant="destructive" onClick={handleDeleteAccount} disabled={deleting}>
-              {deleting ? "Deleting..." : "Yes, delete my account"}
-            </Button>
+            <Button variant="destructive" onClick={handleDeleteAccount} disabled={deleting}>{deleting ? "Deleting..." : "Yes, delete my account"}</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

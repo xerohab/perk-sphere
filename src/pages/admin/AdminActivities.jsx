@@ -4,7 +4,7 @@ import { useToast } from "@/components/ui/use-toast";
 import { Plus } from "lucide-react";
 import PageHeader from "@/components/perk/PageHeader";
 import StatusBadge from "@/components/perk/StatusBadge";
-import EmptyState from "@/components/perk/EmptyState";
+import ResponsiveTable from "@/components/perk/ResponsiveTable";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -30,13 +30,13 @@ export default function AdminActivities() {
   const [form, setForm] = useState({ userId: "", platform: "", activityType: "", targetAccount: "", targetUrl: "", detectionSource: "admin_entered" });
   const [saving, setSaving] = useState(false);
 
-  const load = async () => {
-    setLoading(true);
+  const load = async (silent) => {
+    if (!silent) setLoading(true);
     try {
       const a = await base44.entities.Activity.list('-created_date', 200);
       setItems(a || []);
     } finally {
-      setLoading(false);
+      if (!silent) setLoading(false);
     }
   };
 
@@ -56,7 +56,7 @@ export default function AdminActivities() {
       toast({ title: "Activity recorded" });
       setOpen(false);
       setForm({ userId: "", platform: "", activityType: "", targetAccount: "", targetUrl: "", detectionSource: "admin_entered" });
-      load();
+      load(true);
     } catch (e) {
       toast({ title: "Failed", description: e?.response?.data?.error || e.message, variant: "destructive" });
     } finally {
@@ -64,48 +64,23 @@ export default function AdminActivities() {
     }
   };
 
+  const cols = [
+    { key: "platform", label: "Platform", render: (a) => <span className="capitalize">{a.platform}</span> },
+    { key: "activity_type", label: "Type", render: (a) => <span className="capitalize">{a.activity_type?.replace(/_/g, " ")}</span> },
+    { key: "target", label: "Target", render: (a) => a.target_account || a.target || "—" },
+    { key: "user_id", label: "User", mono: true, render: (a) => a.user_id?.slice(0, 8) },
+    { key: "created_date", label: "Date", render: (a) => new Date(a.created_date).toLocaleString() },
+    { key: "verification_status", label: "Source", render: (a) => <StatusBadge status={a.verification_status} /> }
+  ];
+
   if (loading) {
     return <div className="flex h-64 items-center justify-center"><div className="h-8 w-8 animate-spin rounded-full border-4 border-secondary border-t-foreground" /></div>;
   }
 
   return (
     <div>
-      <PageHeader
-        title="Activities"
-        description={`${items.length} recorded activity events`}
-        actions={<Button size="sm" onClick={() => setOpen(true)}><Plus className="mr-1 h-4 w-4" /> Record Activity</Button>}
-      />
-      {items.length === 0 ? (
-        <EmptyState title="No activities recorded" />
-      ) : (
-        <div className="overflow-x-auto rounded-2xl border border-border bg-card shadow-sm">
-          <table className="w-full text-sm">
-            <thead className="bg-secondary/50 text-left text-xs uppercase tracking-wide text-muted-foreground">
-              <tr>
-                <th className="px-4 py-3 font-medium">Platform</th>
-                <th className="px-4 py-3 font-medium">Type</th>
-                <th className="px-4 py-3 font-medium">Target</th>
-                <th className="px-4 py-3 font-medium">User</th>
-                <th className="px-4 py-3 font-medium">Date</th>
-                <th className="px-4 py-3 font-medium">Source</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-border">
-              {items.map((a) => (
-                <tr key={a.id}>
-                  <td className="px-4 py-3 capitalize">{a.platform}</td>
-                  <td className="px-4 py-3 capitalize">{a.activity_type?.replace(/_/g, " ")}</td>
-                  <td className="px-4 py-3 text-muted-foreground">{a.target_account || a.target || "—"}</td>
-                  <td className="px-4 py-3 font-mono text-xs">{a.user_id?.slice(0, 8)}</td>
-                  <td className="px-4 py-3 text-muted-foreground">{new Date(a.created_date).toLocaleString()}</td>
-                  <td className="px-4 py-3"><StatusBadge status={a.verification_status} /></td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      )}
-
+      <PageHeader title="Activities" description={`${items.length} recorded activity events`} actions={<Button size="sm" onClick={() => setOpen(true)}><Plus className="mr-1 h-4 w-4" /> Record Activity</Button>} />
+      <ResponsiveTable columns={cols} rows={items} emptyTitle="No activities recorded" />
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent>
           <DialogHeader><DialogTitle>Record Activity</DialogTitle></DialogHeader>
@@ -115,15 +90,7 @@ export default function AdminActivities() {
             <div><Label>Activity Type</Label><Input value={form.activityType} onChange={(e) => setForm({ ...form, activityType: e.target.value })} className="mt-1.5" placeholder="profile_visit, like_detected..." /></div>
             <div><Label>Target Account</Label><Input value={form.targetAccount} onChange={(e) => setForm({ ...form, targetAccount: e.target.value })} className="mt-1.5" /></div>
             <div><Label>Target URL</Label><Input value={form.targetUrl} onChange={(e) => setForm({ ...form, targetUrl: e.target.value })} className="mt-1.5" /></div>
-            <div>
-              <Label>Detection Source</Label>
-              <Select value={form.detectionSource} onValueChange={(v) => setForm({ ...form, detectionSource: v })}>
-                <SelectTrigger className="mt-1.5"><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  {SOURCES.map((s) => <SelectItem key={s.value} value={s.value}>{s.label}</SelectItem>)}
-                </SelectContent>
-              </Select>
-            </div>
+            <div><Label>Detection Source</Label><Select value={form.detectionSource} onValueChange={(v) => setForm({ ...form, detectionSource: v })}><SelectTrigger className="mt-1.5"><SelectValue /></SelectTrigger><SelectContent>{SOURCES.map((s) => <SelectItem key={s.value} value={s.value}>{s.label}</SelectItem>)}</SelectContent></Select></div>
           </div>
           <DialogFooter>
             <DialogClose asChild><Button variant="outline">Cancel</Button></DialogClose>

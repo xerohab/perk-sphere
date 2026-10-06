@@ -1,4 +1,4 @@
-import React from "react";
+import React, { Suspense } from "react";
 import { Outlet, Navigate } from "react-router-dom";
 import {
   LayoutDashboard, Users, Coins, TrendingUp, Gift, ClipboardCheck, Globe,
@@ -6,30 +6,32 @@ import {
   Bell, BarChart3, History, Lock, Settings
 } from "lucide-react";
 import SidebarLayout from "@/components/perk/SidebarLayout";
+import AccessGate from "@/components/perk/AccessGate";
+import PageTransition, { ContentSpinner } from "@/components/perk/PageTransition";
 import { useAuth } from "@/lib/AuthContext";
 
 const navItems = [
-  { label: "Dashboard", path: "/admin", icon: LayoutDashboard },
-  { label: "Users", path: "/admin/users", icon: Users },
-  { label: "Points", path: "/admin/points", icon: Coins },
-  { label: "Loyalty XP", path: "/admin/loyalty", icon: TrendingUp },
-  { label: "Rewards", path: "/admin/rewards", icon: Gift },
-  { label: "Redemptions", path: "/admin/redemptions", icon: ClipboardCheck },
-  { label: "Destinations", path: "/admin/destinations", icon: Globe },
-  { label: "Sites & Domains", path: "/admin/sites", icon: Globe },
-  { label: "Tracked Accounts", path: "/admin/tracked-accounts", icon: AtSign },
-  { label: "Social Activity", path: "/admin/social", icon: Share2 },
-  { label: "Activities", path: "/admin/activities", icon: ListChecks },
-  { label: "Rules", path: "/admin/rules", icon: ScrollText },
-  { label: "Campaigns", path: "/admin/campaigns", icon: Megaphone },
-  { label: "Achievements", path: "/admin/achievements", icon: Award },
-  { label: "Restrictions", path: "/admin/restrictions", icon: Ban },
-  { label: "Fraud Review", path: "/admin/fraud", icon: ShieldAlert },
-  { label: "Notifications", path: "/admin/notifications", icon: Bell },
-  { label: "Analytics", path: "/admin/analytics", icon: BarChart3 },
-  { label: "Audit Log", path: "/admin/audit", icon: History },
-  { label: "Roles & Permissions", path: "/admin/roles", icon: Lock },
-  { label: "Settings", path: "/admin/settings", icon: Settings }
+  { label: "Dashboard", path: "/admin", icon: LayoutDashboard, permission: "dashboard.view" },
+  { label: "Users", path: "/admin/users", icon: Users, permission: "users.view" },
+  { label: "Points", path: "/admin/points", icon: Coins, permission: "ledger.view" },
+  { label: "Loyalty XP", path: "/admin/loyalty", icon: TrendingUp, permission: "loyalty.view" },
+  { label: "Rewards", path: "/admin/rewards", icon: Gift, permission: "rewards.view" },
+  { label: "Redemptions", path: "/admin/redemptions", icon: ClipboardCheck, permission: "redemptions.view" },
+  { label: "Destinations", path: "/admin/destinations", icon: Globe, permission: "destinations.view" },
+  { label: "Sites & Domains", path: "/admin/sites", icon: Globe, permission: "destinations.view" },
+  { label: "Tracked Accounts", path: "/admin/tracked-accounts", icon: AtSign, permission: "destinations.view" },
+  { label: "Social Activity", path: "/admin/social", icon: Share2, permission: "activity.view" },
+  { label: "Activities", path: "/admin/activities", icon: ListChecks, permission: "activity.view" },
+  { label: "Rules", path: "/admin/rules", icon: ScrollText, permission: "rules.view" },
+  { label: "Campaigns", path: "/admin/campaigns", icon: Megaphone, permission: "campaigns.view" },
+  { label: "Achievements", path: "/admin/achievements", icon: Award, permission: "achievements.view" },
+  { label: "Restrictions", path: "/admin/restrictions", icon: Ban, permission: "restrictions.view" },
+  { label: "Fraud Review", path: "/admin/fraud", icon: ShieldAlert, permission: "fraud.view" },
+  { label: "Notifications", path: "/admin/notifications", icon: Bell, permission: "dashboard.view" },
+  { label: "Analytics", path: "/admin/analytics", icon: BarChart3, permission: "analytics.view" },
+  { label: "Audit Log", path: "/admin/audit", icon: History, permission: "audit.view" },
+  { label: "Roles & Permissions", path: "/admin/roles", icon: Lock, permission: "staff.view" },
+  { label: "Settings", path: "/admin/settings", icon: Settings, permission: "settings.view" }
 ];
 
 export default function AdminLayout() {
@@ -38,8 +40,19 @@ export default function AdminLayout() {
     return <Navigate to="/dashboard" replace />;
   }
   return (
-    <SidebarLayout brand="Perk Sphere Admin" accentFrom="#0f172a" accentTo="#334155" navItems={navItems}>
-      <Outlet />
-    </SidebarLayout>
+    <AccessGate>
+      {(access) => {
+        const items = navItems.filter((n) => !n.permission || access.permissions.includes(n.permission));
+        return (
+          <SidebarLayout brand="Perk Sphere Admin" accentFrom="#0f172a" accentTo="#334155" navItems={items}>
+            <PageTransition>
+              <Suspense fallback={<ContentSpinner />}>
+                <Outlet />
+              </Suspense>
+            </PageTransition>
+          </SidebarLayout>
+        );
+      }}
+    </AccessGate>
   );
 }

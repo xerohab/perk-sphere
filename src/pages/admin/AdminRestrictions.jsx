@@ -32,13 +32,13 @@ export default function AdminRestrictions() {
   const [form, setForm] = useState({ userId: "", type: "points_earning_paused", reason: "", endDate: "", internalNote: "" });
   const [saving, setSaving] = useState(false);
 
-  const load = async () => {
-    setLoading(true);
+  const load = async (silent) => {
+    if (!silent) setLoading(true);
     try {
       const r = await base44.entities.Restriction.list('-created_date', 200);
       setItems(r || []);
     } finally {
-      setLoading(false);
+      if (!silent) setLoading(false);
     }
   };
 
@@ -48,29 +48,28 @@ export default function AdminRestrictions() {
     if (!form.userId || !form.reason) { toast({ title: "User ID and reason are required", variant: "destructive" }); return; }
     setSaving(true);
     try {
-      await base44.entities.Restriction.create({
-        user_id: form.userId,
-        type: form.type,
-        reason: form.reason,
-        start_date: new Date().toISOString(),
-        end_date: form.endDate || null,
-        active: true,
-        internal_note: form.internalNote
+      await base44.functions.invoke("adminWrite", {
+        entity: "Restriction", op: "create",
+        data: { user_id: form.userId, type: form.type, reason: form.reason, start_date: new Date().toISOString(), end_date: form.endDate || null, active: true, internal_note: form.internalNote }
       });
       toast({ title: "Restriction created" });
       setOpen(false);
       setForm({ userId: "", type: "points_earning_paused", reason: "", endDate: "", internalNote: "" });
-      load();
+      load(true);
     } catch (e) {
-      toast({ title: "Failed", description: e.message, variant: "destructive" });
+      toast({ title: "Failed", description: e?.response?.data?.error || e.message, variant: "destructive" });
     } finally {
       setSaving(false);
     }
   };
 
   const toggle = async (r) => {
-    await base44.entities.Restriction.update(r.id, { active: !r.active });
-    load();
+    try {
+      await base44.functions.invoke("adminWrite", { entity: "Restriction", op: "update", id: r.id, data: { active: !r.active } });
+      load(true);
+    } catch (e) {
+      toast({ title: "Failed", description: e?.response?.data?.error || e.message, variant: "destructive" });
+    }
   };
 
   if (loading) {
@@ -79,11 +78,7 @@ export default function AdminRestrictions() {
 
   return (
     <div>
-      <PageHeader
-        title="Restrictions"
-        description={`${items.filter((i) => i.active).length} active restrictions`}
-        actions={<Button size="sm" onClick={() => setOpen(true)}><Plus className="mr-1 h-4 w-4" /> New Restriction</Button>}
-      />
+      <PageHeader title="Restrictions" description={`${items.filter((i) => i.active).length} active restrictions`} actions={<Button size="sm" onClick={() => setOpen(true)}><Plus className="mr-1 h-4 w-4" /> New Restriction</Button>} />
       {items.length === 0 ? (
         <EmptyState title="No restrictions" />
       ) : (
@@ -109,15 +104,7 @@ export default function AdminRestrictions() {
           <DialogHeader><DialogTitle>New Restriction</DialogTitle></DialogHeader>
           <div className="space-y-4">
             <div><Label>User ID</Label><Input value={form.userId} onChange={(e) => setForm({ ...form, userId: e.target.value })} className="mt-1.5" /></div>
-            <div>
-              <Label>Type</Label>
-              <Select value={form.type} onValueChange={(v) => setForm({ ...form, type: v })}>
-                <SelectTrigger className="mt-1.5"><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  {TYPES.map((t) => <SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>)}
-                </SelectContent>
-              </Select>
-            </div>
+            <div><Label>Type</Label><Select value={form.type} onValueChange={(v) => setForm({ ...form, type: v })}><SelectTrigger className="mt-1.5"><SelectValue /></SelectTrigger><SelectContent>{TYPES.map((t) => <SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>)}</SelectContent></Select></div>
             <div><Label>Reason</Label><Input value={form.reason} onChange={(e) => setForm({ ...form, reason: e.target.value })} className="mt-1.5" /></div>
             <div><Label>End Date (leave blank for indefinite)</Label><Input type="datetime-local" value={form.endDate} onChange={(e) => setForm({ ...form, endDate: e.target.value })} className="mt-1.5" /></div>
             <div><Label>Internal Note</Label><Textarea value={form.internalNote} onChange={(e) => setForm({ ...form, internalNote: e.target.value })} className="mt-1.5" /></div>

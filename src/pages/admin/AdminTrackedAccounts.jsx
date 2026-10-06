@@ -13,23 +13,31 @@ const ELIGIBILITY_OPTS = [
   { value: "neutral", label: "Neutral" },
   { value: "disallowed", label: "Disallowed" }
 ];
+const TYPE_OPTS = [
+  { value: "channel", label: "Channel" },
+  { value: "account", label: "Account" },
+  { value: "video", label: "Video" },
+  { value: "post", label: "Post" },
+  { value: "other", label: "Other" }
+];
 
 export default function AdminTrackedAccounts() {
   return (
     <CrudPage
       title="Tracked Accounts"
-      description="Social accounts tracked by Perk Sphere for activity analytics."
+      description="Social accounts and content tracked by Perk Sphere for activity analytics."
       entity="TrackedAccount"
       columns={[
         { key: "account_name", label: "Account" },
         { key: "platform", label: "Platform", render: (i) => <span className="capitalize">{i.platform}</span> },
+        { key: "destination_type", label: "Type", render: (i) => <span className="capitalize">{i.destination_type || "account"}</span> },
         { key: "username", label: "Handle" },
         { key: "eligibility", label: "Eligibility", render: (i) => <span className="capitalize">{i.eligibility || "neutral"}</span> },
-        { key: "category", label: "Category", render: (i) => <span className="capitalize">{i.category}</span> },
         { key: "active", label: "Active", render: (i) => (i.active !== false ? "Yes" : "No") }
       ]}
       fields={[
         { key: "platform", label: "Platform", type: "text" },
+        { key: "destination_type", label: "Destination Type", type: "select", options: TYPE_OPTS },
         { key: "account_name", label: "Account Name", type: "text" },
         { key: "username", label: "Username / Handle", type: "text" },
         { key: "profile_url", label: "Profile URL", type: "text" },

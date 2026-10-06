@@ -1,10 +1,11 @@
-import React from "react";
+import React, { Suspense } from "react";
 import { Outlet } from "react-router-dom";
 import {
   LayoutDashboard, Gift, Coins, Activity, Award, History, TrendingUp,
   Bell, Plug, Smartphone, User, ShieldCheck
 } from "lucide-react";
 import SidebarLayout from "@/components/perk/SidebarLayout";
+import PageTransition, { ContentSpinner } from "@/components/perk/PageTransition";
 
 const navItems = [
   { label: "Dashboard", path: "/dashboard", icon: LayoutDashboard },
@@ -24,7 +25,11 @@ const navItems = [
 export default function UserLayout() {
   return (
     <SidebarLayout brand="Perk Sphere" accentFrom="#6366f1" accentTo="#8b5cf6" navItems={navItems}>
-      <Outlet />
+      <PageTransition>
+        <Suspense fallback={<ContentSpinner />}>
+          <Outlet />
+        </Suspense>
+      </PageTransition>
     </SidebarLayout>
   );
 }

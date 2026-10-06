@@ -41,8 +41,8 @@ export default function Achievements() {
             const unlocked = mineIds.has(a.id);
             const hidden = a.hidden && !unlocked;
             return (
-              <div key={a.id} className={`rounded-2xl border p-5 text-center shadow-sm ${unlocked ? "border-amber-200 bg-amber-50" : "border-border bg-card"}`}>
-                <div className={`mx-auto flex h-14 w-14 items-center justify-center rounded-full ${unlocked ? "bg-amber-200 text-amber-700" : "bg-secondary text-muted-foreground"}`}>
+              <div key={a.id} className={`rounded-2xl border p-5 text-center shadow-sm ${unlocked ? "border-amber-200 bg-amber-50 dark:border-amber-900/50 dark:bg-amber-950/20" : "border-border bg-card"}`}>
+                <div className={`mx-auto flex h-14 w-14 items-center justify-center rounded-full ${unlocked ? "bg-amber-200 text-amber-700 dark:bg-amber-500/15 dark:text-amber-400" : "bg-secondary text-muted-foreground"}`}>
                   {hidden ? <span className="text-lg">?</span> : <Award className="h-7 w-7" />}
                 </div>
                 <p className="mt-3 text-sm font-semibold">{hidden ? "Hidden achievement" : a.name}</p>

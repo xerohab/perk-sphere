@@ -5,7 +5,6 @@ import { Info } from "lucide-react";
 import PageHeader from "@/components/perk/PageHeader";
 import StatusBadge from "@/components/perk/StatusBadge";
 import EmptyState from "@/components/perk/EmptyState";
-import { Button } from "@/components/ui/button";
 import {
   Select, SelectTrigger, SelectContent, SelectItem, SelectValue
 } from "@/components/ui/select";
@@ -17,22 +16,26 @@ export default function AdminFraud() {
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
 
-  const load = async () => {
-    setLoading(true);
+  const load = async (silent) => {
+    if (!silent) setLoading(true);
     try {
       const f = await base44.entities.FraudFlag.list('-created_date', 200);
       setItems(f || []);
     } finally {
-      setLoading(false);
+      if (!silent) setLoading(false);
     }
   };
 
   useEffect(() => { load(); }, []);
 
   const updateStatus = async (flag, status) => {
-    await base44.entities.FraudFlag.update(flag.id, { review_status: status });
-    toast({ title: "Review status updated" });
-    load();
+    try {
+      await base44.functions.invoke("adminWrite", { entity: "FraudFlag", op: "update", id: flag.id, data: { review_status: status } });
+      toast({ title: "Review status updated" });
+      load(true);
+    } catch (e) {
+      toast({ title: "Failed", description: e?.response?.data?.error || e.message, variant: "destructive" });
+    }
   };
 
   if (loading) {
@@ -42,7 +45,7 @@ export default function AdminFraud() {
   return (
     <div>
       <PageHeader title="Fraud Review" description={`${items.filter((i) => i.review_status === "pending").length} pending review`} />
-      <div className="mb-4 flex items-start gap-3 rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800">
+      <div className="mb-4 flex items-start gap-3 rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800 dark:border-amber-900/50 dark:bg-amber-950/20 dark:text-amber-300">
         <Info className="mt-0.5 h-4 w-4 flex-shrink-0" />
         <p>Risk flags are signals, not proof. A single flag does not automatically result in a ban. Review each case and set its status manually.</p>
       </div>
@@ -59,7 +62,7 @@ export default function AdminFraud() {
                   {f.details && <p className="mt-1 text-xs text-muted-foreground">{f.details}</p>}
                   {f.risk_flags?.length > 0 && (
                     <div className="mt-2 flex flex-wrap gap-1">
-                      {f.risk_flags.map((rf) => <span key={rf} className="rounded-full bg-red-100 px-2 py-0.5 text-xs text-red-700">{rf}</span>)}
+                      {f.risk_flags.map((rf) => <span key={rf} className="rounded-full bg-red-100 px-2 py-0.5 text-xs text-red-700 dark:bg-red-500/15 dark:text-red-400">{rf}</span>)}
                     </div>
                   )}
                 </div>
@@ -67,9 +70,7 @@ export default function AdminFraud() {
                   <StatusBadge status={f.review_status} />
                   <Select value={f.review_status} onValueChange={(v) => updateStatus(f, v)}>
                     <SelectTrigger className="h-8 w-36 text-xs"><SelectValue /></SelectTrigger>
-                    <SelectContent>
-                      {REVIEW_STATUSES.map((s) => <SelectItem key={s} value={s} className="capitalize">{s}</SelectItem>)}
-                    </SelectContent>
+                    <SelectContent>{REVIEW_STATUSES.map((s) => <SelectItem key={s} value={s} className="capitalize">{s}</SelectItem>)}</SelectContent>
                   </Select>
                 </div>
               </div>

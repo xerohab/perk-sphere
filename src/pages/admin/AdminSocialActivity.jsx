@@ -45,7 +45,7 @@ export default function AdminSocialActivity() {
   return (
     <div>
       <PageHeader title="Social Activity" description="Aggregated activity across tracked social accounts" />
-      <div className="mb-4 flex items-start gap-3 rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800">
+      <div className="mb-4 flex items-start gap-3 rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800 dark:border-amber-900/50 dark:bg-amber-950/20 dark:text-amber-300">
         <Info className="mt-0.5 h-4 w-4 flex-shrink-0" />
         <p>Activity shown here is detected by the Perk Sphere browser extension. It is not official platform analytics from X, YouTube or any third party.</p>
       </div>

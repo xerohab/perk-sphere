@@ -28,13 +28,14 @@ export default function AdminNotifications() {
     if (!form.userId || !form.title) { toast({ title: "User and title required", variant: "destructive" }); return; }
     setSending(true);
     try {
-      await base44.entities.Notification.create({
-        user_id: form.userId, type: "admin_message", title: form.title, message: form.message
+      await base44.functions.invoke("adminWrite", {
+        entity: "Notification", op: "create",
+        data: { user_id: form.userId, type: "admin_message", title: form.title, message: form.message }
       });
       toast({ title: "Notification sent" });
       setForm({ userId: "", title: "", message: "" });
     } catch (e) {
-      toast({ title: "Failed", description: e.message, variant: "destructive" });
+      toast({ title: "Failed", description: e?.response?.data?.error || e.message, variant: "destructive" });
     } finally {
       setSending(false);
     }

@@ -13,7 +13,7 @@ export function usePublicDestinations() {
     (async () => {
       try {
         const res = await base44.functions.invoke("publicDestinations", {});
-        if (active) setDestinations(res.destinations || []);
+        if (active) setDestinations(res.data?.destinations || res.destinations || []);
       } catch (e) {
         if (active) setError(e);
       } finally {

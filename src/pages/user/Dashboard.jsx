@@ -79,26 +79,26 @@ export default function Dashboard() {
 
         {/* Hero balances */}
         <div className="grid gap-4 md:grid-cols-3">
-          <div className="rounded-2xl border border-border bg-gradient-to-br from-indigo-50 to-white p-6 shadow-sm">
-            <div className="flex items-center gap-2 text-xs font-medium uppercase tracking-wide text-indigo-700">
+          <div className="rounded-2xl border border-border bg-gradient-to-br from-indigo-50 to-white dark:from-indigo-950/20 dark:to-background p-6 shadow-sm">
+            <div className="flex items-center gap-2 text-xs font-medium uppercase tracking-wide text-indigo-700 dark:text-indigo-400">
               <Coins className="h-4 w-4" /> Points Balance
             </div>
-            <p className="mt-3 text-4xl font-bold tracking-tight text-indigo-900">{points.toLocaleString()}</p>
+            <p className="mt-3 text-4xl font-bold tracking-tight text-indigo-900 dark:text-indigo-300">{points.toLocaleString()}</p>
             <p className="mt-1 text-xs text-indigo-600/70">Redeemable for rewards</p>
           </div>
-          <div className="rounded-2xl border border-border bg-gradient-to-br from-amber-50 to-white p-6 shadow-sm">
-            <div className="flex items-center gap-2 text-xs font-medium uppercase tracking-wide text-amber-700">
+          <div className="rounded-2xl border border-border bg-gradient-to-br from-amber-50 to-white dark:from-amber-950/20 dark:to-background p-6 shadow-sm">
+            <div className="flex items-center gap-2 text-xs font-medium uppercase tracking-wide text-amber-700 dark:text-amber-400">
               <TrendingUp className="h-4 w-4" /> Loyalty XP
             </div>
-            <p className="mt-3 text-4xl font-bold tracking-tight text-amber-900">{xp.toLocaleString()} XP</p>
+            <p className="mt-3 text-4xl font-bold tracking-tight text-amber-900 dark:text-amber-300">{xp.toLocaleString()} XP</p>
             <p className="mt-1 text-xs text-amber-600/70">Not redeemable — builds your rank</p>
           </div>
-          <div className="rounded-2xl border border-border bg-gradient-to-br from-violet-50 to-white p-6 shadow-sm">
-            <div className="flex items-center gap-2 text-xs font-medium uppercase tracking-wide text-violet-700">
+          <div className="rounded-2xl border border-border bg-gradient-to-br from-violet-50 to-white dark:from-violet-950/20 dark:to-background p-6 shadow-sm">
+            <div className="flex items-center gap-2 text-xs font-medium uppercase tracking-wide text-violet-700 dark:text-violet-400">
               <Award className="h-4 w-4" /> Current Rank
             </div>
             <div className="mt-3 flex items-center gap-2">
-              <span className="text-2xl font-bold tracking-tight text-violet-900">{rank}</span>
+              <span className="text-2xl font-bold tracking-tight text-violet-900 dark:text-violet-300">{rank}</span>
               <RankBadge rank={rank} />
             </div>
             <p className="mt-1 text-xs text-violet-600/70">

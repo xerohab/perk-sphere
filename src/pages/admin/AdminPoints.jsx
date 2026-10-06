@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { base44 } from "@/api/base44Client";
 import PageHeader from "@/components/perk/PageHeader";
-import EmptyState from "@/components/perk/EmptyState";
+import ResponsiveTable from "@/components/perk/ResponsiveTable";
 
 const TYPE_LABEL = {
   earned: "Earned", manual_credit: "Admin Credit", manual_deduction: "Admin Deduction",
@@ -24,6 +24,17 @@ export default function AdminPoints() {
     })();
   }, []);
 
+  const cols = [
+    { key: "created_date", label: "Date", render: (t) => new Date(t.created_date).toLocaleString() },
+    { key: "user_id", label: "User", mono: true, render: (t) => t.user_id?.slice(0, 8) },
+    { key: "transaction_type", label: "Type", render: (t) => <span className="rounded-full bg-secondary px-2 py-0.5 text-xs">{TYPE_LABEL[t.transaction_type] || t.transaction_type}</span> },
+    { key: "reason", label: "Reason", render: (t) => t.reason || "—" },
+    { key: "source", label: "Source", render: (t) => t.source || "—" },
+    { key: "amount", label: "Amount", align: "right", render: (t) => <span className={t.amount >= 0 ? "text-emerald-600 dark:text-emerald-400" : "text-red-600 dark:text-red-400"}>{t.amount >= 0 ? "+" : ""}{t.amount}</span> },
+    { key: "balance_before", label: "Before", align: "right", render: (t) => t.balance_before },
+    { key: "balance_after", label: "After", align: "right", render: (t) => <span className="font-medium">{t.balance_after}</span> }
+  ];
+
   if (loading) {
     return <div className="flex h-64 items-center justify-center"><div className="h-8 w-8 animate-spin rounded-full border-4 border-secondary border-t-foreground" /></div>;
   }
@@ -31,40 +42,7 @@ export default function AdminPoints() {
   return (
     <div>
       <PageHeader title="Points Ledger" description={`${txns.length} transactions — complete audit history of all points`} />
-      {txns.length === 0 ? (
-        <EmptyState title="No transactions" />
-      ) : (
-        <div className="overflow-x-auto rounded-2xl border border-border bg-card shadow-sm">
-          <table className="w-full text-sm">
-            <thead className="bg-secondary/50 text-left text-xs uppercase tracking-wide text-muted-foreground">
-              <tr>
-                <th className="px-4 py-3 font-medium">Date</th>
-                <th className="px-4 py-3 font-medium">User</th>
-                <th className="px-4 py-3 font-medium">Type</th>
-                <th className="px-4 py-3 font-medium">Reason</th>
-                <th className="px-4 py-3 font-medium">Source</th>
-                <th className="px-4 py-3 text-right font-medium">Amount</th>
-                <th className="px-4 py-3 text-right font-medium">Before</th>
-                <th className="px-4 py-3 text-right font-medium">After</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-border">
-              {txns.map((t) => (
-                <tr key={t.id}>
-                  <td className="px-4 py-3 text-muted-foreground">{new Date(t.created_date).toLocaleString()}</td>
-                  <td className="px-4 py-3 font-mono text-xs">{t.user_id?.slice(0, 8)}</td>
-                  <td className="px-4 py-3"><span className="rounded-full bg-secondary px-2 py-0.5 text-xs">{TYPE_LABEL[t.transaction_type] || t.transaction_type}</span></td>
-                  <td className="px-4 py-3 text-muted-foreground">{t.reason || "—"}</td>
-                  <td className="px-4 py-3 text-muted-foreground">{t.source || "—"}</td>
-                  <td className={`px-4 py-3 text-right font-semibold ${t.amount >= 0 ? "text-emerald-600" : "text-red-600"}`}>{t.amount >= 0 ? "+" : ""}{t.amount}</td>
-                  <td className="px-4 py-3 text-right text-muted-foreground">{t.balance_before}</td>
-                  <td className="px-4 py-3 text-right font-medium">{t.balance_after}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      )}
+      <ResponsiveTable columns={cols} rows={txns} emptyTitle="No transactions" />
     </div>
   );
 }

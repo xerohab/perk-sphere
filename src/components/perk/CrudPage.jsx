@@ -17,21 +17,24 @@ import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogClose
 } from "@/components/ui/dialog";
 
+// Generic CRUD page for admin configuration entities. All writes go through the
+// permission-checked adminWrite backend function; the entities themselves are
+// write-locked for app users via RLS, so this can't be bypassed from the browser.
 export default function CrudPage({ title, description, entity, columns, fields, sortBy = "-created_date", limit = 200 }) {
   const { toast } = useToast();
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [editing, setEditing] = useState(null); // record or {} for new
+  const [editing, setEditing] = useState(null);
   const [form, setForm] = useState({});
   const [saving, setSaving] = useState(false);
 
-  const load = async () => {
-    setLoading(true);
+  const load = async (silent) => {
+    if (!silent) setLoading(true);
     try {
       const data = await base44.entities[entity].list(sortBy, limit);
       setItems(data || []);
     } finally {
-      setLoading(false);
+      if (!silent) setLoading(false);
     }
   };
 
@@ -50,17 +53,14 @@ export default function CrudPage({ title, description, entity, columns, fields, 
         if (f.type === "boolean") v = !!v;
         payload[f.key] = v;
       });
-      if (editing?.id) {
-        await base44.entities[entity].update(editing.id, payload);
-        toast({ title: "Updated" });
-      } else {
-        await base44.entities[entity].create(payload);
-        toast({ title: "Created" });
-      }
+      await base44.functions.invoke("adminWrite", {
+        entity, op: editing?.id ? "update" : "create", id: editing?.id, data: payload
+      });
+      toast({ title: editing?.id ? "Updated" : "Created" });
       setEditing(null);
-      load();
+      load(true);
     } catch (e) {
-      toast({ title: "Save failed", description: e.message, variant: "destructive" });
+      toast({ title: "Save failed", description: e?.response?.data?.error || e.message, variant: "destructive" });
     } finally {
       setSaving(false);
     }
@@ -68,11 +68,11 @@ export default function CrudPage({ title, description, entity, columns, fields, 
 
   const remove = async (item) => {
     try {
-      await base44.entities[entity].delete(item.id);
+      await base44.functions.invoke("adminWrite", { entity, op: "delete", id: item.id });
       toast({ title: "Deleted" });
-      load();
+      load(true);
     } catch (e) {
-      toast({ title: "Delete failed", description: e.message, variant: "destructive" });
+      toast({ title: "Delete failed", description: e?.response?.data?.error || e.message, variant: "destructive" });
     }
   };
 
@@ -121,23 +121,16 @@ export default function CrudPage({ title, description, entity, columns, fields, 
 
   return (
     <div>
-      <PageHeader
-        title={title}
-        description={description}
-        actions={<Button size="sm" onClick={openNew}><Plus className="mr-1 h-4 w-4" /> New</Button>}
-      />
+      <PageHeader title={title} description={description} actions={<Button size="sm" onClick={openNew}><Plus className="mr-1 h-4 w-4" /> New</Button>} />
       {items.length === 0 ? (
         <EmptyState title="Nothing here yet" description="Create your first item to get started." />
       ) : (
         <>
-          {/* Desktop table */}
           <div className="hidden overflow-x-auto rounded-2xl border border-border bg-card shadow-sm sm:block">
             <table className="w-full text-sm">
               <thead className="bg-secondary/50 text-left text-xs uppercase tracking-wide text-muted-foreground">
                 <tr>
-                  {columns.map((c) => (
-                    <th key={c.key} className={`px-4 py-3 font-medium ${c.align === "right" ? "text-right" : ""}`}>{c.label}</th>
-                  ))}
+                  {columns.map((c) => (<th key={c.key} className={`px-4 py-3 font-medium ${c.align === "right" ? "text-right" : ""}`}>{c.label}</th>))}
                   <th className="px-4 py-3 text-right font-medium">Actions</th>
                 </tr>
               </thead>
@@ -145,18 +138,12 @@ export default function CrudPage({ title, description, entity, columns, fields, 
                 {items.map((item) => (
                   <tr key={item.id} className="hover:bg-secondary/30">
                     {columns.map((c) => (
-                      <td key={c.key} className={`px-4 py-3 ${c.align === "right" ? "text-right" : ""} ${c.mono ? "font-mono text-xs" : ""}`}>
-                        {c.render ? c.render(item) : (item[c.key] ?? "—")}
-                      </td>
+                      <td key={c.key} className={`px-4 py-3 ${c.align === "right" ? "text-right" : ""} ${c.mono ? "font-mono text-xs" : ""}`}>{c.render ? c.render(item) : (item[c.key] ?? "—")}</td>
                     ))}
                     <td className="px-4 py-3 text-right">
                       <div className="flex justify-end gap-1">
                         <Button variant="ghost" size="icon" onClick={() => openEdit(item)}><Pencil className="h-4 w-4" /></Button>
-                        <ConfirmDialog
-                          trigger={<Button variant="ghost" size="icon"><Trash2 className="h-4 w-4 text-red-500" /></Button>}
-                          title="Delete this item?" description="This action cannot be undone." confirmLabel="Delete" destructive
-                          onConfirm={() => remove(item)}
-                        />
+                        <ConfirmDialog trigger={<Button variant="ghost" size="icon"><Trash2 className="h-4 w-4 text-red-500" /></Button>} title="Delete this item?" description="This action cannot be undone." confirmLabel="Delete" destructive onConfirm={() => remove(item)} />
                       </div>
                     </td>
                   </tr>
@@ -164,26 +151,18 @@ export default function CrudPage({ title, description, entity, columns, fields, 
               </tbody>
             </table>
           </div>
-
-          {/* Mobile card list */}
           <div className="space-y-3 sm:hidden">
             {items.map((item) => (
               <div key={item.id} className="rounded-2xl border border-border bg-card p-4 shadow-sm">
                 {columns.map((c) => (
                   <div key={c.key} className="flex items-start justify-between gap-3 border-b border-border py-2 last:border-0">
                     <span className="text-xs font-medium uppercase tracking-wide text-muted-foreground">{c.label}</span>
-                    <span className={`text-right text-sm ${c.mono ? "font-mono text-xs" : ""}`}>
-                      {c.render ? c.render(item) : (item[c.key] ?? "—")}
-                    </span>
+                    <span className={`text-right text-sm ${c.mono ? "font-mono text-xs" : ""}`}>{c.render ? c.render(item) : (item[c.key] ?? "—")}</span>
                   </div>
                 ))}
                 <div className="mt-3 flex justify-end gap-1">
                   <Button variant="outline" size="sm" onClick={() => openEdit(item)}><Pencil className="mr-1 h-3.5 w-3.5" /> Edit</Button>
-                  <ConfirmDialog
-                    trigger={<Button variant="outline" size="sm"><Trash2 className="mr-1 h-3.5 w-3.5 text-red-500" /> Delete</Button>}
-                    title="Delete this item?" description="This action cannot be undone." confirmLabel="Delete" destructive
-                    onConfirm={() => remove(item)}
-                  />
+                  <ConfirmDialog trigger={<Button variant="outline" size="sm"><Trash2 className="mr-1 h-3.5 w-3.5 text-red-500" /> Delete</Button>} title="Delete this item?" description="This action cannot be undone." confirmLabel="Delete" destructive onConfirm={() => remove(item)} />
                 </div>
               </div>
             ))}
@@ -194,9 +173,7 @@ export default function CrudPage({ title, description, entity, columns, fields, 
       <Dialog open={!!editing} onOpenChange={(o) => !o && setEditing(null)}>
         <DialogContent className="max-h-[85vh] overflow-y-auto">
           <DialogHeader><DialogTitle>{editing?.id ? "Edit" : "New"} {title}</DialogTitle></DialogHeader>
-          <div className="space-y-4">
-            {fields.map(renderField)}
-          </div>
+          <div className="space-y-4">{fields.map(renderField)}</div>
           <DialogFooter>
             <DialogClose asChild><Button variant="outline">Cancel</Button></DialogClose>
             <Button onClick={save} disabled={saving}>{saving ? "Saving..." : "Save"}</Button>

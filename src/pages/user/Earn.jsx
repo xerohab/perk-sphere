@@ -31,7 +31,7 @@ export default function Earn() {
   return (
     <div>
       <PageHeader title="Earn Points" description="Participating websites and tracked accounts where you can earn rewards" />
-      <div className="mb-6 flex items-start gap-3 rounded-2xl border border-indigo-100 bg-indigo-50 p-4 text-sm text-indigo-800">
+      <div className="mb-6 flex items-start gap-3 rounded-2xl border border-indigo-100 bg-indigo-50 p-4 text-sm text-indigo-800 dark:border-indigo-900/50 dark:bg-indigo-950/20 dark:text-indigo-300">
         <Info className="mt-0.5 h-4 w-4 flex-shrink-0" />
         <p>Earning is handled by the Perk Sphere browser extension and verified activity API. Install the extension and visit eligible sites to earn automatically. Manual point awards are not available from this page.</p>
       </div>
@@ -51,8 +51,8 @@ export default function Earn() {
                 </div>
               </div>
               <div className="mt-3 flex flex-wrap gap-2 text-xs">
-                {s.points_eligible && <span className="rounded-full bg-indigo-100 px-2 py-0.5 text-indigo-700">+{s.default_points_rule || 0} pts</span>}
-                {s.xp_eligible && <span className="rounded-full bg-amber-100 px-2 py-0.5 text-amber-700">+{s.default_xp_rule || 0} XP</span>}
+                {s.points_eligible && <span className="rounded-full bg-indigo-100 px-2 py-0.5 text-indigo-700 dark:bg-indigo-500/15 dark:text-indigo-400">+{s.default_points_rule || 0} pts</span>}
+                {s.xp_eligible && <span className="rounded-full bg-amber-100 px-2 py-0.5 text-amber-700 dark:bg-amber-500/15 dark:text-amber-400">+{s.default_xp_rule || 0} XP</span>}
               </div>
             </div>
           ))}

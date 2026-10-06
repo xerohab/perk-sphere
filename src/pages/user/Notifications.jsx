@@ -46,9 +46,9 @@ export default function Notifications() {
         ) : (
           <div className="space-y-2">
             {items.map((n) => (
-              <div key={n.id} className={`rounded-xl border p-4 ${n.read ? "border-border bg-card" : "border-indigo-200 bg-indigo-50/50"}`}>
+              <div key={n.id} className={`rounded-xl border p-4 ${n.read ? "border-border bg-card" : "border-indigo-200 bg-indigo-50/50 dark:border-indigo-900/50 dark:bg-indigo-950/20"}`}>
                 <div className="flex items-start gap-3">
-                  <div className={`mt-0.5 rounded-full p-2 ${n.read ? "bg-secondary text-muted-foreground" : "bg-indigo-100 text-indigo-700"}`}>
+                  <div className={`mt-0.5 rounded-full p-2 ${n.read ? "bg-secondary text-muted-foreground" : "bg-indigo-100 text-indigo-700 dark:bg-indigo-500/15 dark:text-indigo-400"}`}>
                     <Bell className="h-4 w-4" />
                   </div>
                   <div className="flex-1">

@@ -1,10 +1,10 @@
-import React, { useState } from "react";
+import React, { useState, Suspense } from "react";
 import { Link, Outlet, useLocation, useNavigate } from "react-router-dom";
-import { Menu, X, Sun } from "lucide-react";
+import { Menu, X } from "lucide-react";
 import { useAuth } from "@/lib/AuthContext";
 import { Button } from "@/components/ui/button";
 import ThemeToggle from "@/components/perk/ThemeToggle";
-import { cn } from "@/lib/utils";
+import PageTransition, { ContentSpinner } from "@/components/perk/PageTransition";
 
 const NAV = [
   { label: "Home", path: "/" },
@@ -37,7 +37,6 @@ export default function PublicLayout() {
 
   return (
     <div className="flex min-h-screen flex-col bg-background text-foreground">
-      {/* Header */}
       <header className="safe-top sticky top-0 z-40 border-b border-border bg-background/80 pt-[env(safe-area-inset-top)] backdrop-blur">
         <div className="mx-auto flex h-16 max-w-6xl items-center justify-between px-4 sm:px-6">
           <Link to="/" className="flex items-center gap-2.5">
@@ -49,11 +48,7 @@ export default function PublicLayout() {
 
           <nav className="hidden items-center gap-1 md:flex">
             {NAV.map((item) => (
-              <button
-                key={item.label}
-                onClick={() => go(item.path)}
-                className="rounded-md px-3 py-2 text-sm font-medium text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
-              >
+              <button key={item.label} onClick={() => go(item.path)} className="rounded-md px-3 py-2 text-sm font-medium text-muted-foreground transition-colors hover:bg-accent hover:text-foreground">
                 {item.label}
               </button>
             ))}
@@ -69,26 +64,17 @@ export default function PublicLayout() {
                 <Button size="sm" onClick={() => navigate("/register")}>Join</Button>
               </>
             )}
-            <button
-              className="inline-flex h-9 w-9 items-center justify-center rounded-md border border-border md:hidden"
-              onClick={() => setOpen((o) => !o)}
-              aria-label="Menu"
-            >
+            <button className="inline-flex h-9 w-9 items-center justify-center rounded-md border border-border md:hidden" onClick={() => setOpen((o) => !o)} aria-label="Menu">
               {open ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
             </button>
           </div>
         </div>
 
-        {/* Mobile menu */}
         {open && (
           <div className="border-t border-border bg-background md:hidden">
             <nav className="flex flex-col gap-1 px-4 py-3">
               {NAV.map((item) => (
-                <button
-                  key={item.label}
-                  onClick={() => go(item.path)}
-                  className="rounded-md px-3 py-2 text-left text-sm font-medium text-muted-foreground hover:bg-accent hover:text-foreground"
-                >
+                <button key={item.label} onClick={() => go(item.path)} className="rounded-md px-3 py-2 text-left text-sm font-medium text-muted-foreground hover:bg-accent hover:text-foreground">
                   {item.label}
                 </button>
               ))}
@@ -109,10 +95,13 @@ export default function PublicLayout() {
       </header>
 
       <main className="flex-1">
-        <Outlet />
+        <PageTransition>
+          <Suspense fallback={<ContentSpinner />}>
+            <Outlet />
+          </Suspense>
+        </PageTransition>
       </main>
 
-      {/* Footer */}
       <footer className="border-t border-border bg-card">
         <div className="mx-auto max-w-6xl px-4 py-10 sm:px-6">
           <div className="grid gap-8 md:grid-cols-4">
