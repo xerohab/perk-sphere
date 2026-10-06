@@ -1,0 +1,61 @@
+{
+  "name": "User",
+  "type": "object",
+  "properties": {
+    "role": {
+      "type": "string",
+      "enum": [
+        "user",
+        "admin"
+      ],
+      "default": "user"
+    },
+    "username": {
+      "type": "string"
+    },
+    "display_name": {
+      "type": "string"
+    },
+    "account_status": {
+      "type": "string",
+      "enum": [
+        "active",
+        "restricted",
+        "suspended",
+        "banned"
+      ],
+      "default": "active"
+    },
+    "points_balance": {
+      "type": "number",
+      "default": 0
+    },
+    "loyalty_xp": {
+      "type": "number",
+      "default": 0
+    },
+    "loyalty_rank": {
+      "type": "string",
+      "default": "Bronze"
+    },
+    "profile_image": {
+      "type": "string"
+    },
+    "email_verified": {
+      "type": "boolean",
+      "default": false
+    },
+    "streak_current": {
+      "type": "number",
+      "default": 0
+    },
+    "streak_longest": {
+      "type": "number",
+      "default": 0
+    },
+    "streak_last_qualifying_date": {
+      "type": "string",
+      "format": "date"
+    }
+  }
+}

@@ -1,0 +1,90 @@
+{
+  "name": "Website",
+  "type": "object",
+  "properties": {
+    "site_name": {
+      "type": "string"
+    },
+    "domain": {
+      "type": "string"
+    },
+    "logo": {
+      "type": "string"
+    },
+    "description": {
+      "type": "string"
+    },
+    "category": {
+      "type": "string",
+      "enum": [
+        "preferred",
+        "partner",
+        "neutral",
+        "other"
+      ],
+      "default": "neutral"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "active",
+        "inactive",
+        "pending"
+      ],
+      "default": "active"
+    },
+    "tracking_enabled": {
+      "type": "boolean",
+      "default": true
+    },
+    "points_eligible": {
+      "type": "boolean",
+      "default": true
+    },
+    "xp_eligible": {
+      "type": "boolean",
+      "default": true
+    },
+    "default_points_rule": {
+      "type": "number",
+      "default": 0
+    },
+    "default_xp_rule": {
+      "type": "number",
+      "default": 0
+    },
+    "daily_maximum": {
+      "type": "number",
+      "default": 0
+    },
+    "cooldown_seconds": {
+      "type": "number",
+      "default": 0
+    },
+    "notes": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "site_name",
+    "domain"
+  ],
+  "rls": {
+    "read": {},
+    "create": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "update": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "delete": {
+      "user_condition": {
+        "role": "admin"
+      }
+    }
+  }
+}

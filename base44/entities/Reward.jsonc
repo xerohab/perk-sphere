@@ -1,0 +1,75 @@
+{
+  "name": "Reward",
+  "type": "object",
+  "properties": {
+    "name": {
+      "type": "string"
+    },
+    "image": {
+      "type": "string"
+    },
+    "description": {
+      "type": "string"
+    },
+    "points_cost": {
+      "type": "number",
+      "default": 0
+    },
+    "required_rank": {
+      "type": "string"
+    },
+    "stock_available": {
+      "type": "number",
+      "default": 0
+    },
+    "unlimited_stock": {
+      "type": "boolean",
+      "default": false
+    },
+    "max_redemptions_per_user": {
+      "type": "number",
+      "default": 0
+    },
+    "start_date": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "end_date": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "active": {
+      "type": "boolean",
+      "default": true
+    },
+    "manual_approval_required": {
+      "type": "boolean",
+      "default": false
+    },
+    "terms": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "name",
+    "points_cost"
+  ],
+  "rls": {
+    "read": {},
+    "create": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "update": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "delete": {
+      "user_condition": {
+        "role": "admin"
+      }
+    }
+  }
+}

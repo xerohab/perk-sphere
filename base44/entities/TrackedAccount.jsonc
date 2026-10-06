@@ -1,0 +1,61 @@
+{
+  "name": "TrackedAccount",
+  "type": "object",
+  "properties": {
+    "platform": {
+      "type": "string"
+    },
+    "account_name": {
+      "type": "string"
+    },
+    "username": {
+      "type": "string"
+    },
+    "profile_url": {
+      "type": "string"
+    },
+    "external_platform_id": {
+      "type": "string"
+    },
+    "category": {
+      "type": "string",
+      "enum": [
+        "preferred",
+        "partner",
+        "neutral",
+        "rival",
+        "other"
+      ],
+      "default": "neutral"
+    },
+    "active": {
+      "type": "boolean",
+      "default": true
+    },
+    "notes": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "platform",
+    "account_name"
+  ],
+  "rls": {
+    "read": {},
+    "create": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "update": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "delete": {
+      "user_condition": {
+        "role": "admin"
+      }
+    }
+  }
+}

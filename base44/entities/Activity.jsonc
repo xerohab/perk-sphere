@@ -1,0 +1,113 @@
+{
+  "name": "Activity",
+  "type": "object",
+  "properties": {
+    "user_id": {
+      "type": "string"
+    },
+    "platform": {
+      "type": "string"
+    },
+    "activity_type": {
+      "type": "string"
+    },
+    "target": {
+      "type": "string"
+    },
+    "target_account": {
+      "type": "string"
+    },
+    "target_url": {
+      "type": "string"
+    },
+    "external_content_id": {
+      "type": "string"
+    },
+    "detection_source": {
+      "type": "string",
+      "enum": [
+        "extension_detected",
+        "api_verified",
+        "admin_entered",
+        "unverified",
+        "rejected"
+      ],
+      "default": "unverified"
+    },
+    "verification_status": {
+      "type": "string",
+      "enum": [
+        "extension_detected",
+        "api_verified",
+        "admin_entered",
+        "unverified",
+        "rejected"
+      ],
+      "default": "unverified"
+    },
+    "metadata": {
+      "type": "object"
+    },
+    "related_campaign_id": {
+      "type": "string"
+    },
+    "event_id": {
+      "type": "string"
+    },
+    "device_id": {
+      "type": "string"
+    },
+    "client_timestamp": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "processing_state": {
+      "type": "string",
+      "enum": [
+        "pending",
+        "processed",
+        "rejected",
+        "duplicate"
+      ],
+      "default": "pending"
+    },
+    "is_current": {
+      "type": "boolean",
+      "default": true
+    }
+  },
+  "required": [
+    "user_id",
+    "platform",
+    "activity_type"
+  ],
+  "rls": {
+    "read": {
+      "$or": [
+        {
+          "data.user_id": "{{user.id}}"
+        },
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        }
+      ]
+    },
+    "create": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "update": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "delete": {
+      "user_condition": {
+        "role": "admin"
+      }
+    }
+  }
+}

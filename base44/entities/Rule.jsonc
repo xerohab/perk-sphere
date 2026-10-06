@@ -1,0 +1,79 @@
+{
+  "name": "Rule",
+  "type": "object",
+  "properties": {
+    "name": {
+      "type": "string"
+    },
+    "description": {
+      "type": "string"
+    },
+    "trigger_type": {
+      "type": "string"
+    },
+    "platform": {
+      "type": "string"
+    },
+    "target": {
+      "type": "string"
+    },
+    "points_effect": {
+      "type": "number",
+      "default": 0
+    },
+    "xp_effect": {
+      "type": "number",
+      "default": 0
+    },
+    "cooldown_seconds": {
+      "type": "number",
+      "default": 0
+    },
+    "daily_maximum": {
+      "type": "number",
+      "default": 0
+    },
+    "per_user_maximum": {
+      "type": "number",
+      "default": 0
+    },
+    "start_date": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "end_date": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "enabled": {
+      "type": "boolean",
+      "default": true
+    },
+    "priority": {
+      "type": "number",
+      "default": 0
+    }
+  },
+  "required": [
+    "name",
+    "trigger_type"
+  ],
+  "rls": {
+    "read": {},
+    "create": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "update": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "delete": {
+      "user_condition": {
+        "role": "admin"
+      }
+    }
+  }
+}

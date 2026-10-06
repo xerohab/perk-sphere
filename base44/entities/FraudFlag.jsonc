@@ -1,0 +1,64 @@
+{
+  "name": "FraudFlag",
+  "type": "object",
+  "properties": {
+    "user_id": {
+      "type": "string"
+    },
+    "flag_type": {
+      "type": "string"
+    },
+    "risk_score": {
+      "type": "number",
+      "default": 0
+    },
+    "risk_flags": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "review_status": {
+      "type": "string",
+      "enum": [
+        "pending",
+        "reviewing",
+        "cleared",
+        "escalated"
+      ],
+      "default": "pending"
+    },
+    "details": {
+      "type": "string"
+    },
+    "admin_id": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "user_id",
+    "flag_type"
+  ],
+  "rls": {
+    "read": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "create": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "update": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "delete": {
+      "user_condition": {
+        "role": "admin"
+      }
+    }
+  }
+}
