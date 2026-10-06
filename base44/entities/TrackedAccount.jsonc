@@ -5,6 +5,16 @@
     "platform": {
       "type": "string"
     },
+    "destination_type": {
+      "type": "string",
+      "enum": [
+        "channel",
+        "account",
+        "video",
+        "post",
+        "other"
+      ]
+    },
     "account_name": {
       "type": "string"
     },
@@ -69,20 +79,24 @@
     "account_name"
   ],
   "rls": {
-    "read": {},
-    "create": {
+    "read": {
       "user_condition": {
         "role": "admin"
+      }
+    },
+    "create": {
+      "user_condition": {
+        "role": "service_only"
       }
     },
     "update": {
       "user_condition": {
-        "role": "admin"
+        "role": "service_only"
       }
     },
     "delete": {
       "user_condition": {
-        "role": "admin"
+        "role": "service_only"
       }
     }
   }
