@@ -1,0 +1,58 @@
+{
+  "name": "StaffMember",
+  "type": "object",
+  "properties": {
+    "user_id": {
+      "type": "string"
+    },
+    "email": {
+      "type": "string"
+    },
+    "full_name": {
+      "type": "string"
+    },
+    "staff_role": {
+      "type": "string",
+      "enum": [
+        "super_admin",
+        "admin",
+        "rewards_manager",
+        "support",
+        "analyst"
+      ]
+    },
+    "active": {
+      "type": "boolean",
+      "default": true
+    },
+    "granted_by": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "user_id",
+    "staff_role"
+  ],
+  "rls": {
+    "read": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "create": {
+      "user_condition": {
+        "role": "service_only"
+      }
+    },
+    "update": {
+      "user_condition": {
+        "role": "service_only"
+      }
+    },
+    "delete": {
+      "user_condition": {
+        "role": "service_only"
+      }
+    }
+  }
+}

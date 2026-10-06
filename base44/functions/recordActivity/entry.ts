@@ -1,15 +1,18 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.52';
+import { authorize, writeAudit } from '../../shared/permissions.ts';
 
-// Records an activity event. Designed for the future Linux tracking API and
-// admin entry. Rejects duplicate event_ids so replayed events are not double counted.
+// Records an activity event (admin entry today; the future Linux tracking API / clients
+// will reuse the same shape). Requires activity.record. Rejects duplicate event_ids so
+// replayed events are not double counted. Recording an activity does NOT award or
+// deduct anything by itself; points/XP are only changed by explicit ledger operations.
 export default async function(req) {
   try {
     const base44 = createClientFromRequest(req);
-    const user = await base44.auth.me();
-    if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401 });
-    if (user.role !== 'admin') return Response.json({ error: 'Forbidden' }, { status: 403 });
+    const auth = await authorize(base44, 'activity.record');
+    if (auth.error) return auth.error;
+    const user = auth.user;
 
-    const body = await req.json();
+    const body = await req.json().catch(() => ({}));
     const { userId, platform, activity_type, target, target_account, target_url, external_content_id, detection_source, metadata, related_campaign_id, event_id, device_id, client_timestamp } = body;
     if (!userId || !platform || !activity_type) return Response.json({ error: 'Missing required activity fields' }, { status: 400 });
 
@@ -40,12 +43,9 @@ export default async function(req) {
       processing_state: 'processed'
     });
 
-    await admin.entities.AuditLog.create({
-      admin_id: user.id,
-      action: 'activity_recorded',
-      entity_type: 'Activity',
-      entity_id: activity.id,
-      new_values: { platform, activity_type, target_account }
+    await writeAudit(admin, {
+      adminId: user.id, action: 'activity_recorded', entityType: 'Activity', entityId: activity.id,
+      next: { platform, activity_type, target_account: target_account || null }
     });
 
     return Response.json({ ok: true, activity });

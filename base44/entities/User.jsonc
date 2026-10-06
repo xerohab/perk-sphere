@@ -24,38 +24,62 @@
         "suspended",
         "banned"
       ],
-      "default": "active"
+      "default": "active",
+      "rls": {
+        "write": false
+      }
     },
     "points_balance": {
       "type": "number",
-      "default": 0
+      "default": 0,
+      "rls": {
+        "write": false
+      }
     },
     "loyalty_xp": {
       "type": "number",
-      "default": 0
+      "default": 0,
+      "rls": {
+        "write": false
+      }
     },
     "loyalty_rank": {
       "type": "string",
-      "default": "Bronze"
+      "default": "Bronze",
+      "rls": {
+        "write": false
+      }
     },
     "profile_image": {
       "type": "string"
     },
     "email_verified": {
       "type": "boolean",
-      "default": false
+      "default": false,
+      "rls": {
+        "write": false
+      }
     },
     "streak_current": {
       "type": "number",
-      "default": 0
+      "default": 0,
+      "rls": {
+        "write": false
+      }
     },
     "streak_longest": {
       "type": "number",
-      "default": 0
+      "default": 0,
+      "rls": {
+        "write": false
+      }
     },
     "streak_last_qualifying_date": {
       "type": "string",
-      "format": "date"
+      "format": "date",
+      "rls": {
+        "write": false
+      }
     },
     "theme_preference": {
       "type": "string",
@@ -63,8 +87,7 @@
         "system",
         "light",
         "dark"
-      ],
-      "default": "system"
+      ]
     }
   }
 }

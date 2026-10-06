@@ -1,12 +1,12 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.52';
+import { authorize } from '../../shared/permissions.ts';
 
-// Aggregated numbers for the admin dashboard. Admin-only.
+// Aggregated numbers for the admin dashboard. Requires dashboard.view (server-checked).
 export default async function(req) {
   try {
     const base44 = createClientFromRequest(req);
-    const user = await base44.auth.me();
-    if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401 });
-    if (user.role !== 'admin') return Response.json({ error: 'Forbidden' }, { status: 403 });
+    const auth = await authorize(base44, 'dashboard.view');
+    if (auth.error) return auth.error;
 
     const admin = base44.asServiceRole;
     const users = await admin.entities.User.list('-created_date', 1000);

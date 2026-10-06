@@ -1,21 +1,27 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.52';
 import { adjustPoints, adjustXp } from '../../shared/rewards.ts';
+import { authorize, writeAudit } from '../../shared/permissions.ts';
 
+// Manual Points / XP adjustment. Requires points.adjust or xp.adjust (server-checked).
 export default async function(req) {
   try {
     const base44 = createClientFromRequest(req);
-    const user = await base44.auth.me();
-    if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401 });
-    if (user.role !== 'admin') return Response.json({ error: 'Forbidden' }, { status: 403 });
-
-    const body = await req.json();
+    const body = await req.json().catch(() => ({}));
     const { userId, currency, amount, reason, adminNote } = body;
-    if (!userId || !currency || typeof amount !== 'number' || amount === 0) {
+    if (currency !== 'points' && currency !== 'xp') return Response.json({ error: 'Invalid currency' }, { status: 400 });
+
+    const auth = await authorize(base44, currency === 'xp' ? 'xp.adjust' : 'points.adjust');
+    if (auth.error) return auth.error;
+    const user = auth.user;
+
+    if (!userId || typeof amount !== 'number' || !isFinite(amount) || amount === 0) {
       return Response.json({ error: 'Missing or invalid parameters' }, { status: 400 });
     }
 
     const admin = base44.asServiceRole;
     let result;
+    let before;
+    let after;
     if (currency === 'points') {
       result = await adjustPoints(admin, {
         userId, amount,
@@ -25,7 +31,9 @@ export default async function(req) {
         adminId: user.id,
         adminNote: adminNote || null
       });
-    } else if (currency === 'xp') {
+      before = result.balance_before;
+      after = result.balance_after;
+    } else {
       result = await adjustXp(admin, {
         userId, amount,
         reason: reason || 'Manual adjustment',
@@ -33,8 +41,8 @@ export default async function(req) {
         adminId: user.id,
         adminNote: adminNote || null
       });
-    } else {
-      return Response.json({ error: 'Invalid currency' }, { status: 400 });
+      before = result.xp_before;
+      after = result.xp_after;
     }
 
     await admin.entities.Notification.create({
@@ -44,17 +52,18 @@ export default async function(req) {
       message: reason || 'Manual adjustment by administrator'
     });
 
-    await admin.entities.AuditLog.create({
-      admin_id: user.id,
+    await writeAudit(admin, {
+      adminId: user.id,
       action: currency === 'points' ? (amount > 0 ? 'points_credit' : 'points_deduction') : (amount > 0 ? 'xp_credit' : 'xp_deduction'),
-      entity_type: 'User',
-      entity_id: userId,
-      previous_values: { balance: result.balance_before || result.xp_before },
-      new_values: { balance: result.balance_after || result.xp_after, reason, adminNote }
+      entityType: 'User',
+      entityId: userId,
+      previous: { [currency]: before },
+      next: { [currency]: after, amount, reason: reason || null, adminNote: adminNote || null, rank: result.rank || undefined }
     });
 
     return Response.json({ ok: true, result });
   } catch (error) {
-    return Response.json({ error: error.message }, { status: 500 });
+    const status = /negative/i.test(error.message) ? 400 : 500;
+    return Response.json({ error: error.message }, { status });
   }
 }
