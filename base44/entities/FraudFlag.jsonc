@@ -47,17 +47,17 @@
     },
     "create": {
       "user_condition": {
-        "role": "admin"
+        "role": "service_only"
       }
     },
     "update": {
       "user_condition": {
-        "role": "admin"
+        "role": "service_only"
       }
     },
     "delete": {
       "user_condition": {
-        "role": "admin"
+        "role": "service_only"
       }
     }
   }
