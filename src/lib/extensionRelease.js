@@ -25,10 +25,30 @@ export async function fetchRelease(browser = "chromium") {
 
   try {
     const res = await base44.functions.invoke("getBrowserExtensionRelease", {});
-    if (res?.ok && res.data) {
-      const d = res.data;
-      // Frontend-side double-check of key fields
-      if (d.browser === browser && d.channel === "stable" && d.version && d.download_url) {
+    // The Base44 SDK wraps the function's JSON body under res.data.
+    // Normalize both wrapped and direct shapes before validating.
+    const body = res?.data ?? res;
+    if (body?.ok && body.data) {
+      const d = body.data;
+      // Frontend-side double-check of key fields (mirrors server validation)
+      if (
+        d.browser === browser &&
+        d.channel === "stable" &&
+        typeof d.version === "string" && d.version &&
+        typeof d.published_at === "string" && d.published_at &&
+        typeof d.sha256 === "string" && /^[a-f0-9]{64}$/.test(d.sha256) &&
+        typeof d.download_url === "string" && d.download_url
+      ) {
+        // download_url must be HTTPS on api.perksphere.org
+        let url;
+        try {
+          url = new URL(d.download_url);
+        } catch {
+          return null;
+        }
+        if (url.protocol !== "https:" || url.hostname !== "api.perksphere.org") {
+          return null;
+        }
         cache[browser] = d;
         return d;
       }
