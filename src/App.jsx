@@ -35,6 +35,7 @@ const Loyalty = lazy(() => import('@/pages/user/Loyalty'));
 const Notifications = lazy(() => import('@/pages/user/Notifications'));
 const ConnectedServices = lazy(() => import('@/pages/user/ConnectedServices'));
 const Devices = lazy(() => import('@/pages/user/Devices'));
+const BrowserExtension = lazy(() => import('@/pages/user/BrowserExtension'));
 const Profile = lazy(() => import('@/pages/user/Profile'));
 const Privacy = lazy(() => import('@/pages/user/Privacy'));
 const Tasks = lazy(() => import('@/pages/user/Tasks'));
@@ -100,6 +101,7 @@ const AppRoutes = () => (
           <Route path="/notifications" element={<Notifications />} />
           <Route path="/connected-services" element={<ConnectedServices />} />
           <Route path="/devices" element={<Devices />} />
+          <Route path="/browser-extension" element={<BrowserExtension />} />
           <Route path="/profile" element={<Profile />} />
           <Route path="/privacy" element={<Privacy />} />
         </Route>

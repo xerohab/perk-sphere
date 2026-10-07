@@ -35,8 +35,7 @@ export default function BrowserExtensionSection() {
   };
 
   return (
-    <div className="mt-6 space-y-4">
-      <h3 className="text-sm font-semibold">Browser Extension</h3>
+    <div className="space-y-4">
       <BrowserExtensionDownloadCard devices={devices} />
       <BrowserPairingCard />
       <BrowserDevicesCard

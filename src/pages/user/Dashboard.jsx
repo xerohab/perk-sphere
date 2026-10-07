@@ -14,7 +14,6 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import DestinationCard from "@/components/public/DestinationCard";
 import TaskCard from "@/components/perk/TaskCard";
 import PullToRefresh from "@/components/perk/PullToRefresh";
-import BrowserExtensionSection from "@/components/perk/BrowserExtensionSection";
 
 function startOfDay(d = new Date()) {
   const x = new Date(d);
@@ -296,8 +295,6 @@ export default function Dashboard() {
             </div>
           </div>
         )}
-
-        <BrowserExtensionSection />
       </div>
     </PullToRefresh>
   );
