@@ -80,6 +80,14 @@ export default function TaskWizard({ open, onClose, editing, onSaved }) {
   const save = async () => {
     if (!form.name) { toast({ title: "Name is required", variant: "destructive" }); setStep(0); return; }
     if (!form.task_type) { toast({ title: "Task type is required", variant: "destructive" }); setStep(0); return; }
+    if (form.verification_mode === "trusted_automatic") {
+      const d = destinations.find((x) => x.id === form.destination_id);
+      if (!d || d.eligibility !== "allowed" || !d.enabled) {
+        toast({ title: "Trusted Automatic requires an Allowed, enabled destination", variant: "destructive" });
+        setStep(1);
+        return;
+      }
+    }
     setSaving(true);
     try {
       const payload = { ...form };
@@ -106,7 +114,13 @@ export default function TaskWizard({ open, onClose, editing, onSaved }) {
 
   const canNext = () => {
     if (step === 0) return !!form.name && !!form.task_type;
-    if (step === 1) return !disallowedWarn || confirmDisallowed;
+    if (step === 1) {
+      if (form.verification_mode === "trusted_automatic" && form.destination_id) {
+        const d = destinations.find((x) => x.id === form.destination_id);
+        if (!d || d.eligibility !== "allowed" || !d.enabled) return false;
+      }
+      return !disallowedWarn || confirmDisallowed;
+    }
     return true;
   };
 

@@ -33,6 +33,29 @@ export default async function(req) {
 
     const targetUserId = manual ? (overrideUserId || user.id) : user.id;
 
+    // Trusted-automatic tasks must only be completed through the trusted verification path
+    // (trustedActivityBridge), never through manual user completion.
+    if ((task.verification_mode || 'client_assisted') === 'trusted_automatic') {
+      return Response.json({ error: 'trusted_automatic_requires_verified_activity' }, { status: 400 });
+    }
+
+    // Publicly hidden tasks are not completable by ordinary users (admin manual override still allowed).
+    if (!manual && task.publicly_visible === false) {
+      return Response.json({ error: 'This task is not publicly available.' }, { status: 400 });
+    }
+
+    // User eligibility — active restrictions block manual completion.
+    const _restrictions = await admin.entities.Restriction.filter({ user_id: targetUserId });
+    const _hasActiveRestriction = (_restrictions || []).some((r) => {
+      if (r.active === false) return false;
+      if (r.start_date && new Date(r.start_date) > now) return false;
+      if (r.end_date && new Date(r.end_date) < now) return false;
+      return true;
+    });
+    if (_hasActiveRestriction) {
+      return Response.json({ error: 'User has an active restriction.' }, { status: 403 });
+    }
+
     const allProgress = await admin.entities.TaskProgress.filter({ user_id: targetUserId, task_id: taskId });
     const completed = (allProgress || []).filter((p) => p.status === 'completed').sort((a, b) => new Date(a.completed_at || 0) - new Date(b.completed_at || 0));
 

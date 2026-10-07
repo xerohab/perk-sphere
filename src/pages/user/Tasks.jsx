@@ -23,7 +23,7 @@ export default function Tasks() {
         base44.entities.Task.list('-created_date', 200),
         base44.entities.TaskProgress.filter({ user_id: user?.id })
       ]);
-      setTasks((t || []).filter((x) => x.active !== false && !x.archived));
+      setTasks((t || []).filter((x) => x.active !== false && !x.archived && x.publicly_visible !== false));
       setProgress(p || []);
     } finally {
       if (!silent) setLoading(false);

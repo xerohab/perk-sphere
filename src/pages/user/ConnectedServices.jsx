@@ -1,32 +1,94 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useCallback } from "react";
 import { base44 } from "@/api/base44Client";
-import { useAuth } from "@/lib/AuthContext";
-import { Info } from "lucide-react";
+import { useToast } from "@/components/ui/use-toast";
+import { useSearchParams } from "react-router-dom";
 import PageHeader from "@/components/perk/PageHeader";
-import StatusBadge from "@/components/perk/StatusBadge";
+import ServiceCard from "@/components/perk/ServiceCard";
 
 const SERVICES = [
-  { key: "x", name: "X (Twitter)", icon: "𝕏" },
-  { key: "youtube", name: "YouTube / Google", icon: "▶" }
+  { key: "google", name: "YouTube / Google", icon: "▶" },
+  { key: "x", name: "X (Twitter)", icon: "𝕏" }
 ];
 
-export default function ConnectedServices() {
-  const { user } = useAuth();
-  const [connections, setConnections] = useState([]);
-  const [loading, setLoading] = useState(true);
+const ERROR_MESSAGES = {
+  not_configured: "This provider is not configured yet.",
+  missing_params: "The connection request was incomplete.",
+  invalid_state: "The security state was invalid. Please try again.",
+  state_used: "This connection link was already used. Please try again.",
+  state_expired: "The connection link expired. Please try again.",
+  callback_failed: "Connection failed. Please try again.",
+  encryption_key_missing: "Server encryption is not configured."
+};
 
-  const load = async () => {
+export default function ConnectedServices() {
+  const { toast } = useToast();
+  const [searchParams] = useSearchParams();
+  const [connections, setConnections] = useState([]);
+  const [config, setConfig] = useState({});
+  const [loading, setLoading] = useState(true);
+  const [connecting, setConnecting] = useState(null);
+  const [disconnecting, setDisconnecting] = useState(null);
+
+  const load = useCallback(async () => {
     try {
-      const c = await base44.entities.ConnectedService.list('-created_date', 50);
+      const [c, cfgRes] = await Promise.all([
+        base44.entities.ConnectedService.list('-created_date', 50),
+        base44.functions.invoke("oauthConfig", {}).then(r => r.data || r).catch(() => ({ providers: {} }))
+      ]);
       setConnections(c || []);
+      setConfig(cfgRes.providers || {});
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
-  useEffect(() => { load(); }, []);
+  useEffect(() => { load(); }, [load]);
+
+  useEffect(() => {
+    const status = searchParams.get("status");
+    const provider = searchParams.get("provider");
+    const reason = searchParams.get("reason");
+    if (status === "connected") {
+      toast({ title: "Service connected", description: "Your account is now linked." });
+      load();
+    } else if (status === "error") {
+      toast({ title: "Connection failed", description: ERROR_MESSAGES[reason] || "An error occurred.", variant: "destructive" });
+    }
+    if (status) window.history.replaceState({}, "", "/connected-services");
+  }, [searchParams, toast, load]);
 
   const getConnection = (key) => connections.find((c) => c.service === key);
+
+  const handleConnect = async (key) => {
+    setConnecting(key);
+    try {
+      const res = await base44.functions.invoke("oauthStart", { provider: key });
+      const data = res.data || res;
+      if (data.authorization_url) {
+        window.location.href = data.authorization_url;
+      } else if (data.error) {
+        toast({ title: "Connection failed", description: data.error === "provider_not_configured" ? "This provider is not configured yet." : data.message || data.error, variant: "destructive" });
+      }
+    } catch (e) {
+      const data = e?.response?.data || {};
+      toast({ title: "Connection failed", description: data.error === "provider_not_configured" ? "This provider is not configured yet." : (data.error || e.message), variant: "destructive" });
+    } finally {
+      setConnecting(null);
+    }
+  };
+
+  const handleDisconnect = async (key) => {
+    setDisconnecting(key);
+    try {
+      await base44.functions.invoke("disconnectService", { provider: key });
+      toast({ title: "Disconnected", description: "Your account has been unlinked." });
+      await load();
+    } catch (e) {
+      toast({ title: "Failed", description: e?.response?.data?.error || e.message, variant: "destructive" });
+    } finally {
+      setDisconnecting(null);
+    }
+  };
 
   if (loading) {
     return <div className="flex h-64 items-center justify-center"><div className="h-8 w-8 animate-spin rounded-full border-4 border-secondary border-t-foreground" /></div>;
@@ -35,34 +97,24 @@ export default function ConnectedServices() {
   return (
     <div>
       <PageHeader title="Connected Services" description="Manage third-party accounts linked to your Perk Sphere profile" />
-      <div className="mb-6 flex items-start gap-3 rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800 dark:border-amber-900/50 dark:bg-amber-950/20 dark:text-amber-300">
-        <Info className="mt-0.5 h-4 w-4 flex-shrink-0" />
-        <p>OAuth integrations are not yet configured. Connecting a service will be available once the official API integration is added. No connections are active right now.</p>
-      </div>
       <div className="grid gap-4 sm:grid-cols-2">
         {SERVICES.map((s) => {
           const conn = getConnection(s.key);
-          const configured = conn && conn.status !== "not_configured";
+          const configured = config[s.key]?.configured !== false;
+          const isConnected = conn && conn.status === "connected";
           return (
-            <div key={s.key} className="rounded-2xl border border-border bg-card p-5 shadow-sm">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-secondary text-lg font-bold">{s.icon}</div>
-                  <div>
-                    <p className="text-sm font-semibold">{s.name}</p>
-                    <p className="text-xs text-muted-foreground">{configured ? conn.account_handle || "Connected" : "Not connected"}</p>
-                  </div>
-                </div>
-                <StatusBadge status={configured ? conn.status : "not_configured"} />
-              </div>
-              <div className="mt-4">
-                {configured ? (
-                  <p className="text-xs text-muted-foreground">Connected on {conn.connected_at ? new Date(conn.connected_at).toLocaleDateString() : "—"}</p>
-                ) : (
-                  <p className="text-xs text-muted-foreground">Integration not yet configured.</p>
-                )}
-              </div>
-            </div>
+            <ServiceCard
+              key={s.key}
+              name={s.name}
+              icon={s.icon}
+              configured={configured}
+              isConnected={isConnected}
+              connection={conn}
+              connecting={connecting === s.key}
+              disconnecting={disconnecting === s.key}
+              onConnect={() => handleConnect(s.key)}
+              onDisconnect={() => handleDisconnect(s.key)}
+            />
           );
         })}
       </div>

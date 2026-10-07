@@ -17,6 +17,11 @@ export default async function(req) {
     if (!task) return Response.json({ error: 'Task not found' }, { status: 404 });
     const now = new Date();
     if (!isTaskAvailable(task, now)) return Response.json({ error: 'This task is not currently available.' }, { status: 400 });
+    // Trusted-automatic tasks are started automatically by the trusted verification path,
+    // not by user action through the UI.
+    if ((task.verification_mode || 'client_assisted') === 'trusted_automatic') {
+      return Response.json({ error: 'trusted_automatic_tasks_are_started_automatically' }, { status: 400 });
+    }
     if (isViewingTask(task) && !isEventWindowOpen(task, now)) {
       return Response.json({ error: 'The event window for this task is not open.' }, { status: 400 });
     }

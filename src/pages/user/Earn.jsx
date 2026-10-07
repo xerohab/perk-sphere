@@ -12,12 +12,11 @@ export default function Earn() {
   useEffect(() => {
     (async () => {
       try {
-        const [s, a] = await Promise.all([
-          base44.entities.Website.list('-created_date', 50),
-          base44.entities.TrackedAccount.list('-created_date', 50)
-        ]);
-        setSites((s || []).filter((x) => x.tracking_enabled !== false && x.status === "active"));
-        setAccounts((a || []).filter((x) => x.active !== false));
+        const res = await base44.functions.invoke("publicDestinations", {});
+        const data = res.data || res;
+        const dests = (data.destinations || []).filter((d) => d.eligibility !== "disallowed");
+        setSites(dests.filter((d) => d.kind === "website"));
+        setAccounts(dests.filter((d) => d.kind === "account"));
       } finally {
         setLoading(false);
       }
@@ -46,13 +45,13 @@ export default function Earn() {
               <div className="flex items-center gap-3">
                 <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-secondary text-muted-foreground"><Globe className="h-5 w-5" /></div>
                 <div className="min-w-0">
-                  <p className="truncate text-sm font-semibold">{s.site_name}</p>
+                  <p className="truncate text-sm font-semibold">{s.name}</p>
                   <p className="truncate text-xs text-muted-foreground">{s.domain}</p>
                 </div>
               </div>
               <div className="mt-3 flex flex-wrap gap-2 text-xs">
-                {s.points_eligible && <span className="rounded-full bg-indigo-100 px-2 py-0.5 text-indigo-700 dark:bg-indigo-500/15 dark:text-indigo-400">+{s.default_points_rule || 0} pts</span>}
-                {s.xp_eligible && <span className="rounded-full bg-amber-100 px-2 py-0.5 text-amber-700 dark:bg-amber-500/15 dark:text-amber-400">+{s.default_xp_rule || 0} XP</span>}
+                {s.points_eligible && <span className="rounded-full bg-indigo-100 px-2 py-0.5 text-indigo-700 dark:bg-indigo-500/15 dark:text-indigo-400">Points eligible</span>}
+                {s.xp_eligible && <span className="rounded-full bg-amber-100 px-2 py-0.5 text-amber-700 dark:bg-amber-500/15 dark:text-amber-400">XP eligible</span>}
               </div>
             </div>
           ))}
@@ -66,9 +65,8 @@ export default function Earn() {
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {accounts.map((a) => (
             <div key={a.id} className="rounded-2xl border border-border bg-card p-5 shadow-sm">
-              <p className="text-sm font-semibold">{a.account_name}</p>
-              <p className="text-xs text-muted-foreground">{a.platform} · {a.username}</p>
-              <p className="mt-2 text-xs capitalize">Category: {a.category}</p>
+              <p className="text-sm font-semibold">{a.name}</p>
+              <p className="text-xs text-muted-foreground">{a.platform} · {a.handle || a.type_label}</p>
             </div>
           ))}
         </div>

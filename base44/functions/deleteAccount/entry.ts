@@ -3,7 +3,7 @@ import { createClientFromRequest } from 'npm:@base44/sdk@0.8.52';
 // Self-service account deletion. Runs server-side because app users cannot delete
 // their own User record from the browser. Removes the member's own data, then the
 // account. The last active Super Admin cannot delete itself.
-const OWNED = ['Notification', 'Device', 'ConnectedService', 'UserAchievement', 'Activity', 'PointsTransaction', 'XpTransaction', 'Redemption'];
+const OWNED = ['Notification', 'Device', 'ConnectedService', 'ConnectedServiceCredential', 'OAuthConnectionState', 'UserAchievement', 'Activity', 'PointsTransaction', 'XpTransaction', 'Redemption'];
 
 export default async function(req) {
   try {

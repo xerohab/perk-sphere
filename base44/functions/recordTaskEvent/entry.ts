@@ -29,6 +29,10 @@ export default async function(req) {
 
     const task = await admin.entities.Task.get(taskId);
     if (!task) return Response.json({ error: 'Task not found' }, { status: 404 });
+    // Client-assisted progress cannot contribute to trusted_automatic tasks.
+    if ((task.verification_mode || 'client_assisted') === 'trusted_automatic') {
+      return Response.json({ error: 'trusted_automatic_tasks_do_not_accept_client_progress' }, { status: 400 });
+    }
 
     const now = new Date();
     const serverNow = now.toISOString();

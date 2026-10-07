@@ -1,5 +1,6 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.52';
 import { authorize, writeAudit } from '../../shared/permissions.ts';
+import { validateBrowserUrl, domainsFor } from '../../shared/destinations.ts';
 
 // Admin task management with granular permissions. Each action maps to a specific
 // permission. Creating/updating a task on a Disallowed destination requires explicit
@@ -48,6 +49,38 @@ export default async function(req) {
           destination_name: dest.site_name || dest.account_name || 'this destination',
           message: 'This destination is classified as Disallowed. Confirm to proceed anyway.'
         }, { status: 400 });
+      }
+    }
+
+    // Trusted-automatic task destination validation (server-side, independent of the wizard).
+    if ((action === 'create' || action === 'update') && data && data.verification_mode === 'trusted_automatic') {
+      if (!data.destination_id || !data.destination_type) {
+        return Response.json({ error: 'Trusted automatic tasks require a destination.' }, { status: 400 });
+      }
+      const dest = data.destination_type === 'website'
+        ? await admin.entities.Website.get(data.destination_id).catch(() => null)
+        : await admin.entities.TrackedAccount.get(data.destination_id).catch(() => null);
+      if (!dest) {
+        return Response.json({ error: 'Destination not found for trusted automatic task.' }, { status: 400 });
+      }
+      const destEnabled = data.destination_type === 'website'
+        ? (dest.status !== 'inactive' && dest.tracking_enabled !== false)
+        : (dest.active !== false && dest.tracking_enabled !== false);
+      if (!destEnabled) {
+        return Response.json({ error: 'Trusted automatic tasks require an enabled destination.' }, { status: 400 });
+      }
+      if ((dest.eligibility || 'neutral') !== 'allowed') {
+        return Response.json({ error: 'Trusted automatic tasks require an Allowed destination.' }, { status: 400 });
+      }
+      if (data.content_url) {
+        const urlCheck = validateBrowserUrl(data.content_url);
+        if (!urlCheck.ok) {
+          return Response.json({ error: 'Trusted automatic tasks require a valid HTTPS content URL.' }, { status: 400 });
+        }
+        const destDomains = domainsFor(data.destination_type === 'website' ? dest.domain : dest.profile_url);
+        if (!destDomains.includes(urlCheck.hostname)) {
+          return Response.json({ error: 'Content URL hostname does not match the destination.' }, { status: 400 });
+        }
       }
     }
 

@@ -107,6 +107,10 @@ export default function TaskCard({ task, progress, onStart, onComplete, starting
         <div className="mt-4">
           {isCompleted ? (
             <div className="flex items-center justify-center gap-1 text-sm font-medium text-emerald-600 dark:text-emerald-400"><Check className="h-4 w-4" /> Completed</div>
+          ) : (task.verification_mode === "trusted_automatic") ? (
+            <div className="flex items-center justify-center gap-1.5 rounded-lg bg-indigo-50 px-3 py-2 text-sm text-indigo-600 dark:bg-indigo-500/10 dark:text-indigo-400">
+              <BadgeCheck className="h-4 w-4" /> Verified automatically via extension
+            </div>
           ) : isExpired ? (
             <Button variant="outline" disabled className="w-full">Expired</Button>
           ) : !isAuthed ? (
