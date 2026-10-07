@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import { Coins, TrendingUp, Flame, Gift, Award, ArrowRight } from "lucide-react";
+import { Coins, TrendingUp, Flame, Gift, Award, ArrowRight, Shield } from "lucide-react";
 import { base44 } from "@/api/base44Client";
 import { useAuth } from "@/lib/AuthContext";
 import { usePublicDestinations } from "@/hooks/usePublicDestinations";
@@ -83,6 +83,22 @@ export default function Dashboard() {
     <PullToRefresh onRefresh={loadData}>
       <div>
         <PageHeader title={`Welcome back, ${user?.display_name || user?.username || user?.email?.split("@")[0] || "Member"}`} description="Your Perk Sphere rewards overview" />
+
+        {/* Admin access */}
+        {user?.role === "admin" && (
+          <Link to="/admin" className="mt-4 flex items-center justify-between rounded-2xl border border-indigo-200 bg-gradient-to-r from-indigo-50 to-violet-50 p-4 shadow-sm transition-shadow hover:shadow-md dark:border-indigo-900 dark:from-indigo-950/30 dark:to-violet-950/30">
+            <div className="flex items-center gap-3">
+              <div className="rounded-xl bg-indigo-600 p-2 text-white">
+                <Shield className="h-5 w-5" />
+              </div>
+              <div>
+                <p className="text-sm font-semibold text-indigo-900 dark:text-indigo-200">Admin Panel</p>
+                <p className="text-xs text-indigo-600/80 dark:text-indigo-400/80">Manage users, rewards, destinations, tasks and more</p>
+              </div>
+            </div>
+            <ArrowRight className="h-5 w-5 text-indigo-600 dark:text-indigo-400" />
+          </Link>
+        )}
 
         {/* Hero balances */}
         <div className="grid gap-4 md:grid-cols-3">
