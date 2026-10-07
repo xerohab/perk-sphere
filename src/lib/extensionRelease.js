@@ -1,71 +1,39 @@
 // Central extension release configuration.
 //
-// Chromium stable release metadata is fetched from the public Linux release
-// endpoint. Firefox is not published yet — the abstraction is preserved so it
-// can be added later by providing a second endpoint URL.
+// Chromium release metadata is fetched via the Base44 backend function
+// getBrowserExtensionRelease, which calls the public Linux release endpoint
+// server-to-server. This avoids browser CORS issues — the frontend never
+// fetches api.perksphere.org directly.
 //
-// This endpoint is public and requires NO HMAC authentication, no user
-// credentials, and no device tokens. Only public release metadata is returned.
-// No secrets are ever sent to or used by this module.
+// Firefox is not published yet — the abstraction is preserved so it can be
+// added later by extending the backend function.
+//
+// No secrets, HMAC keys, user IDs, device tokens, or pairing codes are used
+// by this module.
 
-const RELEASE_ENDPOINTS = {
-  chromium: "https://api.perksphere.org/v1/extension/releases/chromium",
-  firefox: null
-};
+import { base44 } from "@/api/base44Client";
 
-const ALLOWED_DOWNLOAD_HOSTS = ["api.perksphere.org"];
-
-function validateRelease(data, expectedBrowser) {
-  if (!data || typeof data !== "object") return null;
-  if (data.channel !== "stable") return null;
-  if (data.browser !== expectedBrowser) return null;
-  if (!data.version || typeof data.version !== "string") return null;
-  if (!data.download_url || typeof data.download_url !== "string") return null;
-  if (!data.sha256 || typeof data.sha256 !== "string") return null;
-  if (!data.published_at || typeof data.published_at !== "string") return null;
-
-  // download_url must be HTTPS on an allowed host.
-  let url;
-  try {
-    url = new URL(data.download_url);
-  } catch {
-    return null;
-  }
-  if (url.protocol !== "https:") return null;
-  if (!ALLOWED_DOWNLOAD_HOSTS.includes(url.hostname)) return null;
-
-  return {
-    channel: data.channel,
-    browser: data.browser,
-    version: data.version,
-    download_url: data.download_url,
-    sha256: data.sha256,
-    published_at: data.published_at,
-    filename: typeof data.filename === "string" ? data.filename : null,
-    size_bytes: typeof data.size_bytes === "number" ? data.size_bytes : null
-  };
-}
-
-// Cache so repeated calls within a session don't re-fetch.
 const cache = {};
 
 // Fetches and validates release metadata for the given browser.
 // Returns the validated release object or null if unavailable/malformed.
 // Never throws — callers get null on any failure.
 export async function fetchRelease(browser = "chromium") {
-  const endpoint = RELEASE_ENDPOINTS[browser];
-  if (!endpoint) return null; // Firefox not published yet
+  if (browser !== "chromium") return null; // Firefox not published yet
 
   if (cache[browser]) return cache[browser];
 
   try {
-    const res = await fetch(endpoint);
-    if (!res.ok) return null;
-    const json = await res.json();
-    if (!json || !json.ok || !json.data) return null;
-    const validated = validateRelease(json.data, browser);
-    if (validated) cache[browser] = validated;
-    return validated;
+    const res = await base44.functions.invoke("getBrowserExtensionRelease", {});
+    if (res?.ok && res.data) {
+      const d = res.data;
+      // Frontend-side double-check of key fields
+      if (d.browser === browser && d.channel === "stable" && d.version && d.download_url) {
+        cache[browser] = d;
+        return d;
+      }
+    }
+    return null;
   } catch {
     return null;
   }

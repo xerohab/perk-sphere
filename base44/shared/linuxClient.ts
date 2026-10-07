@@ -45,6 +45,7 @@ export async function linuxTrustedPost(path, body) {
     return { ok: false, status: 500, code: "server_misconfigured", error: "Linux API credentials are not configured." };
   }
 
+  const requestId = crypto.randomUUID();
   const rawBody = JSON.stringify(body);
   const timestamp = String(Math.floor(Date.now() / 1000));
   const nonce = crypto.randomUUID();
@@ -63,20 +64,28 @@ export async function linuxTrustedPost(path, body) {
         "X-PS-Nonce": nonce,
         "X-PS-Signature": signature
       },
-      body: rawBody
+      body: rawBody,
+      signal: AbortSignal.timeout(10000)
     });
   } catch (_e) {
+    console.log(`[linuxClient] req=${requestId} path=${path} status=0 error=unreachable`);
     return { ok: false, status: 503, code: "linux_unreachable", error: "Pairing service is temporarily unavailable." };
   }
 
   const data = await res.json().catch(() => null);
   if (!res.ok) {
+    const errCode = (data && data.error && data.error.code) || "linux_error";
+    const errMsg = (data && data.error && data.error.message) || "Linux API request failed.";
+    // Safe diagnostic log: request ID, path, HTTP status, Linux error code/message.
+    // Never logs secrets, signatures, device tokens, or pairing codes.
+    console.log(`[linuxClient] req=${requestId} path=${path} status=${res.status} code=${errCode} message=${errMsg}`);
     return {
       ok: false,
       status: res.status,
-      code: (data && data.error && data.error.code) || "linux_error",
-      error: (data && data.error && data.error.message) || "Linux API request failed."
+      code: errCode,
+      error: errMsg
     };
   }
+  console.log(`[linuxClient] req=${requestId} path=${path} status=${res.status} ok=true`);
   return { ok: true, status: res.status, data: (data && data.data) || data };
 }
