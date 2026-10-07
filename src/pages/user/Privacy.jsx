@@ -7,7 +7,7 @@ const SECTIONS = [
   {
     icon: Smartphone,
     title: "Connected Devices",
-    body: "You can view and revoke any device connected to your account at any time from the Devices page. A device is registered only when you explicitly sign in on it."
+    body: "You can view and revoke any device connected to your account at any time from the Browser Extension page. A device is registered only when you explicitly pair it."
   },
   {
     icon: Plug,
