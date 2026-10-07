@@ -51,6 +51,20 @@ function domainsFor(domainish) {
   return [d, "www." + d];
 }
 
+// Validate a browser target URL. Returns { ok: true, hostname } or { ok: false, error }.
+// Rejects non-HTTPS, userinfo/credentials, unparseable URLs, and missing hostnames.
+// The hostname is normalised to lowercase for exact matching against destination domains.
+function validateBrowserUrl(rawUrl) {
+  if (!rawUrl || typeof rawUrl !== "string") return { ok: false, error: "missing_url" };
+  let parsed;
+  try { parsed = new URL(rawUrl); } catch { return { ok: false, error: "invalid_url" }; }
+  if (parsed.protocol !== "https:") return { ok: false, error: "non_https" };
+  if (parsed.username || parsed.password) return { ok: false, error: "userinfo_present" };
+  const hostname = (parsed.hostname || "").toLowerCase();
+  if (!hostname) return { ok: false, error: "missing_hostname" };
+  return { ok: true, hostname };
+}
+
 // Project a Website record into the safe destination shape. No notes, no rule
 // values, no internal flags — only what the extension needs for recognition.
 function projectWebsite(w) {
@@ -155,15 +169,20 @@ export default async function (req) {
       admin.entities.TrackedAccount.list('-updated_date', 200)
     ]);
 
+    // Only Allowed + enabled destinations are emitted. Neutral and disallowed
+    // destinations are never sent to the browser extension.
     const destinations = [];
     for (const w of (websites || [])) {
       const d = projectWebsite(w);
-      if (d && d.enabled) destinations.push(d);
+      if (d && d.enabled && d.classification === "allowed") destinations.push(d);
     }
     for (const a of (accounts || [])) {
       const d = projectAccount(a);
-      if (d && d.enabled) destinations.push(d);
+      if (d && d.enabled && d.classification === "allowed") destinations.push(d);
     }
+    // Map destination_id → destination for task validation (only allowed+enabled).
+    const destMap = new Map();
+    for (const d of destinations) destMap.set(d.id, d);
 
     // 5. User eligibility — active restrictions make the task feed conservative
     //    (no tasks presented). Final authority remains with completion logic.
@@ -200,7 +219,23 @@ export default async function (req) {
           }
         }
         tasks = candidate
-          .filter((t) => canCompleteAgain(t, completedByTask[t.id] || [], now).ok)
+          .filter((t) => {
+            // Every emitted browser task must reference a valid Allowed+enabled destination.
+            // Tasks with no destination_id are never emitted (fail-closed).
+            if (!t.destination_id) return false;
+            const dest = destMap.get(t.destination_id);
+            if (!dest) return false;
+            // Trusted-automatic tasks require a valid HTTPS target URL whose hostname
+            // belongs to the configured destination (exact match or deliberate www variant).
+            // This prevents hostname-confusion attacks (e.g. example.com.attacker.test).
+            if ((t.verification_mode || "client_assisted") === "trusted_automatic") {
+              if (!t.content_url) return false;
+              const urlCheck = validateBrowserUrl(t.content_url);
+              if (!urlCheck.ok) return false;
+              if (!dest.domains.includes(urlCheck.hostname)) return false;
+            }
+            return canCompleteAgain(t, completedByTask[t.id] || [], now).ok;
+          })
           .map(projectTask);
       }
     }

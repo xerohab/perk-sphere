@@ -53,8 +53,8 @@ export default function TaskWizard({ open, onClose, editing, onSaved }) {
           base44.entities.Achievement.list('display_order', 100)
         ]);
         const dests = [
-          ...(w || []).map((x) => ({ id: x.id, type: "website", name: x.site_name || x.domain, platform: x.platform || "Website", eligibility: x.eligibility })),
-          ...(a || []).map((x) => ({ id: x.id, type: "tracked_account", name: x.account_name || x.username, platform: x.platform, eligibility: x.eligibility }))
+          ...(w || []).map((x) => ({ id: x.id, type: "website", name: x.site_name || x.domain, platform: x.platform || "Website", eligibility: x.eligibility, enabled: x.status !== "inactive" && x.tracking_enabled !== false })),
+          ...(a || []).map((x) => ({ id: x.id, type: "tracked_account", name: x.account_name || x.username, platform: x.platform, eligibility: x.eligibility, enabled: x.active !== false && x.tracking_enabled !== false }))
         ];
         setDestinations(dests);
         setAchievements(ach || []);
@@ -149,7 +149,7 @@ export default function TaskWizard({ open, onClose, editing, onSaved }) {
                 <Select value={form.destination_id} onValueChange={selectDest}>
                   <SelectTrigger className="mt-1.5"><SelectValue placeholder="Select a destination" /></SelectTrigger>
                   <SelectContent>
-                    {destinations.map((d) => <SelectItem key={d.id} value={d.id}>{d.name} ({d.platform}){d.eligibility === "disallowed" ? " — Disallowed" : ""}</SelectItem>)}
+                    {destinations.map((d) => <SelectItem key={d.id} value={d.id}>{d.name} ({d.platform}) — {d.eligibility === "allowed" ? "Allowed" : d.eligibility === "disallowed" ? "Disallowed" : "Neutral"}{!d.enabled ? " · disabled" : ""}</SelectItem>)}
                   </SelectContent>
                 </Select>
               </div>
@@ -164,6 +164,21 @@ export default function TaskWizard({ open, onClose, editing, onSaved }) {
                 </div>
               )}
               {form.destination_name && !disallowedWarn && <p className="text-xs text-muted-foreground">Selected: {form.destination_name} ({form.destination_platform})</p>}
+              {form.verification_mode === "trusted_automatic" && form.destination_id && (() => {
+                const d = destinations.find((x) => x.id === form.destination_id);
+                if (!d || d.eligibility !== "allowed" || !d.enabled) {
+                  return (
+                    <div className="flex items-start gap-3 rounded-lg border border-red-300 bg-red-50 p-4 dark:border-red-700 dark:bg-red-950/30">
+                      <AlertTriangle className="mt-0.5 h-5 w-5 flex-shrink-0 text-red-600 dark:text-red-400" />
+                      <div>
+                        <p className="text-sm font-medium text-red-800 dark:text-red-300">Trusted Automatic requires an Allowed, enabled destination</p>
+                        <p className="mt-1 text-xs text-red-700 dark:text-red-400">This task will not be delivered to browser extensions until its destination is classified as Allowed and enabled. Update the destination in the Destinations admin page first.</p>
+                      </div>
+                    </div>
+                  );
+                }
+                return null;
+              })()}
             </>
           )}
 
