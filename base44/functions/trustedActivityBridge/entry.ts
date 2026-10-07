@@ -13,6 +13,8 @@ import {
   requiredSecondsFor
 } from "../../shared/tasks.ts";
 
+// redeploy: refresh bundled shared hmac.ts (inbound secrets).
+
 // Trusted server-to-server bridge for the Perk Sphere Linux API (api.perksphere.org).
 // Accepts HMAC-authenticated verified activity/task progress and updates the
 // authoritative TaskProgress architecture. For tasks configured as trusted_automatic,

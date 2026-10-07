@@ -10,6 +10,8 @@ import {
 } from "../../shared/tasks.ts";
 import { normalizeDomain } from "../../shared/destinations.ts";
 
+// redeploy: refresh bundled shared hmac.ts (inbound secrets).
+
 // Read-only trusted server-to-server configuration feed for the Perk Sphere
 // Linux API. Returns the safe destination + task configuration a paired browser
 // extension needs for task discovery. The extension never calls Base44 directly.
