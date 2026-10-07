@@ -12,6 +12,7 @@ import {
   isInCooldown,
   requiredSecondsFor
 } from "../../shared/tasks.ts";
+import { validateBrowserUrl, domainsFor } from "../../shared/destinations.ts";
 
 // redeploy: refresh bundled shared hmac.ts (inbound secrets).
 
@@ -149,6 +150,20 @@ export default async function (req) {
       return err("unknown_user", "user_reference does not map to an existing user.", 404);
     }
 
+    // 3b. User eligibility — active restrictions block trusted activity processing.
+    const _restrictionNow = new Date();
+    const _restrictions = await admin.entities.Restriction.filter({ user_id: user.id });
+    const _hasActiveRestriction = (_restrictions || []).some((r) => {
+      if (r.active === false) return false;
+      if (r.start_date && new Date(r.start_date) > _restrictionNow) return false;
+      if (r.end_date && new Date(r.end_date) < _restrictionNow) return false;
+      return true;
+    });
+    if (_hasActiveRestriction) {
+      await admin.entities.TrustedActivityEvent.update(eventRecord.id, { processing_status: "rejected", error_code: "user_restricted", error_message: "User has an active restriction.", user_id: user.id, processed_at: new Date().toISOString() });
+      return err("user_restricted", "User has an active restriction.", 403);
+    }
+
     // 4. Task validation.
     const task = await admin.entities.Task.get(task_id).catch(() => null);
     if (!task) {
@@ -159,6 +174,57 @@ export default async function (req) {
     if (!isTaskAvailable(task, now)) {
       await admin.entities.TrustedActivityEvent.update(eventRecord.id, { processing_status: "rejected", error_code: "task_unavailable", error_message: "Task is not currently available.", user_id: user.id, processed_at: new Date().toISOString() });
       return err("task_unavailable", "Task is not currently available.", 400);
+    }
+
+    // 4b. Verification mode — only trusted_automatic tasks are handled by this bridge.
+    if ((task.verification_mode || "client_assisted") !== "trusted_automatic") {
+      await admin.entities.TrustedActivityEvent.update(eventRecord.id, { processing_status: "rejected", error_code: "not_trusted_automatic", error_message: "Task is not configured for trusted automatic verification.", user_id: user.id, processed_at: now.toISOString() });
+      return err("not_trusted_automatic", "Task is not configured for trusted automatic verification.", 400);
+    }
+
+    // 4c. Destination validation — task must reference a valid Allowed+enabled destination.
+    if (!task.destination_id) {
+      await admin.entities.TrustedActivityEvent.update(eventRecord.id, { processing_status: "rejected", error_code: "missing_destination", error_message: "Task has no destination configured.", user_id: user.id, processed_at: now.toISOString() });
+      return err("missing_destination", "Task has no destination configured.", 400);
+    }
+
+    let _destination = null;
+    let _destDomains = [];
+    try {
+      if (task.destination_type === "tracked_account") {
+        _destination = await admin.entities.TrackedAccount.get(task.destination_id);
+        _destDomains = domainsFor(_destination.profile_url);
+      } else {
+        _destination = await admin.entities.Website.get(task.destination_id);
+        _destDomains = domainsFor(_destination.domain);
+      }
+    } catch (_e) { _destination = null; }
+
+    if (!_destination) {
+      await admin.entities.TrustedActivityEvent.update(eventRecord.id, { processing_status: "rejected", error_code: "unknown_destination", error_message: "Destination not found.", user_id: user.id, processed_at: now.toISOString() });
+      return err("unknown_destination", "Destination not found.", 404);
+    }
+
+    const _destEnabled = task.destination_type === "tracked_account"
+      ? (_destination.active !== false && _destination.tracking_enabled !== false)
+      : (_destination.status !== "inactive" && _destination.tracking_enabled !== false);
+    if (!_destEnabled) {
+      await admin.entities.TrustedActivityEvent.update(eventRecord.id, { processing_status: "rejected", error_code: "destination_disabled", error_message: "Destination is disabled.", user_id: user.id, processed_at: now.toISOString() });
+      return err("destination_disabled", "Destination is disabled.", 400);
+    }
+
+    if ((_destination.eligibility || "neutral") !== "allowed") {
+      await admin.entities.TrustedActivityEvent.update(eventRecord.id, { processing_status: "rejected", error_code: "destination_not_allowed", error_message: "Destination is not classified as allowed.", user_id: user.id, processed_at: now.toISOString() });
+      return err("destination_not_allowed", "Destination is not classified as allowed.", 400);
+    }
+
+    // Hostname integrity — task content_url hostname must match the configured destination.
+    if (task.content_url) {
+      const _urlCheck = validateBrowserUrl(task.content_url);
+      if (!_urlCheck.ok || !_destDomains.includes(_urlCheck.hostname)) {
+        await admin.entities.TrustedActivityEvent.update(eventRecord.id, { processing_status: "rejected", error_code: "hostname_mismatch", error_message: "Task target URL does not match the configured destination.", user_id: user.id, processed_at: now.toISOString() });
+        return err("hostname_mismatch", "Task target URL does not match the configured destination.", 400);
+      }
     }
 
     // Event-type / task-type compatibility.

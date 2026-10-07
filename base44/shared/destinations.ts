@@ -27,6 +27,27 @@ export function normalizeDomain(raw) {
   return d.replace(/^www\./, '');
 }
 
+// Domains for a destination — bare domain + deliberate www variant for exact matching.
+export function domainsFor(domainish) {
+  const d = normalizeDomain(domainish);
+  if (!d) return [];
+  return [d, 'www.' + d];
+}
+
+// Validate a browser target URL. Returns { ok: true, hostname } or { ok: false, error }.
+// Rejects non-HTTPS, userinfo/credentials, unparseable URLs, and missing hostnames.
+// The hostname is normalised to lowercase for exact matching against destination domains.
+export function validateBrowserUrl(rawUrl) {
+  if (!rawUrl || typeof rawUrl !== 'string') return { ok: false, error: 'missing_url' };
+  let parsed;
+  try { parsed = new URL(rawUrl); } catch { return { ok: false, error: 'invalid_url' }; }
+  if (parsed.protocol !== 'https:') return { ok: false, error: 'non_https' };
+  if (parsed.username || parsed.password) return { ok: false, error: 'userinfo_present' };
+  const hostname = (parsed.hostname || '').toLowerCase();
+  if (!hostname) return { ok: false, error: 'missing_hostname' };
+  return { ok: true, hostname };
+}
+
 const TYPE_NAMES = { website: 'Website', channel: 'Channel', video: 'Video', account: 'Account', post: 'Post', other: 'Other' };
 
 export function accountType(a) {

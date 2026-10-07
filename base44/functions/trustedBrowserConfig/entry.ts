@@ -8,7 +8,7 @@ import {
   canCompleteAgain,
   requiredSecondsFor
 } from "../../shared/tasks.ts";
-import { normalizeDomain } from "../../shared/destinations.ts";
+import { normalizeDomain, validateBrowserUrl, domainsFor } from "../../shared/destinations.ts";
 
 // redeploy: refresh bundled shared hmac.ts (inbound secrets).
 
@@ -41,28 +41,6 @@ const ALLOWED_CLIENT_TYPES = new Set(["browser_extension"]);
 
 function err(code, message, status = 400) {
   return Response.json({ ok: false, error: { code, message } }, { status });
-}
-
-// Normalised domain list for browser matching. Includes the bare domain and its
-// www variant so the extension can match either form the user visits.
-function domainsFor(domainish) {
-  const d = normalizeDomain(domainish);
-  if (!d) return [];
-  return [d, "www." + d];
-}
-
-// Validate a browser target URL. Returns { ok: true, hostname } or { ok: false, error }.
-// Rejects non-HTTPS, userinfo/credentials, unparseable URLs, and missing hostnames.
-// The hostname is normalised to lowercase for exact matching against destination domains.
-function validateBrowserUrl(rawUrl) {
-  if (!rawUrl || typeof rawUrl !== "string") return { ok: false, error: "missing_url" };
-  let parsed;
-  try { parsed = new URL(rawUrl); } catch { return { ok: false, error: "invalid_url" }; }
-  if (parsed.protocol !== "https:") return { ok: false, error: "non_https" };
-  if (parsed.username || parsed.password) return { ok: false, error: "userinfo_present" };
-  const hostname = (parsed.hostname || "").toLowerCase();
-  if (!hostname) return { ok: false, error: "missing_hostname" };
-  return { ok: true, hostname };
 }
 
 // Project a Website record into the safe destination shape. No notes, no rule
