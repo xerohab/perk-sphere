@@ -140,21 +140,28 @@ export async function exchangeGoogleCode(code, redirectUri, codeVerifier, client
 }
 
 export async function exchangeXCode(code, redirectUri, codeVerifier, clientId, clientSecret) {
-  // X OAuth 2.0 with PKCE requires client_id in the body (even for confidential clients).
-  // client_secret goes in the body too — Basic auth is NOT used for X's token endpoint.
-  const params = {
-    code, redirect_uri: redirectUri, grant_type: 'authorization_code',
+  // Confidential-client authentication stays server-side; client_id also remains in the body.
+  const body = new URLSearchParams({
+    grant_type: 'authorization_code', code, redirect_uri: redirectUri,
     code_verifier: codeVerifier, client_id: clientId
-  };
-  if (clientSecret) params.client_secret = clientSecret;
-  const body = new URLSearchParams(params);
+  });
   const res = await fetch(PROVIDERS.x.tokenUrl, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-    body
+    headers: {
+      'Content-Type': 'application/x-www-form-urlencoded',
+      Authorization: `Basic ${btoa(`${clientId}:${clientSecret}`)}`
+    },
+    body,
+    signal: AbortSignal.timeout(10000)
   });
-  const data = await res.json();
-  if (!res.ok) throw new Error(`X token exchange failed: ${data.error_description || data.error || res.status}`);
+  const data = await res.json().catch(() => null);
+  if (!res.ok || !data) {
+    // Provider text can echo request credentials: log only status and known OAuth error codes.
+    const safeErrors = ['invalid_request', 'invalid_client', 'invalid_grant', 'unauthorized_client',
+      'unsupported_grant_type', 'invalid_scope', 'access_denied', 'server_error', 'temporarily_unavailable'];
+    const oauthError = safeErrors.includes(data?.error) ? data.error : 'unknown_oauth_error';
+    throw new Error(`X token exchange failed: HTTP ${res.status}; OAuth error=${oauthError}`);
+  }
   return data;
 }
 
@@ -199,12 +206,15 @@ export async function revokeGoogleToken(token) {
 
 export async function revokeXToken(token, clientId, clientSecret) {
   try {
-    const params = { token, client_id: clientId, token_type_hint: 'access_token' };
-    if (clientSecret) params.client_secret = clientSecret;
+    // Revocation uses token + client_id, not authorization-code or PKCE parameters.
     await fetch(PROVIDERS.x.revokeUrl, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-      body: new URLSearchParams(params)
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded',
+        Authorization: `Basic ${btoa(`${clientId}:${clientSecret}`)}`
+      },
+      body: new URLSearchParams({ token, client_id: clientId }),
+      signal: AbortSignal.timeout(10000)
     });
   } catch (_e) { /* non-fatal */ }
 }

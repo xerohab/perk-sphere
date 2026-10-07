@@ -15,6 +15,7 @@ import {
 // Tokens never appear in the redirect URL.
 //
 // Stage-specific error codes allow safe diagnosis without exposing secrets.
+// Bundle refresh: X confidential-client exchange uses Basic authentication plus body client_id.
 
 function redirectError(baseUrl, provider, reason) {
   return Response.redirect(`${baseUrl}/connected-services?status=error&provider=${provider}&reason=${reason}`, 302);

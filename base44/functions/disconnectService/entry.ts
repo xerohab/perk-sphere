@@ -10,6 +10,7 @@ import {
 // removes/invalidate private credentials and marks ConnectedService metadata
 // disconnected. Never affects TrackedAccount destinations, Points/XP balances,
 // or unrelated providers.
+// Bundle refresh: X confidential-client revocation uses server-side Basic authentication.
 export default async function(req) {
   try {
     const base44 = createClientFromRequest(req);
