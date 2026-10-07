@@ -1,7 +1,7 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.52';
-import { adjustPoints, adjustXp } from '../../shared/rewards.ts';
 import { authorize, writeAudit } from '../../shared/permissions.ts';
-import { isTaskAvailable, isViewingTask, isEventWindowOpen, canCompleteAgain, isInCooldown, deriveRewardType } from '../../shared/tasks.ts';
+import { finalizeCompletion } from '../../shared/taskCompletion.ts';
+import { isTaskAvailable, isViewingTask, isEventWindowOpen, canCompleteAgain, isInCooldown } from '../../shared/tasks.ts';
 
 // Completes a task for the signed-in user and issues rewards through the authoritative
 // ledger. Idempotent: a progress record already marked reward_issued returns success
@@ -73,77 +73,39 @@ export default async function(req) {
       }
     }
 
-    // Issue rewards through the authoritative ledger
-    const rewardType = deriveRewardType(task);
-    const pointsToIssue = (rewardType === 'points' || rewardType === 'points_xp') ? (task.points_reward || 0) : 0;
-    const xpToIssue = (rewardType === 'xp' || rewardType === 'points_xp') ? (task.xp_reward || 0) : 0;
-    let pointsResult = null;
-    let xpResult = null;
-
-    if (pointsToIssue > 0) {
-      pointsResult = await adjustPoints(admin, {
-        userId: targetUserId, amount: pointsToIssue,
-        type: 'earned',
-        reason: 'Task Completion — ' + task.name,
-        source: 'task',
-        relatedActivityId: taskId
-      });
-    }
-    if (xpToIssue > 0) {
-      xpResult = await adjustXp(admin, {
-        userId: targetUserId, amount: xpToIssue,
-        reason: 'Task Completion — ' + task.name,
-        source: 'task',
-        relatedActivityId: taskId
-      });
-    }
-    if (rewardType === 'achievement' && task.achievement_id) {
-      await admin.entities.UserAchievement.create({
-        user_id: targetUserId,
-        achievement_id: task.achievement_id,
-        achievement_name: task.name,
-        awarded_by: manual ? adminUser.id : 'task_system'
-      });
-    }
-
-    const completionNumber = completed.length + 1;
-    await admin.entities.TaskProgress.update(progress.id, {
-      status: 'completed',
-      completed_at: now.toISOString(),
-      reward_issued: true,
-      points_issued: pointsToIssue,
-      xp_issued: xpToIssue,
-      completion_number: completionNumber,
-      verification_status: manual ? 'manual' : 'verified',
-      source: manual ? 'admin_manual' : 'server_verified'
+    // Issue rewards through the shared authoritative ledger logic (also used by the
+    // trusted Linux bridge), so reward authority is never duplicated.
+    const result = await finalizeCompletion(admin, {
+      userId: targetUserId,
+      task,
+      progress,
+      completedCount: completed.length,
+      now,
+      source: manual ? 'admin_manual' : 'server_verified',
+      verificationStatus: manual ? 'manual' : 'verified',
+      actorId: manual ? adminUser.id : user.id
     });
 
-    const parts = [];
-    if (pointsToIssue > 0) parts.push(pointsToIssue + ' points');
-    if (xpToIssue > 0) parts.push(xpToIssue + ' XP');
-    await admin.entities.Notification.create({
-      user_id: targetUserId,
-      type: 'task_completed',
-      title: 'Task completed!',
-      message: 'You completed "' + task.name + '"' + (parts.length ? ' and earned ' + parts.join(' and ') + '.' : '.')
-    });
+    if (result.already_completed) {
+      return Response.json({ ok: true, already_completed: true, progress });
+    }
 
     await writeAudit(admin, {
       adminId: manual ? adminUser.id : user.id,
       action: manual ? 'task_manual_complete' : 'task_completed',
       entityType: 'Task',
       entityId: taskId,
-      next: { user_id: targetUserId, points: pointsToIssue, xp: xpToIssue, completion_number: completionNumber }
+      next: { user_id: targetUserId, points: result.pointsToIssue, xp: result.xpToIssue, completion_number: result.completionNumber }
     });
 
     return Response.json({
       ok: true,
-      points_balance: pointsResult ? pointsResult.balance_after : undefined,
-      xp_balance: xpResult ? xpResult.xp_after : undefined,
-      rank: xpResult ? xpResult.rank : undefined,
-      points_issued: pointsToIssue,
-      xp_issued: xpToIssue,
-      completion_number: completionNumber
+      points_balance: result.pointsResult ? result.pointsResult.balance_after : undefined,
+      xp_balance: result.xpResult ? result.xpResult.xp_after : undefined,
+      rank: result.xpResult ? result.xpResult.rank : undefined,
+      points_issued: result.pointsToIssue,
+      xp_issued: result.xpToIssue,
+      completion_number: result.completionNumber
     });
   } catch (error) {
     return Response.json({ error: error.message }, { status: 500 });

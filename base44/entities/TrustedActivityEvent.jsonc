@@ -1,0 +1,113 @@
+{
+  "name": "TrustedActivityEvent",
+  "type": "object",
+  "properties": {
+    "external_event_id": {
+      "type": "string"
+    },
+    "source": {
+      "type": "string",
+      "default": "linux_api"
+    },
+    "user_reference": {
+      "type": "string"
+    },
+    "user_id": {
+      "type": "string"
+    },
+    "task_id": {
+      "type": "string"
+    },
+    "device_uuid": {
+      "type": "string"
+    },
+    "session_uuid": {
+      "type": "string"
+    },
+    "event_type": {
+      "type": "string"
+    },
+    "eligible_seconds": {
+      "type": "number",
+      "default": 0
+    },
+    "verification_state": {
+      "type": "string",
+      "enum": [
+        "received",
+        "verified",
+        "rejected",
+        "invalidated"
+      ],
+      "default": "received"
+    },
+    "source_timestamp": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "payload": {
+      "type": "object"
+    },
+    "received_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "processed_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "processing_status": {
+      "type": "string",
+      "enum": [
+        "pending",
+        "processed",
+        "duplicate",
+        "rejected",
+        "error"
+      ],
+      "default": "pending"
+    },
+    "completion_triggered": {
+      "type": "boolean",
+      "default": false
+    },
+    "completion_id": {
+      "type": "string"
+    },
+    "request_id": {
+      "type": "string"
+    },
+    "error_code": {
+      "type": "string"
+    },
+    "error_message": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "external_event_id",
+    "event_type"
+  ],
+  "rls": {
+    "read": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "create": {
+      "user_condition": {
+        "role": "service_only"
+      }
+    },
+    "update": {
+      "user_condition": {
+        "role": "service_only"
+      }
+    },
+    "delete": {
+      "user_condition": {
+        "role": "service_only"
+      }
+    }
+  }
+}

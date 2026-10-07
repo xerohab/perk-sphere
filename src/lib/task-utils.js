@@ -45,3 +45,14 @@ export const REWARD_TYPES = [
   { value: "points_xp", label: "Points + XP" },
   { value: "achievement", label: "Achievement" }
 ];
+
+export const VERIFICATION_MODES = [
+  { value: "client_assisted", label: "Client-Assisted (default)" },
+  { value: "trusted_automatic", label: "Trusted Automatic (Linux API)" },
+  { value: "manual", label: "Manual (Admin only)" }
+];
+
+export function isTrustedProgress(progress) {
+  if (!progress) return false;
+  return progress.source === "trusted_bridge" || progress.source === "trusted_automatic" || progress.verification_status === "verified" && progress.source !== "user_started";
+}

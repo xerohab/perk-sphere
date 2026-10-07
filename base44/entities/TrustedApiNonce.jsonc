@@ -1,0 +1,46 @@
+{
+  "name": "TrustedApiNonce",
+  "type": "object",
+  "properties": {
+    "key_id": {
+      "type": "string"
+    },
+    "nonce": {
+      "type": "string"
+    },
+    "created_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "expires_at": {
+      "type": "string",
+      "format": "date-time"
+    }
+  },
+  "required": [
+    "key_id",
+    "nonce"
+  ],
+  "rls": {
+    "read": {
+      "user_condition": {
+        "role": "service_only"
+      }
+    },
+    "create": {
+      "user_condition": {
+        "role": "service_only"
+      }
+    },
+    "update": {
+      "user_condition": {
+        "role": "service_only"
+      }
+    },
+    "delete": {
+      "user_condition": {
+        "role": "service_only"
+      }
+    }
+  }
+}

@@ -127,6 +127,15 @@
       "type": "number",
       "default": 0
     },
+    "verification_mode": {
+      "type": "string",
+      "enum": [
+        "manual",
+        "client_assisted",
+        "trusted_automatic"
+      ],
+      "default": "client_assisted"
+    },
     "active": {
       "type": "boolean",
       "default": true

@@ -74,7 +74,7 @@ export default function AdminTasks() {
   const typeLabel = (t) => TASK_TYPES.find((x) => x.value === t)?.label || t;
 
   const cols = [
-    { key: "name", label: "Task", render: (t) => (<div><p className="font-medium">{t.name}</p><p className="text-xs text-muted-foreground">{typeLabel(t.task_type)}</p></div>) },
+    { key: "name", label: "Task", render: (t) => (<div><p className="font-medium">{t.name}</p><p className="text-xs text-muted-foreground">{typeLabel(t.task_type)}{t.verification_mode === "trusted_automatic" ? " · Trusted Auto" : t.verification_mode === "manual" ? " · Manual" : ""}</p></div>) },
     { key: "destination_name", label: "Destination", render: (t) => t.destination_name || "—" },
     { key: "points_reward", label: "Reward", render: (t) => <span className="text-xs">{t.points_reward > 0 ? `${t.points_reward}pts ` : ""}{t.xp_reward > 0 ? `${t.xp_reward}XP` : ""}{!t.points_reward && !t.xp_reward ? "—" : ""}</span> },
     { key: "active", label: "Status", render: (t) => t.archived ? <StatusBadge status="archived" /> : <StatusBadge status={t.active ? "active" : "inactive"} /> },
@@ -161,7 +161,9 @@ export default function AdminTasks() {
                 columns={[
                   { key: "user_id", label: "User", mono: true, render: (r) => r.user_id?.slice(0, 8) },
                   { key: "status", label: "Status", render: (r) => <StatusBadge status={r.status} /> },
+                  { key: "source", label: "Source", render: (r) => r.source === "trusted_bridge" || r.source === "trusted_automatic" ? "Trusted API" : r.source === "admin_manual" ? "Admin" : r.source === "server_verified" ? "Server" : "User" },
                   { key: "eligible_seconds", label: "Eligible", align: "right", render: (r) => `${Math.round(r.eligible_seconds || 0)}s` },
+                  { key: "verification_status", label: "Verified", render: (r) => r.verification_status === "verified" ? "✓" : "—" },
                   { key: "completion_number", label: "#", align: "right", render: (r) => r.completion_number },
                   { key: "reward_issued", label: "Rewarded", render: (r) => r.reward_issued ? "✓" : "—" }
                 ]}

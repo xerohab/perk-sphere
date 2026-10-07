@@ -1,9 +1,9 @@
 import React from "react";
-import { Globe, FileText, Play, Radio, Clock, CalendarCheck, CheckSquare, Megaphone, Sparkles, Gift, TrendingUp, Award, Check, Lock, Timer } from "lucide-react";
+import { Globe, FileText, Play, Radio, Clock, CalendarCheck, CheckSquare, Megaphone, Sparkles, Gift, TrendingUp, Award, Check, Lock, Timer, BadgeCheck } from "lucide-react";
 import { cn } from "@/lib/utils";
 import ProgressBar from "@/components/perk/ProgressBar";
 import { Button } from "@/components/ui/button";
-import { formatSeconds } from "@/lib/task-utils";
+import { formatSeconds, isTrustedProgress } from "@/lib/task-utils";
 
 const TYPE_ICON = {
   visit_website: Globe, visit_page: FileText, watch_video: Play, live_stream: Radio,
@@ -26,6 +26,7 @@ export default function TaskCard({ task, progress, onStart, onComplete, starting
   const viewingReady = isViewing && required > 0 && eligible >= required;
   const isCompleted = status === "completed";
   const isInProgress = status === "in_progress";
+  const isVerified = isTrustedProgress(progress);
   const pointsR = task.points_reward || 0;
   const xpR = task.xp_reward || 0;
   const hasReward = pointsR > 0 || xpR > 0 || task.achievement_id;
@@ -80,7 +81,10 @@ export default function TaskCard({ task, progress, onStart, onComplete, starting
               <span className="font-medium">{pct}%</span>
             </div>
             <ProgressBar value={pct} max={100} className={cn(pct >= 75 && !isCompleted && "ring-2 ring-emerald-400/50")} />
-            {isViewing && <p className="mt-1 text-xs text-muted-foreground">{formatSeconds(eligible)} / {formatSeconds(required)}</p>}
+            {isViewing && <p className="mt-1 flex items-center gap-1 text-xs text-muted-foreground">
+              {formatSeconds(eligible)} / {formatSeconds(required)}
+              {isVerified && <span className="inline-flex items-center gap-0.5 text-emerald-600 dark:text-emerald-400"><BadgeCheck className="h-3 w-3" /> verified</span>}
+            </p>}
           </div>
         )}
 

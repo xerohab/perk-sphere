@@ -13,7 +13,7 @@ import {
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter
 } from "@/components/ui/dialog";
-import { TASK_TYPES, COMPLETION_LIMITS, REWARD_TYPES } from "@/lib/task-utils";
+import { TASK_TYPES, COMPLETION_LIMITS, REWARD_TYPES, VERIFICATION_MODES } from "@/lib/task-utils";
 
 const STEPS = ["Information", "Destination", "Requirements", "Reward", "Limits", "Schedule", "Review"];
 const VIEWING_TYPES = ["watch_video", "live_stream", "spend_time"];
@@ -26,6 +26,7 @@ const empty = {
   event_start: "", event_end: "", available_from: "", available_until: "", timezone: "",
   points_reward: 0, xp_reward: 0, achievement_id: "", reward_type: "none",
   completion_limit_type: "once_ever", max_completions: 0, cooldown_seconds: 0,
+  verification_mode: "client_assisted",
   active: true, publicly_visible: true, featured: false, archived: false, terms: ""
 };
 
@@ -234,6 +235,14 @@ export default function TaskWizard({ open, onClose, editing, onSaved }) {
               </div>
               {form.completion_limit_type === "custom_max" && <div><Label>Maximum Completions</Label><Input type="number" value={form.max_completions} onChange={(e) => set("max_completions", e.target.value)} className="mt-1.5" /></div>}
               {form.completion_limit_type === "unlimited" && <div><Label>Cooldown (seconds)</Label><Input type="number" value={form.cooldown_seconds} onChange={(e) => set("cooldown_seconds", e.target.value)} className="mt-1.5" placeholder="3600 = 1 hour" /></div>}
+              <div>
+                <Label>Verification Mode</Label>
+                <Select value={form.verification_mode} onValueChange={(v) => set("verification_mode", v)}>
+                  <SelectTrigger className="mt-1.5"><SelectValue /></SelectTrigger>
+                  <SelectContent>{VERIFICATION_MODES.map((m) => <SelectItem key={m.value} value={m.value}>{m.label}</SelectItem>)}</SelectContent>
+                </Select>
+                <p className="mt-1 text-xs text-muted-foreground">Trusted Automatic completes the task server-side when the Linux API reports enough verified activity. Client-Assisted requires the user's device to verify viewing. Manual needs an admin.</p>
+              </div>
               <div className="flex items-center justify-between rounded-lg border border-border p-3"><Label>Active</Label><Switch checked={form.active} onCheckedChange={(c) => set("active", c)} /></div>
               <div className="flex items-center justify-between rounded-lg border border-border p-3"><Label>Publicly Visible</Label><Switch checked={form.publicly_visible} onCheckedChange={(c) => set("publicly_visible", c)} /></div>
               <div className="flex items-center justify-between rounded-lg border border-border p-3"><Label>Featured (shown on homepage)</Label><Switch checked={form.featured} onCheckedChange={(c) => set("featured", c)} /></div>
@@ -261,6 +270,7 @@ export default function TaskWizard({ open, onClose, editing, onSaved }) {
               {isViewing && <p><span className="text-muted-foreground">Required watch:</span> {form.required_seconds}s</p>}
               <p><span className="text-muted-foreground">Reward:</span> {form.reward_type === "none" ? "None" : `${form.points_reward > 0 ? form.points_reward + " pts " : ""}${form.xp_reward > 0 ? form.xp_reward + " XP" : ""}${form.achievement_id ? " Achievement" : ""}`}</p>
               <p><span className="text-muted-foreground">Limit:</span> {COMPLETION_LIMITS.find((c) => c.value === form.completion_limit_type)?.label}</p>
+              <p><span className="text-muted-foreground">Verification:</span> {VERIFICATION_MODES.find((m) => m.value === form.verification_mode)?.label}</p>
               <p><span className="text-muted-foreground">Active:</span> {form.active ? "Yes" : "No"} · <span className="text-muted-foreground">Featured:</span> {form.featured ? "Yes" : "No"}</p>
             </div>
           )}
