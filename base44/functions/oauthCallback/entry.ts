@@ -1,7 +1,7 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.52';
 import { secrets } from 'base44:runtime';
 import {
-  sha256Hex, getProviderSecrets, appBaseUrl,
+  sha256Hex, getProviderSecrets,
   exchangeGoogleCode, exchangeXCode, getGoogleUserInfo, getXUserInfo,
   encryptToken, ALLOWED_PROVIDERS
 } from '../../shared/oauth.ts';
@@ -15,7 +15,8 @@ import {
 // Tokens never appear in the redirect URL.
 //
 // Stage-specific error codes allow safe diagnosis without exposing secrets.
-// Bundle refresh: X identity uses documented read-only scopes and safe provider-error diagnostics.
+// Bundle refresh: final browser redirect uses the server-controlled production frontend origin
+// (https://perksphere.org), not the Base44 function callback origin.
 
 function redirectError(baseUrl, provider, reason) {
   return Response.redirect(`${baseUrl}/connected-services?status=error&provider=${provider}&reason=${reason}`, 302);
@@ -41,7 +42,6 @@ export default async function(req) {
     if (!creds) {
       return redirectError(baseUrl, provider, 'provider_not_configured');
     }
-    baseUrl = appBaseUrl(creds.redirectUri);
 
     if (error) {
       console.error(`oauthCallback[${provider}] provider_error: ${error}`);
