@@ -62,8 +62,13 @@ export async function verifyTrustedRequest(req, admin, expectedPath) {
   // (Base44 -> Linux). Without this, a stored key ID with surrounding
   // whitespace is accepted outbound (trimmed on send) but rejected inbound
   // (compared verbatim), producing unknown_key_id for Linux -> Base44.
-  const expectedKeyId = (secrets.get("PERKSPHERE_LINUX_KEY_ID") || "").trim();
-  const hmacSecret = secrets.get("PERKSPHERE_LINUX_HMAC_SECRET");
+  // Inbound (Linux -> Base44) credentials are kept separate from the outbound
+  // (Base44 -> Linux) pair used by linuxClient.ts. The two directions use
+  // different key IDs, so they cannot share one secret. linuxClient.ts keeps
+  // PERKSPHERE_LINUX_KEY_ID / PERKSPHERE_LINUX_HMAC_SECRET for signing
+  // Base44 -> Linux; this verifier uses the inbound pair to authenticate Linux.
+  const expectedKeyId = (secrets.get("PERKSPHERE_LINUX_INBOUND_KEY_ID") || "").trim();
+  const hmacSecret = secrets.get("PERKSPHERE_LINUX_INBOUND_HMAC_SECRET");
   if (!expectedKeyId || !hmacSecret) {
     return { ok: false, status: 500, code: "server_misconfigured", error: "Trusted bridge is not configured.", requestId };
   }
