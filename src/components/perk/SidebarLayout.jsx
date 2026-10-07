@@ -68,18 +68,24 @@ export default function SidebarLayout({ brand, navItems, accentFrom, accentTo, c
   const bottomTabs = hasMore ? navItems.slice(0, 4) : navItems.slice(0, 5);
 
   const NavList = () => (
-    <nav className="flex flex-1 flex-col gap-1 px-3 py-4">
-      {navItems.map((item) => {
-        const active = isActive(item);
-        const Icon = item.icon;
-        return (
-          <Link key={item.path} to={item.path} onClick={() => setOpen(false)} className={cn("group flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-colors", active ? "bg-secondary text-foreground" : "text-muted-foreground hover:bg-secondary/60 hover:text-foreground")}>
-            <Icon className={cn("h-4 w-4", active && "text-foreground")} />
-            {item.label}
-          </Link>
-        );
-      })}
-    </nav>
+    <div className="flex min-h-0 flex-1 flex-col px-3 py-4">
+      <nav className="flex flex-1 flex-col gap-1 overflow-y-auto">
+        {navItems.map((item) => {
+          const active = isActive(item);
+          const Icon = item.icon;
+          return (
+            <Link key={item.path} to={item.path} onClick={() => setOpen(false)} className={cn("group flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-colors", active ? "bg-secondary text-foreground" : "text-muted-foreground hover:bg-secondary/60 hover:text-foreground")}>
+              <Icon className={cn("h-4 w-4", active && "text-foreground")} />
+              {item.label}
+            </Link>
+          );
+        })}
+      </nav>
+      <button onClick={handleLogout} className="mt-2 flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-muted-foreground transition-colors hover:bg-secondary/60 hover:text-foreground">
+        <LogOut className="h-4 w-4" />
+        Logout
+      </button>
+    </div>
   );
 
   const BrandHeader = () => (

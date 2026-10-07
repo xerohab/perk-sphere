@@ -1,15 +1,31 @@
-import React from "react";
+import React, { useState, useEffect } from "react";
 import { Globe, Download, AlertCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { getLatestRelease, isDownloadAvailable } from "@/lib/extensionRelease";
+import { fetchRelease } from "@/lib/extensionRelease";
 import { isOutdated } from "@/lib/versionUtils";
 
 export default function BrowserExtensionDownloadCard({ devices = [] }) {
-  const release = getLatestRelease("chromium");
-  const available = isDownloadAvailable("chromium");
-  const outdatedDevices = devices.filter(
-    (d) => d.status === "active" && release?.version && isOutdated(d.client_version, release.version)
-  );
+  const [release, setRelease] = useState(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      const r = await fetchRelease("chromium");
+      if (!cancelled) {
+        setRelease(r);
+        setLoading(false);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, []);
+
+  const available = !!(release && release.download_url && release.version);
+  const outdatedDevices = available
+    ? devices.filter(
+        (d) => d.status === "active" && release.version && isOutdated(d.client_version, release.version)
+      )
+    : [];
 
   return (
     <div className="rounded-2xl border border-border bg-card p-5 shadow-sm">
@@ -39,7 +55,9 @@ export default function BrowserExtensionDownloadCard({ devices = [] }) {
           </Button>
         </>
       ) : (
-        <p className="mt-2 text-xs text-muted-foreground">Extension download coming soon</p>
+        <p className="mt-2 text-xs text-muted-foreground">
+          {loading ? "Checking for latest release..." : "Extension download coming soon"}
+        </p>
       )}
 
       <div className="mt-4 rounded-lg bg-secondary p-3">
