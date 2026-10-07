@@ -47,7 +47,7 @@ async function hmacSha256Hex(secret, text) {
 // success, or { ok: false, status, code, error, requestId } on failure. On success the
 // nonce has been persisted (so a replay is rejected next time) and rawBody holds the
 // request body text (the body stream is consumed).
-export async function verifyTrustedRequest(req, admin) {
+export async function verifyTrustedRequest(req, admin, expectedPath) {
   const keyId = req.headers.get("X-PS-Key-ID");
   const timestamp = req.headers.get("X-PS-Timestamp");
   const nonce = req.headers.get("X-PS-Nonce");
@@ -87,7 +87,7 @@ export async function verifyTrustedRequest(req, admin) {
   // The Base44 function runtime exposes an internal path (/run/<id>) on req.url, not
   // the public /functions/<name> path. Both sides agree on the public path as the
   // canonical identifier so the signature is stable and reproducible from Linux.
-  const path = "/functions/trustedActivityBridge";
+  const path = expectedPath || "/functions/trustedActivityBridge";
   const bodyHash = await sha256Hex(rawBody || "");
   const canonical = [method, path, timestamp, nonce, bodyHash].join("\n");
 
