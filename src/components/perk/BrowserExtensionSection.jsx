@@ -14,13 +14,15 @@ export default function BrowserExtensionSection() {
     setError(null);
     try {
       const res = await base44.functions.invoke("listBrowserDevices", {});
-      if (res?.ok) {
-        setDevices(res.data?.devices || []);
+      const body = res?.data ?? res;
+      if (body?.ok) {
+        setDevices(body.data?.devices || []);
       } else {
-        setError(res?.error?.message || "Unable to load connected devices.");
+        setError(body?.error?.message || "Unable to load connected devices.");
       }
-    } catch (_e) {
-      setError("Unable to load connected devices.");
+    } catch (e) {
+      const msg = e?.response?.data?.error?.message || e?.data?.error?.message;
+      setError(msg || "Unable to load connected devices.");
     } finally {
       setLoading(false);
     }
@@ -29,8 +31,14 @@ export default function BrowserExtensionSection() {
   useEffect(() => { loadDevices(); }, [loadDevices]);
 
   const handleRevoke = async (deviceUuid) => {
-    const res = await base44.functions.invoke("revokeBrowserDevice", { device_uuid: deviceUuid });
-    if (!res?.ok) throw new Error(res?.error?.message || "Unable to revoke device.");
+    try {
+      const res = await base44.functions.invoke("revokeBrowserDevice", { device_uuid: deviceUuid });
+      const body = res?.data ?? res;
+      if (!body?.ok) throw new Error(body?.error?.message || "Unable to revoke device.");
+    } catch (e) {
+      const msg = e?.response?.data?.error?.message || e?.data?.error?.message;
+      throw new Error(msg || e?.message || "Unable to revoke device.");
+    }
     await loadDevices();
   };
 
