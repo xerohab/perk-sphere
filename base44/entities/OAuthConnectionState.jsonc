@@ -1,0 +1,62 @@
+{
+  "name": "OAuthConnectionState",
+  "type": "object",
+  "properties": {
+    "state_hash": {
+      "type": "string",
+      "description": "SHA-256 hex of the OAuth state parameter (stored hashed for security)"
+    },
+    "user_id": {
+      "type": "string",
+      "description": "The Perk Sphere user who initiated this OAuth flow"
+    },
+    "provider": {
+      "type": "string",
+      "description": "google or x"
+    },
+    "code_verifier": {
+      "type": "string",
+      "description": "PKCE code verifier (short-lived, single-use)"
+    },
+    "created_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "expires_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "used_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Null until consumed by the callback"
+    }
+  },
+  "required": [
+    "state_hash",
+    "user_id",
+    "provider"
+  ],
+  "rls": {
+    "read": {
+      "user_condition": {
+        "role": "service_only"
+      }
+    },
+    "create": {
+      "user_condition": {
+        "role": "service_only"
+      }
+    },
+    "update": {
+      "user_condition": {
+        "role": "service_only"
+      }
+    },
+    "delete": {
+      "user_condition": {
+        "role": "service_only"
+      }
+    }
+  }
+}
