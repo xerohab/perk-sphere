@@ -1,5 +1,6 @@
 import React from "react";
-import { Globe, FileText, Play, Radio, Clock, CalendarCheck, CheckSquare, Megaphone, Sparkles, Gift, TrendingUp, Award, Check, Lock, Timer, BadgeCheck } from "lucide-react";
+import { Link } from "react-router-dom";
+import { Globe, FileText, Play, Radio, Clock, CalendarCheck, CheckSquare, Megaphone, Sparkles, Gift, TrendingUp, Award, Check, Lock, Timer, BadgeCheck, Puzzle, ExternalLink } from "lucide-react";
 import { cn } from "@/lib/utils";
 import ProgressBar from "@/components/perk/ProgressBar";
 import { Button } from "@/components/ui/button";
@@ -108,8 +109,23 @@ export default function TaskCard({ task, progress, onStart, onComplete, starting
           {isCompleted ? (
             <div className="flex items-center justify-center gap-1 text-sm font-medium text-emerald-600 dark:text-emerald-400"><Check className="h-4 w-4" /> Completed</div>
           ) : (task.verification_mode === "trusted_automatic") ? (
-            <div className="flex items-center justify-center gap-1.5 rounded-lg bg-indigo-50 px-3 py-2 text-sm text-indigo-600 dark:bg-indigo-500/10 dark:text-indigo-400">
-              <BadgeCheck className="h-4 w-4" /> Verified automatically via extension
+            <div className="space-y-2">
+              {!isInProgress && (
+                <div className="flex items-center gap-1.5 rounded-lg bg-indigo-50 px-3 py-2 text-xs text-indigo-600 dark:bg-indigo-500/10 dark:text-indigo-400">
+                  <Puzzle className="h-3.5 w-3.5" /> Browser extension required
+                  <Link to="/dashboard" className="ml-auto font-medium underline hover:text-indigo-700 dark:hover:text-indigo-300">Install</Link>
+                </div>
+              )}
+              {isInProgress && (
+                <div className="flex items-center gap-1.5 rounded-lg bg-amber-50 px-3 py-2 text-xs text-amber-600 dark:bg-amber-500/10 dark:text-amber-400">
+                  <BadgeCheck className="h-3.5 w-3.5" /> Verification in progress
+                </div>
+              )}
+              {task.content_url && (
+                <a href={task.content_url} target="_blank" rel="noopener noreferrer" className="flex w-full items-center justify-center gap-1.5 rounded-lg bg-primary px-3 py-2 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90">
+                  <ExternalLink className="h-4 w-4" /> Open content
+                </a>
+              )}
             </div>
           ) : isExpired ? (
             <Button variant="outline" disabled className="w-full">Expired</Button>

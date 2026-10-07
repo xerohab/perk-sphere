@@ -53,7 +53,7 @@ export default function Dashboard() {
       setActivities(a || []);
       setRewards((r || []).filter((x) => x.active !== false));
       setAchievements(ua || []);
-      setTasks((tk || []).filter((x) => x.active !== false && !x.archived));
+      setTasks((tk || []).filter((x) => x.active !== false && !x.archived && x.publicly_visible !== false));
       setTaskProgress(tp || []);
     } finally {
       setLoading(false);
