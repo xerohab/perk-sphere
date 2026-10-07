@@ -25,7 +25,13 @@ export default function Notifications() {
   const markAllRead = async () => {
     const unread = items.filter((n) => !n.read);
     if (unread.length === 0) return;
-    await base44.entities.Notification.bulkUpdate(unread.map((n) => ({ id: n.id, read: true })));
+    const previous = items;
+    setItems((prev) => prev.map((n) => ({ ...n, read: true })));
+    try {
+      await base44.entities.Notification.bulkUpdate(unread.map((n) => ({ id: n.id, read: true })));
+    } catch (e) {
+      setItems(previous);
+    }
     load();
   };
 

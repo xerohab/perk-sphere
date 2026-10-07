@@ -56,11 +56,14 @@ export default function Tasks() {
 
   const handleStart = async (task) => {
     setActionTaskId(task.id);
+    const optimisticId = `optimistic-${task.id}`;
+    setProgress((prev) => [...prev, { id: optimisticId, task_id: task.id, status: "in_progress", eligible_seconds: 0, progress_percentage: 0, last_activity: new Date().toISOString(), created_date: new Date().toISOString() }]);
     try {
       await base44.functions.invoke("startTask", { taskId: task.id });
       toast({ title: "Task started", description: `"${task.name}" is now in progress.` });
       await load(true);
     } catch (e) {
+      setProgress((prev) => prev.filter((p) => p.id !== optimisticId));
       toast({ title: "Failed to start", description: e?.response?.data?.error || e.message, variant: "destructive" });
     } finally {
       setActionTaskId(null);

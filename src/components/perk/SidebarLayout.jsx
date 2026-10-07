@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
-import { Menu, X, LogOut, Grid } from "lucide-react";
+import { Menu, X, LogOut, Grid, ArrowLeft } from "lucide-react";
 import { useAuth } from "@/lib/AuthContext";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { cn } from "@/lib/utils";
@@ -62,6 +62,12 @@ export default function SidebarLayout({ brand, navItems, accentFrom, accentTo, c
   };
 
   const displayName = user?.display_name || user?.username || user?.full_name || user?.email || "Member";
+
+  // Mobile top bar: show back button on non-root routes, brand on root routes.
+  const rootPaths = navItems.map((i) => i.path);
+  const isRootRoute = rootPaths.includes(location.pathname);
+  const owner = ownerOf(location.pathname);
+  const mobileTitle = isRootRoute ? brand : (owner?.label || brand);
 
   // Bottom tabs: first 4 items + a "More" tab that opens the drawer (if there are more).
   const hasMore = navItems.length > 5;
@@ -125,12 +131,21 @@ export default function SidebarLayout({ brand, navItems, accentFrom, accentTo, c
       {/* Mobile top bar */}
       <div className="safe-top sticky top-0 z-30 flex items-center justify-between border-b border-border bg-background/95 px-4 pb-3 pt-[calc(env(safe-area-inset-top)+0.75rem)] backdrop-blur lg:hidden">
         <div className="flex items-center gap-2">
-          <div className="flex h-8 w-8 items-center justify-center rounded-lg text-white" style={{ background: `linear-gradient(135deg, ${accentFrom}, ${accentTo})` }}>
-            <span className="text-xs font-bold">P</span>
-          </div>
-          <span className="text-sm font-semibold">{brand}</span>
+          {isRootRoute ? (
+            <>
+              <div className="flex h-8 w-8 items-center justify-center rounded-lg text-white" style={{ background: `linear-gradient(135deg, ${accentFrom}, ${accentTo})` }}>
+                <span className="text-xs font-bold">P</span>
+              </div>
+              <span className="text-sm font-semibold">{brand}</span>
+            </>
+          ) : (
+            <>
+              <Button variant="ghost" size="icon" aria-label="Back" onClick={() => navigate(-1)}><ArrowLeft className="h-5 w-5" /></Button>
+              <span className="text-sm font-semibold">{mobileTitle}</span>
+            </>
+          )}
         </div>
-        <Button variant="ghost" size="icon" onClick={() => setOpen(true)}><Menu className="h-5 w-5" /></Button>
+        <Button variant="ghost" size="icon" aria-label="Open menu" onClick={() => setOpen(true)}><Menu className="h-5 w-5" /></Button>
       </div>
 
       {/* Desktop sidebar */}

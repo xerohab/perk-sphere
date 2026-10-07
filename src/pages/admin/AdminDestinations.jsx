@@ -237,9 +237,9 @@ export default function AdminDestinations() {
                     <td className="px-4 py-3 text-xs text-muted-foreground">{r.updated ? new Date(r.updated).toLocaleDateString() : "—"}</td>
                     <td className="px-4 py-3 text-right">
                       <div className="flex justify-end gap-1">
-                        <Button variant="ghost" size="icon" title="Edit" onClick={() => openEdit(r)}><Pencil className="h-4 w-4" /></Button>
-                        <Button variant="ghost" size="icon" title={r.active ? "Disable" : "Enable"} onClick={() => toggleActive(r)}><Power className="h-4 w-4" /></Button>
-                        <Button variant="ghost" size="icon" title="View activity" onClick={() => navigate("/admin/activities")}><Activity className="h-4 w-4" /></Button>
+                        <Button variant="ghost" size="icon" title="Edit" aria-label="Edit" onClick={() => openEdit(r)}><Pencil className="h-4 w-4" /></Button>
+                        <Button variant="ghost" size="icon" title={r.active ? "Disable" : "Enable"} aria-label={r.active ? "Disable" : "Enable"} onClick={() => toggleActive(r)}><Power className="h-4 w-4" /></Button>
+                        <Button variant="ghost" size="icon" title="View activity" aria-label="View activity" onClick={() => navigate("/admin/activities")}><Activity className="h-4 w-4" /></Button>
                       </div>
                     </td>
                   </tr>

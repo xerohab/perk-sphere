@@ -11,6 +11,9 @@ import TaskWizard from "@/components/perk/TaskWizard";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import {
+  Select, SelectTrigger, SelectContent, SelectItem, SelectValue
+} from "@/components/ui/select";
 import { TASK_TYPES } from "@/lib/task-utils";
 
 export default function AdminTasks() {
@@ -81,12 +84,12 @@ export default function AdminTasks() {
     { key: "featured", label: "Featured", render: (t) => t.featured ? "★" : "" },
     { key: "_action", label: "", align: "right", render: (t) => (
       <div className="flex justify-end gap-1">
-        <Button variant="ghost" size="icon" title="Edit" onClick={() => { setEditing(t); setWizardOpen(true); }}><Pencil className="h-4 w-4" /></Button>
-        <Button variant="ghost" size="icon" title="Duplicate" onClick={() => doAction("duplicate", t)}><Copy className="h-4 w-4" /></Button>
-        {!t.archived && (t.active ? <Button variant="ghost" size="icon" title="Deactivate" onClick={() => doAction("update", t, { data: { active: false } })}><Power className="h-4 w-4" /></Button> : <Button variant="ghost" size="icon" title="Publish" onClick={() => doAction("publish", t)}><Power className="h-4 w-4" /></Button>)}
-        <Button variant="ghost" size="icon" title="Participants" onClick={() => viewParticipants(t)}><Users className="h-4 w-4" /></Button>
-        {!t.archived && <Button variant="ghost" size="icon" title="Archive" onClick={() => doAction("archive", t)}><Archive className="h-4 w-4" /></Button>}
-        <ConfirmDialog trigger={<Button variant="ghost" size="icon" className="text-red-600" title="Delete"><Trash2 className="h-4 w-4" /></Button>} title={`Delete "${t.name}"?`} description="This permanently removes the task. Progress records are kept." confirmLabel="Delete" destructive onConfirm={() => doAction("delete", t)} />
+        <Button variant="ghost" size="icon" title="Edit" aria-label="Edit" onClick={() => { setEditing(t); setWizardOpen(true); }}><Pencil className="h-4 w-4" /></Button>
+        <Button variant="ghost" size="icon" title="Duplicate" aria-label="Duplicate" onClick={() => doAction("duplicate", t)}><Copy className="h-4 w-4" /></Button>
+        {!t.archived && (t.active ? <Button variant="ghost" size="icon" title="Deactivate" aria-label="Deactivate" onClick={() => doAction("update", t, { data: { active: false } })}><Power className="h-4 w-4" /></Button> : <Button variant="ghost" size="icon" title="Publish" aria-label="Publish" onClick={() => doAction("publish", t)}><Power className="h-4 w-4" /></Button>)}
+        <Button variant="ghost" size="icon" title="Participants" aria-label="Participants" onClick={() => viewParticipants(t)}><Users className="h-4 w-4" /></Button>
+        {!t.archived && <Button variant="ghost" size="icon" title="Archive" aria-label="Archive" onClick={() => doAction("archive", t)}><Archive className="h-4 w-4" /></Button>}
+        <ConfirmDialog trigger={<Button variant="ghost" size="icon" className="text-red-600" title="Delete" aria-label="Delete"><Trash2 className="h-4 w-4" /></Button>} title={`Delete "${t.name}"?`} description="This permanently removes the task. Progress records are kept." confirmLabel="Delete" destructive onConfirm={() => doAction("delete", t)} />
       </div>
     ) }
   ];
@@ -111,10 +114,13 @@ export default function AdminTasks() {
               <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
               <Input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search tasks..." className="pl-9" />
             </div>
-            <select value={typeFilter} onChange={(e) => setTypeFilter(e.target.value)} className="rounded-md border border-input bg-transparent px-3 py-2 text-sm">
-              <option value="all">All Types</option>
-              {TASK_TYPES.map((t) => <option key={t.value} value={t.value}>{t.label}</option>)}
-            </select>
+            <Select value={typeFilter} onValueChange={setTypeFilter}>
+              <SelectTrigger className="w-[180px]"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Types</SelectItem>
+                {TASK_TYPES.map((t) => <SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>)}
+              </SelectContent>
+            </Select>
           </div>
           {filtered.length === 0 ? <EmptyState title="No tasks" description="Create your first task to get started." /> : <ResponsiveTable columns={cols} rows={filtered} />}
         </TabsContent>
@@ -154,7 +160,7 @@ export default function AdminTasks() {
           <div className="max-h-[80vh] w-full max-w-2xl overflow-y-auto rounded-2xl border border-border bg-card p-6 shadow-xl" onClick={(e) => e.stopPropagation()}>
             <div className="mb-4 flex items-center justify-between">
               <h3 className="text-base font-semibold">Participants — {participants.task.name}</h3>
-              <Button variant="ghost" size="icon" onClick={() => setParticipants(null)}><Trash2 className="h-4 w-4" /></Button>
+              <Button variant="ghost" size="icon" aria-label="Close" onClick={() => setParticipants(null)}><Trash2 className="h-4 w-4" /></Button>
             </div>
             {participants.records.length === 0 ? <EmptyState title="No participants yet" /> : (
               <ResponsiveTable
