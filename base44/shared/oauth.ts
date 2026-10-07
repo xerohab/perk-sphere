@@ -17,7 +17,7 @@ const PROVIDERS = {
     tokenUrl: 'https://api.twitter.com/2/oauth2/token',
     userInfoUrl: 'https://api.twitter.com/2/users/me?user.fields=id,name,username',
     revokeUrl: 'https://api.twitter.com/2/oauth2/revoke',
-    scopes: 'users.read',
+    scopes: 'tweet.read users.read',
     secretNames: { clientId: 'X_CLIENT_ID', clientSecret: 'X_CLIENT_SECRET', redirectUri: 'X_REDIRECT_URI' }
   }
 };
@@ -180,9 +180,31 @@ export async function getGoogleUserInfo(accessToken) {
 }
 
 export async function getXUserInfo(accessToken) {
-  const res = await fetch(PROVIDERS.x.userInfoUrl, { headers: { Authorization: `Bearer ${accessToken}` } });
-  const data = await res.json();
-  if (!res.ok) throw new Error('Failed to get X user info');
+  const res = await fetch(PROVIDERS.x.userInfoUrl, {
+    method: 'GET',
+    headers: { Authorization: `Bearer ${accessToken}` },
+    signal: AbortSignal.timeout(10000)
+  });
+  const data = await res.json().catch(() => null);
+  if (!res.ok || !data) {
+    // Never forward raw provider text: it may echo credentials. Only known-safe diagnostics are logged.
+    const safeCodes = ['invalid_request', 'invalid_token', 'insufficient_scope', 'invalid_scope',
+      'unauthorized_client', 32, 89, 99, 135, 215, 220, 429, 453];
+    const safeTitles = ['Bad Request', 'Unauthorized', 'Forbidden', 'Client Forbidden',
+      'Unsupported Authentication', 'Not Found', 'Too Many Requests', 'UsageCapExceeded',
+      'CreditsDepleted', 'Payment Required', 'Internal Server Error', 'Service Unavailable'];
+    const safeMessages = ['Could not authenticate you.', 'Invalid or expired token.',
+      'Bad Authentication data.', 'You are not permitted to access this resource.',
+      'Your client app is not configured with the appropriate oauth1 app permissions for this endpoint.',
+      'Rate limit exceeded.', 'Insufficient scope.', 'Insufficient permissions.'];
+    const providerCode = data?.error ?? data?.errors?.[0]?.code;
+    const providerMessage = data?.detail ?? data?.error_description ?? data?.errors?.[0]?.message;
+    const code = safeCodes.includes(providerCode) ? providerCode : 'not_returned_or_unrecognized';
+    const title = safeTitles.includes(data?.title) ? data.title : 'Provider error';
+    const message = !data ? 'Invalid JSON response' : safeMessages.includes(providerMessage)
+      ? providerMessage : 'Provider detail omitted for safety';
+    throw new Error(`X identity lookup failed: HTTP ${res.status}; code=${code}; title=${title}; message=${message}`);
+  }
   const u = data.data || {};
   return {
     provider_user_id: u.id,

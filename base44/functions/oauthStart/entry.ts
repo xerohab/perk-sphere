@@ -11,6 +11,7 @@ import {
 // persists a short-lived OAuthConnectionState record (service-only), and returns
 // only the safe authorization URL. Never returns client secrets, PKCE verifier,
 // or stored credentials.
+// Bundle refresh: X identity authorization requests the documented tweet.read users.read scopes.
 export default async function(req) {
   try {
     const base44 = createClientFromRequest(req);
