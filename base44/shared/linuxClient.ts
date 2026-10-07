@@ -39,8 +39,9 @@ async function hmacSha256Hex(secret, text) {
 // Returns { ok: true, status, data } on success or
 // { ok: false, status, code, error } on failure.
 export async function linuxTrustedPost(path, body) {
-  const keyId = secrets.get("PERKSPHERE_LINUX_KEY_ID");
-  const hmacSecret = secrets.get("PERKSPHERE_LINUX_HMAC_SECRET");
+  const keyId = (secrets.get("PERKSPHERE_LINUX_KEY_ID") || "").trim();
+  const hmacSecret = (secrets.get("PERKSPHERE_LINUX_HMAC_SECRET") || "").trim();
+  console.log(`[linuxClient] keyId length=${keyId.length} secret length=${hmacSecret.length}`);
   if (!keyId || !hmacSecret) {
     return { ok: false, status: 500, code: "server_misconfigured", error: "Linux API credentials are not configured." };
   }
