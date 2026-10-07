@@ -128,7 +128,7 @@ export default function AdminRoles() {
               <p className="mt-2 text-xs text-muted-foreground">{r.description}</p>
               <div className="mt-3 flex flex-wrap gap-1">
                 {r.permissions.map((p) => (
-                  <span key={p} className="rounded-full bg-secondary px-2 py-0.5 text-[10px] font-medium text-muted-foreground">{p}</span>
+                  <span key={p} className="rounded-full bg-secondary px-2 py-0.5 text-xs font-medium text-muted-foreground">{p}</span>
                 ))}
               </div>
             </div>

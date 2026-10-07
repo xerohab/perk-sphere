@@ -95,7 +95,7 @@ export default function BrowserPairingCard() {
               <RefreshCw className="h-3.5 w-3.5" /> Generate New Code
             </Button>
           </div>
-          <p className="text-[11px] text-muted-foreground">Generating a new code invalidates the previous unused code.</p>
+          <p className="text-xs text-muted-foreground">Generating a new code invalidates the previous unused code.</p>
         </div>
       )}
 

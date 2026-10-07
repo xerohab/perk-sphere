@@ -115,7 +115,7 @@ export default function AdminTasks() {
               <Input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search tasks..." className="pl-9" />
             </div>
             <Select value={typeFilter} onValueChange={setTypeFilter}>
-              <SelectTrigger className="w-[180px]"><SelectValue /></SelectTrigger>
+              <SelectTrigger className="w-full sm:w-[180px]"><SelectValue /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">All Types</SelectItem>
                 {TASK_TYPES.map((t) => <SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>)}

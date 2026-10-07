@@ -53,7 +53,7 @@ export default function TaskCard({ task, progress, onStart, onComplete, starting
             <p className="mt-0.5 text-xs text-muted-foreground">{TYPE_LABEL[task.task_type] || task.task_type}</p>
           </div>
           {task.destination_name && (
-            <span className="flex-shrink-0 rounded-full bg-secondary px-2 py-0.5 text-[10px] font-medium text-muted-foreground">{task.destination_name}</span>
+            <span className="flex-shrink-0 rounded-full bg-secondary px-2 py-0.5 text-xs font-medium text-muted-foreground">{task.destination_name}</span>
           )}
         </div>
         {task.description && <p className="mt-2 line-clamp-2 text-sm text-muted-foreground">{task.description}</p>}

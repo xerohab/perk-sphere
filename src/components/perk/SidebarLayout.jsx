@@ -101,7 +101,7 @@ export default function SidebarLayout({ brand, navItems, accentFrom, accentTo, c
       </div>
       <div>
         <p className="text-sm font-semibold leading-tight">{brand}</p>
-        <p className="text-[11px] text-muted-foreground">perksphere.org</p>
+        <p className="text-xs text-muted-foreground">perksphere.org</p>
       </div>
     </div>
   );
@@ -114,9 +114,9 @@ export default function SidebarLayout({ brand, navItems, accentFrom, accentTo, c
           <p className="truncate text-sm font-medium">{displayName}</p>
           <div className="mt-0.5">
             {user?.role === "admin" ? (
-              <Link to="/admin" className="text-[11px] text-muted-foreground hover:text-foreground">Admin Panel</Link>
+              <Link to="/admin" className="text-xs text-muted-foreground hover:text-foreground">Admin Panel</Link>
             ) : (
-              user?.loyalty_rank && <RankBadge rank={user.loyalty_rank} className="!py-0.5 !text-[10px]" />
+              user?.loyalty_rank && <RankBadge rank={user.loyalty_rank} className="!py-0.5 !text-xs" />
             )}
           </div>
         </div>
@@ -184,14 +184,14 @@ export default function SidebarLayout({ brand, navItems, accentFrom, accentTo, c
             const active = isActive(item);
             const Icon = item.icon;
             return (
-              <Link key={item.path} to={item.path} onClick={(e) => handleTabClick(item, e)} className={cn("flex flex-1 flex-col items-center gap-0.5 px-1 py-2 text-[10px] font-medium transition-colors", active ? "text-foreground" : "text-muted-foreground")}>
+              <Link key={item.path} to={item.path} onClick={(e) => handleTabClick(item, e)} className={cn("flex flex-1 flex-col items-center gap-0.5 px-1 py-2.5 text-xs font-medium transition-colors", active ? "text-foreground" : "text-muted-foreground")}>
                 <Icon className={cn("h-5 w-5", active && "text-foreground")} />
                 <span className="truncate">{item.label}</span>
               </Link>
             );
           })}
           {hasMore && (
-            <button onClick={() => setOpen(true)} className="flex flex-1 flex-col items-center gap-0.5 px-1 py-2 text-[10px] font-medium text-muted-foreground">
+            <button onClick={() => setOpen(true)} className="flex flex-1 flex-col items-center gap-0.5 px-1 py-2.5 text-xs font-medium text-muted-foreground">
               <Grid className="h-5 w-5" />
               <span>More</span>
             </button>

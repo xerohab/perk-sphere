@@ -86,7 +86,7 @@ export default function Rewards() {
                     {r.description && <p className="mt-1 text-sm text-muted-foreground line-clamp-2">{r.description}</p>}
                     <div className="mt-3 flex items-center gap-2">
                       <span className="text-lg font-bold text-indigo-600 dark:text-indigo-400">{r.points_cost.toLocaleString()} pts</span>
-                      {r.required_rank && <RankBadge rank={r.required_rank} className="!text-[10px]" />}
+                      {r.required_rank && <RankBadge rank={r.required_rank} className="!text-xs" />}
                     </div>
                     <div className="mt-2 flex items-center gap-3 text-xs text-muted-foreground">
                       {!r.unlimited_stock && <span>{r.stock_available || 0} in stock</span>}

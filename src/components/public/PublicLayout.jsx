@@ -1,7 +1,8 @@
 import React, { useState, Suspense } from "react";
 import { Link, Outlet, useLocation, useNavigate } from "react-router-dom";
-import { Menu, X } from "lucide-react";
+import { Menu, X, Home, Globe, Info, LayoutDashboard, User } from "lucide-react";
 import { useAuth } from "@/lib/AuthContext";
+import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import ThemeToggle from "@/components/perk/ThemeToggle";
 import PageTransition, { ContentSpinner } from "@/components/perk/PageTransition";
@@ -94,7 +95,7 @@ export default function PublicLayout() {
         )}
       </header>
 
-      <main className="flex-1">
+      <main className="flex-1 pb-20 md:pb-0">
         <PageTransition>
           <Suspense fallback={<ContentSpinner />}>
             <Outlet />
@@ -146,6 +147,33 @@ export default function PublicLayout() {
           </div>
         </div>
       </footer>
+
+      {/* Mobile bottom tab bar */}
+      <nav className="safe-bottom fixed bottom-0 left-0 right-0 z-50 flex items-stretch justify-around border-t border-border bg-background/95 backdrop-blur md:hidden" style={{ paddingBottom: "env(safe-area-inset-bottom)" }}>
+        <Link to="/" className={cn("flex flex-1 flex-col items-center gap-0.5 px-1 py-2.5 text-xs font-medium transition-colors", location.pathname === "/" ? "text-foreground" : "text-muted-foreground")}>
+          <Home className="h-5 w-5" />
+          <span>Home</span>
+        </Link>
+        <Link to="/destinations" className={cn("flex flex-1 flex-col items-center gap-0.5 px-1 py-2.5 text-xs font-medium transition-colors", location.pathname.startsWith("/destinations") ? "text-foreground" : "text-muted-foreground")}>
+          <Globe className="h-5 w-5" />
+          <span>Destinations</span>
+        </Link>
+        <Link to="/about" className={cn("flex flex-1 flex-col items-center gap-0.5 px-1 py-2.5 text-xs font-medium transition-colors", location.pathname === "/about" ? "text-foreground" : "text-muted-foreground")}>
+          <Info className="h-5 w-5" />
+          <span>About</span>
+        </Link>
+        {isAuthenticated ? (
+          <Link to="/dashboard" className={cn("flex flex-1 flex-col items-center gap-0.5 px-1 py-2.5 text-xs font-medium transition-colors", location.pathname.startsWith("/dashboard") ? "text-foreground" : "text-muted-foreground")}>
+            <LayoutDashboard className="h-5 w-5" />
+            <span>Dashboard</span>
+          </Link>
+        ) : (
+          <Link to="/login" className={cn("flex flex-1 flex-col items-center gap-0.5 px-1 py-2.5 text-xs font-medium transition-colors", location.pathname.startsWith("/login") || location.pathname.startsWith("/register") ? "text-foreground" : "text-muted-foreground")}>
+            <User className="h-5 w-5" />
+            <span>Sign In</span>
+          </Link>
+        )}
+      </nav>
     </div>
   );
 }
