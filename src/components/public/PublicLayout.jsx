@@ -133,6 +133,13 @@ export default function PublicLayout() {
                 <li><Link to="/register" className="text-muted-foreground hover:text-foreground">Create Account</Link></li>
               </ul>
             </div>
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Legal</p>
+              <ul className="mt-3 space-y-2 text-sm">
+                <li><Link to="/privacy-policy" className="text-muted-foreground hover:text-foreground">Privacy Policy</Link></li>
+                <li><Link to="/terms-of-service" className="text-muted-foreground hover:text-foreground">Terms of Service</Link></li>
+              </ul>
+            </div>
           </div>
           <div className="mt-8 border-t border-border pt-6 text-xs text-muted-foreground">
             <p>© {new Date().getFullYear()} Perk Sphere. Activity tracking requires the relevant Perk Sphere client and your consent.</p>
