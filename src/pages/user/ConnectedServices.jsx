@@ -11,13 +11,18 @@ const SERVICES = [
 ];
 
 const ERROR_MESSAGES = {
-  not_configured: "This provider is not configured yet.",
+  provider_not_configured: "This provider is not configured yet.",
+  provider_error: "The provider returned an error. Please try again.",
   missing_params: "The connection request was incomplete.",
-  invalid_state: "The security state was invalid. Please try again.",
+  state_invalid: "The security state was invalid. Please try again.",
   state_used: "This connection link was already used. Please try again.",
   state_expired: "The connection link expired. Please try again.",
-  callback_failed: "Connection failed. Please try again.",
-  encryption_key_missing: "Server encryption is not configured."
+  token_exchange_failed: "Could not complete authorization. Please try again.",
+  provider_identity_failed: "Could not retrieve your account information. Please try again.",
+  credential_encryption_failed: "Server encryption error. Please contact support.",
+  credential_storage_failed: "Could not save your credentials. Please try again.",
+  connection_storage_failed: "Could not save your connection. Please try again.",
+  callback_failed: "Connection failed. Please try again."
 };
 
 export default function ConnectedServices() {

@@ -13,9 +13,16 @@ import {
 // service-only ConnectedServiceCredential entity, updates safe ConnectedService
 // metadata, then redirects to /connected-services with a non-sensitive status.
 // Tokens never appear in the redirect URL.
+//
+// Stage-specific error codes allow safe diagnosis without exposing secrets.
+
+function redirectError(baseUrl, provider, reason) {
+  return Response.redirect(`${baseUrl}/connected-services?status=error&provider=${provider}&reason=${reason}`, 302);
+}
+
 export default async function(req) {
   let provider = null;
-  let baseUrl = 'https://perk-sphere-hub.base44.app';
+  let baseUrl = 'https://perksphere.org';
 
   try {
     const base44 = createClientFromRequest(req);
@@ -31,105 +38,141 @@ export default async function(req) {
 
     const creds = getProviderSecrets(secrets, provider);
     if (!creds) {
-      return Response.redirect(`${baseUrl}/connected-services?status=error&provider=${provider}&reason=not_configured`, 302);
+      return redirectError(baseUrl, provider, 'provider_not_configured');
     }
     baseUrl = appBaseUrl(creds.redirectUri);
 
     if (error) {
-      return Response.redirect(`${baseUrl}/connected-services?status=error&provider=${provider}&reason=${encodeURIComponent(error)}`, 302);
+      console.error(`oauthCallback[${provider}] provider_error: ${error}`);
+      return redirectError(baseUrl, provider, 'provider_error');
     }
     if (!code || !state) {
-      return Response.redirect(`${baseUrl}/connected-services?status=error&provider=${provider}&reason=missing_params`, 302);
+      return redirectError(baseUrl, provider, 'missing_params');
     }
 
-    // 1. Validate state — must exist, not expired, not already used.
+    // Stage 1: Validate state — must exist, not expired, not already used.
     const stateHash = await sha256Hex(state);
     const states = await admin.entities.OAuthConnectionState.filter({ state_hash: stateHash, provider });
     const stateRec = (states || [])[0];
     if (!stateRec) {
-      return Response.redirect(`${baseUrl}/connected-services?status=error&provider=${provider}&reason=invalid_state`, 302);
+      return redirectError(baseUrl, provider, 'state_invalid');
     }
     if (stateRec.used_at) {
-      return Response.redirect(`${baseUrl}/connected-services?status=error&provider=${provider}&reason=state_used`, 302);
+      return redirectError(baseUrl, provider, 'state_used');
     }
     if (new Date(stateRec.expires_at) < new Date()) {
-      return Response.redirect(`${baseUrl}/connected-services?status=error&provider=${provider}&reason=state_expired`, 302);
+      return redirectError(baseUrl, provider, 'state_expired');
     }
 
-    // 2. Consume state (single use).
+    // Stage 2: Consume state (single use, before token exchange for CSRF safety).
     await admin.entities.OAuthConnectionState.update(stateRec.id, { used_at: new Date().toISOString() });
 
-    // 3. Exchange code for tokens server-side.
-    let tokenData, userInfo;
-    if (provider === 'google') {
-      tokenData = await exchangeGoogleCode(code, creds.redirectUri, stateRec.code_verifier, creds.clientId, creds.clientSecret);
-      userInfo = await getGoogleUserInfo(tokenData.access_token);
-    } else {
-      tokenData = await exchangeXCode(code, creds.redirectUri, stateRec.code_verifier, creds.clientId, creds.clientSecret);
-      userInfo = await getXUserInfo(tokenData.access_token);
+    // Stage 3: Token exchange.
+    let tokenData;
+    try {
+      if (provider === 'google') {
+        tokenData = await exchangeGoogleCode(code, creds.redirectUri, stateRec.code_verifier, creds.clientId, creds.clientSecret);
+      } else {
+        tokenData = await exchangeXCode(code, creds.redirectUri, stateRec.code_verifier, creds.clientId, creds.clientSecret);
+      }
+    } catch (e) {
+      console.error(`oauthCallback[${provider}] token_exchange_failed: ${e.message}`);
+      return redirectError(baseUrl, provider, 'token_exchange_failed');
     }
 
-    // 4. Encrypt tokens at rest.
+    // Stage 4: Identity lookup.
+    let userInfo;
+    try {
+      if (provider === 'google') {
+        userInfo = await getGoogleUserInfo(tokenData.access_token);
+      } else {
+        userInfo = await getXUserInfo(tokenData.access_token);
+      }
+    } catch (e) {
+      console.error(`oauthCallback[${provider}] provider_identity_failed: ${e.message}`);
+      return redirectError(baseUrl, provider, 'provider_identity_failed');
+    }
+
+    // Stage 5: Encrypt tokens at rest.
     const encKey = secrets.get('OAUTH_TOKEN_ENCRYPTION_KEY');
     if (!encKey) {
-      return Response.redirect(`${baseUrl}/connected-services?status=error&provider=${provider}&reason=encryption_key_missing`, 302);
+      console.error('oauthCallback: encryption_key_missing');
+      return redirectError(baseUrl, provider, 'credential_encryption_failed');
     }
-    const encAccess = await encryptToken(tokenData.access_token, encKey);
-    const encRefresh = await encryptToken(tokenData.refresh_token || '', encKey);
+    let encAccess, encRefresh;
+    try {
+      encAccess = await encryptToken(tokenData.access_token, encKey);
+      encRefresh = await encryptToken(tokenData.refresh_token || '', encKey);
+    } catch (e) {
+      console.error(`oauthCallback[${provider}] credential_encryption_failed: ${e.message}`);
+      return redirectError(baseUrl, provider, 'credential_encryption_failed');
+    }
+
     const now = new Date();
     const tokenExpiry = tokenData.expires_in
       ? new Date(now.getTime() + tokenData.expires_in * 1000).toISOString()
       : null;
 
-    // 5. Update safe ConnectedService metadata (service-only write).
-    const existingConn = await admin.entities.ConnectedService.filter({ user_id: stateRec.user_id, service: provider });
-    const connData = {
-      user_id: stateRec.user_id,
-      service: provider,
-      status: 'connected',
-      external_account_id: userInfo.provider_user_id,
-      account_handle: userInfo.provider_username || userInfo.provider_display_name || null,
-      connected_at: now.toISOString(),
-      provider_user_id: userInfo.provider_user_id,
-      provider_username: userInfo.provider_username,
-      provider_display_name: userInfo.provider_display_name,
-      provider_email: userInfo.provider_email,
-      token_expiry: tokenExpiry,
-      scopes: tokenData.scope || creds.scopes,
-      revoked_at: null
-    };
+    // Stage 6: Update safe ConnectedService metadata (service-only write).
     let connectedServiceId;
-    if (existingConn[0]) {
-      await admin.entities.ConnectedService.update(existingConn[0].id, connData);
-      connectedServiceId = existingConn[0].id;
-    } else {
-      const connRec = await admin.entities.ConnectedService.create(connData);
-      connectedServiceId = connRec.id;
+    try {
+      const existingConn = await admin.entities.ConnectedService.filter({ user_id: stateRec.user_id, service: provider });
+      const connData = {
+        user_id: stateRec.user_id,
+        service: provider,
+        status: 'connected',
+        external_account_id: userInfo.provider_user_id,
+        account_handle: userInfo.provider_username || userInfo.provider_display_name || null,
+        connected_at: now.toISOString(),
+        provider_user_id: userInfo.provider_user_id,
+        provider_username: userInfo.provider_username,
+        provider_display_name: userInfo.provider_display_name,
+        provider_email: userInfo.provider_email,
+        token_expiry: tokenExpiry,
+        scopes: tokenData.scope || creds.scopes,
+        revoked_at: null
+      };
+      if (existingConn[0]) {
+        await admin.entities.ConnectedService.update(existingConn[0].id, connData);
+        connectedServiceId = existingConn[0].id;
+      } else {
+        const connRec = await admin.entities.ConnectedService.create(connData);
+        connectedServiceId = connRec.id;
+      }
+    } catch (e) {
+      console.error(`oauthCallback[${provider}] connection_storage_failed: ${e.message}`);
+      return redirectError(baseUrl, provider, 'connection_storage_failed');
     }
 
-    // 6. Store encrypted credentials (service-only entity).
-    const existingCred = await admin.entities.ConnectedServiceCredential.filter({ user_id: stateRec.user_id, provider });
-    const credData = {
-      user_id: stateRec.user_id,
-      provider,
-      connected_service_id: connectedServiceId,
-      encrypted_access_token: encAccess.ciphertext,
-      access_token_iv: encAccess.iv,
-      encrypted_refresh_token: encRefresh.ciphertext,
-      refresh_token_iv: encRefresh.iv,
-      token_expiry: tokenExpiry,
-      scopes: tokenData.scope || creds.scopes,
-      provider_user_id: userInfo.provider_user_id,
-      revoked_at: null
-    };
-    if (existingCred[0]) {
-      await admin.entities.ConnectedServiceCredential.update(existingCred[0].id, credData);
-    } else {
-      await admin.entities.ConnectedServiceCredential.create(credData);
+    // Stage 7: Store encrypted credentials (service-only entity).
+    try {
+      const existingCred = await admin.entities.ConnectedServiceCredential.filter({ user_id: stateRec.user_id, provider });
+      const credData = {
+        user_id: stateRec.user_id,
+        provider,
+        connected_service_id: connectedServiceId,
+        encrypted_access_token: encAccess.ciphertext,
+        access_token_iv: encAccess.iv,
+        encrypted_refresh_token: encRefresh.ciphertext,
+        refresh_token_iv: encRefresh.iv,
+        token_expiry: tokenExpiry,
+        scopes: tokenData.scope || creds.scopes,
+        provider_user_id: userInfo.provider_user_id,
+        revoked_at: null
+      };
+      if (existingCred[0]) {
+        await admin.entities.ConnectedServiceCredential.update(existingCred[0].id, credData);
+      } else {
+        await admin.entities.ConnectedServiceCredential.create(credData);
+      }
+    } catch (e) {
+      console.error(`oauthCallback[${provider}] credential_storage_failed: ${e.message}`);
+      return redirectError(baseUrl, provider, 'credential_storage_failed');
     }
 
     return Response.redirect(`${baseUrl}/connected-services?status=connected&provider=${provider}`, 302);
   } catch (error) {
-    return Response.redirect(`${baseUrl}/connected-services?status=error&provider=${provider || 'google'}&reason=callback_failed`, 302);
+    console.error(`oauthCallback[${provider || 'unknown'}] unexpected_error: ${error.message}`);
+    return redirectError(baseUrl, provider || 'google', 'callback_failed');
   }
 }

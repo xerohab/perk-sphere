@@ -17,7 +17,7 @@ const PROVIDERS = {
     tokenUrl: 'https://api.twitter.com/2/oauth2/token',
     userInfoUrl: 'https://api.twitter.com/2/users/me?user.fields=id,name,username',
     revokeUrl: 'https://api.twitter.com/2/oauth2/revoke',
-    scopes: 'users.read offline.access',
+    scopes: 'users.read',
     secretNames: { clientId: 'X_CLIENT_ID', clientSecret: 'X_CLIENT_SECRET', redirectUri: 'X_REDIRECT_URI' }
   }
 };
@@ -102,7 +102,7 @@ export function isProviderConfigured(secrets, provider) {
 }
 
 export function appBaseUrl(redirectUri) {
-  try { return new URL(redirectUri).origin; } catch { return 'https://perk-sphere-hub.base44.app'; }
+  try { return new URL(redirectUri).origin; } catch { return 'https://perksphere.org'; }
 }
 
 // --- Auth URL builders ---
@@ -140,16 +140,21 @@ export async function exchangeGoogleCode(code, redirectUri, codeVerifier, client
 }
 
 export async function exchangeXCode(code, redirectUri, codeVerifier, clientId, clientSecret) {
-  const body = new URLSearchParams({
-    code, redirect_uri: redirectUri, grant_type: 'authorization_code', code_verifier: codeVerifier
-  });
+  // X OAuth 2.0 with PKCE requires client_id in the body (even for confidential clients).
+  // client_secret goes in the body too — Basic auth is NOT used for X's token endpoint.
+  const params = {
+    code, redirect_uri: redirectUri, grant_type: 'authorization_code',
+    code_verifier: codeVerifier, client_id: clientId
+  };
+  if (clientSecret) params.client_secret = clientSecret;
+  const body = new URLSearchParams(params);
   const res = await fetch(PROVIDERS.x.tokenUrl, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/x-www-form-urlencoded', Authorization: `Basic ${btoa(`${clientId}:${clientSecret}`)}` },
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
     body
   });
   const data = await res.json();
-  if (!res.ok) throw new Error(data.error_description || data.error || 'X token exchange failed');
+  if (!res.ok) throw new Error(`X token exchange failed: ${data.error_description || data.error || res.status}`);
   return data;
 }
 
@@ -194,13 +199,12 @@ export async function revokeGoogleToken(token) {
 
 export async function revokeXToken(token, clientId, clientSecret) {
   try {
+    const params = { token, client_id: clientId, token_type_hint: 'access_token' };
+    if (clientSecret) params.client_secret = clientSecret;
     await fetch(PROVIDERS.x.revokeUrl, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/x-www-form-urlencoded',
-        Authorization: `Basic ${btoa(`${clientId}:${clientSecret}`)}`
-      },
-      body: new URLSearchParams({ token, client_id: clientId, token_type_hint: 'access_token' })
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: new URLSearchParams(params)
     });
   } catch (_e) { /* non-fatal */ }
 }
