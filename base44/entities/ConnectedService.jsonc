@@ -6,7 +6,8 @@
       "type": "string"
     },
     "service": {
-      "type": "string"
+      "type": "string",
+      "description": "Provider key: google or x"
     },
     "account_handle": {
       "type": "string"
@@ -25,6 +26,32 @@
       "type": "string"
     },
     "connected_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "provider_user_id": {
+      "type": "string",
+      "description": "Authoritative external identity from the provider (e.g. Google sub, X user id)"
+    },
+    "provider_username": {
+      "type": "string"
+    },
+    "provider_display_name": {
+      "type": "string"
+    },
+    "provider_email": {
+      "type": "string"
+    },
+    "token_expiry": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Non-secret metadata: when the access token expires"
+    },
+    "scopes": {
+      "type": "string",
+      "description": "Space-separated scopes granted by the provider"
+    },
+    "revoked_at": {
       "type": "string",
       "format": "date-time"
     }
@@ -47,40 +74,19 @@
       ]
     },
     "create": {
-      "$or": [
-        {
-          "data.user_id": "{{user.id}}"
-        },
-        {
-          "user_condition": {
-            "role": "admin"
-          }
-        }
-      ]
+      "user_condition": {
+        "role": "service_only"
+      }
     },
     "update": {
-      "$or": [
-        {
-          "data.user_id": "{{user.id}}"
-        },
-        {
-          "user_condition": {
-            "role": "admin"
-          }
-        }
-      ]
+      "user_condition": {
+        "role": "service_only"
+      }
     },
     "delete": {
-      "$or": [
-        {
-          "data.user_id": "{{user.id}}"
-        },
-        {
-          "user_condition": {
-            "role": "admin"
-          }
-        }
-      ]
+      "user_condition": {
+        "role": "service_only"
+      }
     }
   }
 }
