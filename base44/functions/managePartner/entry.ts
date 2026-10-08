@@ -15,7 +15,8 @@ const ACTION_PERMS = {
   delete: 'partners.manage',
   rotateCredential: 'partners.manage',
   revokeCredential: 'partners.manage',
-  setStatus: 'partners.manage'
+  setStatus: 'partners.manage',
+  updateSetup: 'partners.manage'
 };
 
 const SYSTEM_FIELDS = ['id', 'created_date', 'updated_date', 'created_by', 'created_by_id', 'is_sample', 'partner_key_id', 'partner_secret_hash', 'partner_secret'];
@@ -46,12 +47,24 @@ export default async function(req) {
       const payload = clean(data);
       if (!payload.name) return Response.json({ error: 'Name is required' }, { status: 400 });
       if (!payload.partner_type) return Response.json({ error: 'Partner type is required' }, { status: 400 });
-      // New integrations always default to Pending/Disabled — no reward-bearing activity until approved.
-      payload.integration_status = 'pending';
+      // New integrations always default to Setup Required / Disabled — no reward-bearing
+      // activity until the Linux API is configured, the partner implements event submission,
+      // a verification test passes, and an administrator activates the integration.
+      payload.integration_status = 'setup_required';
       payload.active = false;
       payload.connection_health = 'unconfigured';
       payload.total_events_received = 0;
       payload.total_delivery_failures = 0;
+      if (!payload.integration_kit_type) payload.integration_kit_type = 'universal_api';
+      // Auto-complete the two Base44-side steps; external steps remain pending.
+      payload.setup_checklist = {
+        base44_registered: true,
+        credentials_generated: true,
+        linux_api_configured: false,
+        partner_implemented: false,
+        verification_passed: false,
+        activated: false
+      };
       // Generate credentials
       const keyId = generatePartnerKeyId();
       const secret = generatePartnerSecret();
@@ -86,8 +99,16 @@ export default async function(req) {
 
     if (action === 'setStatus') {
       const before = await admin.entities.PartnerIntegration.get(partnerId);
-      const validStatuses = ['pending', 'active', 'suspended', 'disabled', 'archived'];
+      const validStatuses = ['pending', 'setup_required', 'active', 'suspended', 'disabled', 'archived'];
       if (!validStatuses.includes(status)) return Response.json({ error: 'Invalid status' }, { status: 400 });
+      // Prevent activation until all setup steps are verified complete.
+      if (status === 'active') {
+        const cl = before.setup_checklist || {};
+        const setupComplete = cl.linux_api_configured && cl.partner_implemented && cl.verification_passed;
+        if (!setupComplete) {
+          return Response.json({ error: 'Cannot activate: setup checklist is not complete. Complete the Linux API configuration, partner implementation, and verification test first.' }, { status: 400 });
+        }
+      }
       const isActive = status === 'active';
       const record = await admin.entities.PartnerIntegration.update(partnerId, { integration_status: status, active: isActive });
       await writeAudit(admin, { adminId: user.id, action: 'partner_status_changed', entityType: 'PartnerIntegration', entityId: partnerId, previous: { integration_status: before.integration_status }, next: { integration_status: status } });
@@ -131,6 +152,27 @@ export default async function(req) {
       await admin.entities.PartnerIntegration.update(partnerId, { integration_status: 'disabled', active: false });
       await writeAudit(admin, { adminId: user.id, action: 'partner_credential_revoked', entityType: 'PartnerIntegration', entityId: partnerId });
       return Response.json({ ok: true });
+    }
+
+    if (action === 'updateSetup') {
+      const before = await admin.entities.PartnerIntegration.get(partnerId);
+      const checklist = data?.setup_checklist || {};
+      const linuxApiId = data?.linux_api_partner_id;
+      const updateFields = { setup_checklist: checklist };
+      if (linuxApiId !== undefined) updateFields.linux_api_partner_id = linuxApiId;
+      // If all steps are complete, the admin can activate; if external steps are
+      // incomplete, force the status to setup_required so it cannot be accidentally
+      // left active without verification.
+      const allStepsDone = checklist.base44_registered && checklist.credentials_generated &&
+        checklist.linux_api_configured && checklist.partner_implemented &&
+        checklist.verification_passed && checklist.activated;
+      if (!allStepsDone && before.integration_status === 'active') {
+        updateFields.integration_status = 'setup_required';
+        updateFields.active = false;
+      }
+      const record = await admin.entities.PartnerIntegration.update(partnerId, updateFields);
+      await writeAudit(admin, { adminId: user.id, action: 'partner_setup_updated', entityType: 'PartnerIntegration', entityId: partnerId, previous: { setup_checklist: before.setup_checklist }, next: updateFields });
+      return Response.json({ ok: true, record });
     }
 
     if (action === 'delete') {

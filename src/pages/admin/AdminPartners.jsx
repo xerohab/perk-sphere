@@ -1,10 +1,12 @@
 import React, { useEffect, useState } from "react";
 import { base44 } from "@/api/base44Client";
 import { useToast } from "@/components/ui/use-toast";
-import { Plus, Pencil, Trash2, KeyRound, Ban, AlertTriangle, ExternalLink, Activity } from "lucide-react";
+import { Plus, Pencil, Trash2, KeyRound, Ban, AlertTriangle, ExternalLink, Activity, Package, Settings2 } from "lucide-react";
 import PageHeader from "@/components/perk/PageHeader";
 import EmptyState from "@/components/perk/EmptyState";
 import ConfirmDialog from "@/components/perk/ConfirmDialog";
+import PartnerIntegrationKits from "@/components/perk/PartnerIntegrationKits";
+import PartnerSetupGuide from "@/components/perk/PartnerSetupGuide";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -16,6 +18,13 @@ import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogClose
 } from "@/components/ui/dialog";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+
+const KIT_TYPES = [
+  { value: "universal_api", label: "Universal API Kit" },
+  { value: "wordpress_woocommerce", label: "WordPress / WooCommerce" },
+  { value: "streaming_sdk", label: "Streaming SDK" },
+  { value: "custom", label: "Custom" }
+];
 
 const PARTNER_TYPES = [
   { value: "custom_website", label: "Custom Website" },
@@ -34,6 +43,7 @@ const ALL_EVENT_TYPES = [
 
 const STATUS_STYLES = {
   pending: "bg-slate-100 text-slate-700 dark:bg-slate-500/15 dark:text-slate-300",
+  setup_required: "bg-blue-100 text-blue-700 dark:bg-blue-500/15 dark:text-blue-400",
   active: "bg-emerald-100 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-400",
   suspended: "bg-amber-100 text-amber-700 dark:bg-amber-500/15 dark:text-amber-400",
   disabled: "bg-red-100 text-red-700 dark:bg-red-500/15 dark:text-red-400",
@@ -48,7 +58,7 @@ const HEALTH_STYLES = {
 };
 
 const empty = {
-  name: "", partner_type: "custom_website", website_url: "", description: "", logo: "",
+  name: "", partner_type: "custom_website", integration_kit_type: "universal_api", website_url: "", description: "", logo: "",
   verified_domains: [], supported_event_types: [], allowed_task_types: [],
   setup_instructions: ""
 };
@@ -62,6 +72,7 @@ export default function AdminPartners() {
   const [form, setForm] = useState(empty);
   const [saving, setSaving] = useState(false);
   const [credentialResult, setCredentialResult] = useState(null);
+  const [setupGuidePartner, setSetupGuidePartner] = useState(null);
   const [activeTab, setActiveTab] = useState("partners");
 
   const load = async (silent) => {
@@ -90,6 +101,7 @@ export default function AdminPartners() {
       const payload = {
         name: form.name,
         partner_type: form.partner_type,
+        integration_kit_type: form.integration_kit_type,
         website_url: form.website_url,
         description: form.description,
         logo: form.logo,
@@ -157,6 +169,16 @@ export default function AdminPartners() {
     }
   };
 
+  const updateSetup = async (checklist) => {
+    try {
+      await base44.functions.invoke("managePartner", { action: "updateSetup", partnerId: setupGuidePartner.id, data: { setup_checklist: checklist, linux_api_partner_id: checklist.linux_api_partner_id } });
+      load(true);
+    } catch (e) {
+      toast({ title: "Failed", description: e?.response?.data?.error || e.message, variant: "destructive" });
+      throw e;
+    }
+  };
+
   const toggleEventType = (et) => {
     const current = form.supported_event_types || [];
     setForm({ ...form, supported_event_types: current.includes(et) ? current.filter((x) => x !== et) : [...current, et] });
@@ -173,6 +195,7 @@ export default function AdminPartners() {
       <Tabs value={activeTab} onValueChange={setActiveTab}>
         <TabsList>
           <TabsTrigger value="partners">Partners</TabsTrigger>
+          <TabsTrigger value="kits"><Package className="mr-1 h-4 w-4" /> Integration Kits</TabsTrigger>
           <TabsTrigger value="events"><Activity className="mr-1 h-4 w-4" /> Event History</TabsTrigger>
         </TabsList>
 
@@ -201,8 +224,26 @@ export default function AdminPartners() {
                     <span className="text-muted-foreground">{p.total_events_received || 0} events</span>
                   </div>
                   {p.partner_key_id && <p className="mt-2 font-mono text-xs text-muted-foreground">Key: {p.partner_key_id.slice(0, 20)}…</p>}
+                  {p.integration_kit_type && p.integration_kit_type !== "universal_api" && (
+                    <p className="mt-1 text-xs text-muted-foreground">Kit: {KIT_TYPES.find((k) => k.value === p.integration_kit_type)?.label || p.integration_kit_type}</p>
+                  )}
+                  {p.integration_status === "setup_required" && (() => {
+                    const cl = p.setup_checklist || {};
+                    const steps = ["linux_api_configured", "partner_implemented", "verification_passed", "activated"];
+                    const done = steps.filter((s) => cl[s]).length;
+                    return (
+                      <div className="mt-2">
+                        <div className="h-1.5 w-full overflow-hidden rounded-full bg-secondary">
+                          <div className="h-full rounded-full bg-blue-500 transition-all" style={{ width: `${(done / steps.length) * 100}%` }} />
+                        </div>
+                        <p className="mt-1 text-xs text-muted-foreground">Setup {done}/{steps.length}</p>
+                      </div>
+                    );
+                  })()}
                   <div className="mt-4 flex flex-wrap gap-1">
                     <Button variant="outline" size="sm" onClick={() => openEdit(p)}><Pencil className="mr-1 h-3.5 w-3.5" /> Edit</Button>
+                    <Button variant="outline" size="sm" onClick={() => setSetupGuidePartner(p)}><Settings2 className="mr-1 h-3.5 w-3.5" /> Setup</Button>
+                    {p.integration_status === "setup_required" && <Button size="sm" onClick={() => setStatus(p, "active")} title="Complete the setup checklist first">Activate</Button>}
                     {p.integration_status === "pending" && <Button size="sm" onClick={() => setStatus(p, "active")}>Activate</Button>}
                     {p.integration_status === "active" && <Button variant="outline" size="sm" onClick={() => setStatus(p, "suspended")}>Suspend</Button>}
                     {p.integration_status === "suspended" && <Button size="sm" onClick={() => setStatus(p, "active")}>Resume</Button>}
@@ -214,6 +255,10 @@ export default function AdminPartners() {
               ))}
             </div>
           )}
+        </TabsContent>
+
+        <TabsContent value="kits" className="mt-6">
+          <PartnerIntegrationKits />
         </TabsContent>
 
         <TabsContent value="events" className="mt-6">
@@ -265,6 +310,14 @@ export default function AdminPartners() {
                 <SelectContent>{PARTNER_TYPES.map((t) => <SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>)}</SelectContent>
               </Select>
             </div>
+            <div>
+              <Label>Integration Kit</Label>
+              <Select value={form.integration_kit_type} onValueChange={(v) => setForm({ ...form, integration_kit_type: v })}>
+                <SelectTrigger className="mt-1.5"><SelectValue /></SelectTrigger>
+                <SelectContent>{KIT_TYPES.map((k) => <SelectItem key={k.value} value={k.value}>{k.label}</SelectItem>)}</SelectContent>
+              </Select>
+              <p className="mt-1 text-xs text-muted-foreground">Universal API is available now. WordPress and Streaming kits require external packages (Coming Soon).</p>
+            </div>
             <div><Label>Website URL</Label><Input value={form.website_url} onChange={(e) => setForm({ ...form, website_url: e.target.value })} className="mt-1.5" placeholder="https://example.com" /></div>
             <div><Label>Description</Label><Textarea value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} className="mt-1.5" /></div>
             <div><Label>Logo URL (optional)</Label><Input value={form.logo} onChange={(e) => setForm({ ...form, logo: e.target.value })} className="mt-1.5" placeholder="https://..." /></div>
@@ -305,15 +358,27 @@ export default function AdminPartners() {
               <div><Label>Partner Key ID</Label><Input readOnly value={credentialResult.partner_key_id} className="mt-1.5 font-mono" /></div>
               <div><Label>Partner Secret</Label><Input readOnly value={credentialResult.partner_secret} className="mt-1.5 font-mono" /></div>
               <div className="rounded-lg bg-secondary p-3 text-xs text-muted-foreground">
-                <p className="font-medium">Integration endpoint:</p>
-                <p className="mt-1 font-mono">POST https://perk-sphere-hub.base44.app/functions/partnerEventIngest</p>
+                <p className="font-medium">Integration endpoint (Linux API):</p>
+                <p className="mt-1 font-mono">POST https://api.perksphere.org/events</p>
                 <p className="mt-2">Headers: X-PS-Partner-Key, X-PS-Timestamp, X-PS-Nonce, X-PS-Signature</p>
+                <p className="mt-2 text-amber-700 dark:text-amber-400">Configure these credentials on the Linux API, then complete the setup checklist before activating.</p>
               </div>
             </div>
             <DialogFooter><Button onClick={() => setCredentialResult(null)}>Done</Button></DialogFooter>
           </DialogContent>
         </Dialog>
       )}
+
+      {/* Setup Guide Dialog */}
+      <Dialog open={!!setupGuidePartner} onOpenChange={(o) => !o && setSetupGuidePartner(null)}>
+        <DialogContent className="max-h-[90vh] max-w-2xl overflow-y-auto">
+          <DialogHeader><DialogTitle>Setup Guide — {setupGuidePartner?.name}</DialogTitle></DialogHeader>
+          {setupGuidePartner && (
+            <PartnerSetupGuide partner={setupGuidePartner} onUpdateChecklist={updateSetup} />
+          )}
+          <DialogFooter><DialogClose asChild><Button variant="outline">Close</Button></DialogClose></DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

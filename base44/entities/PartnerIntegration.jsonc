@@ -16,6 +16,17 @@
       ],
       "default": "custom_website"
     },
+    "integration_kit_type": {
+      "type": "string",
+      "enum": [
+        "universal_api",
+        "wordpress_woocommerce",
+        "streaming_sdk",
+        "custom"
+      ],
+      "default": "universal_api",
+      "description": "Which integration kit/package this partner uses to send events to the Linux API"
+    },
     "website_url": {
       "type": "string"
     },
@@ -35,6 +46,7 @@
       "type": "string",
       "enum": [
         "pending",
+        "setup_required",
         "active",
         "suspended",
         "disabled",
@@ -61,6 +73,14 @@
     "partner_secret_hash": {
       "type": "string",
       "description": "SHA-256 hash of the HMAC secret for identification only \u2014 never used for verification"
+    },
+    "linux_api_partner_id": {
+      "type": "string",
+      "description": "Partner identifier registered on the Linux API side once credentials are configured there"
+    },
+    "setup_checklist": {
+      "type": "object",
+      "description": "Tracks onboarding steps: base44_registered, credentials_generated, linux_api_configured, partner_implemented, verification_passed, activated"
     },
     "connection_health": {
       "type": "string",
