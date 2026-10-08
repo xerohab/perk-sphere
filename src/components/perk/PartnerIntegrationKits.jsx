@@ -1,6 +1,5 @@
 import React from "react";
 import { Code2, ShoppingBag, Radio, FileText, CheckCircle2, Clock, ArrowRight } from "lucide-react";
-import { Badge } from "@/components/ui/badge";
 
 // Catalog of integration kits/packages available to partner websites.
 // The Universal API Kit is available now (documentation + HMAC signing spec).
