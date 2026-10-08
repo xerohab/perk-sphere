@@ -28,6 +28,43 @@ export function requiredSecondsFor(task) {
   return (task && task.required_seconds) || 0;
 }
 
+// Effective required seconds, capped by max_credited_seconds for live streams.
+// Reaching the cap does NOT prove the broadcast ended — it only limits credited time.
+export function effectiveRequiredSeconds(task) {
+  const req = requiredSecondsFor(task);
+  if (isLiveStreamTask(task) && task.max_credited_seconds > 0) {
+    return Math.min(req, task.max_credited_seconds);
+  }
+  return req;
+}
+
+// Whether a live stream task requires a broadcast-end event for completion.
+export function requiresBroadcastEnd(task) {
+  if (!isLiveStreamTask(task)) return false;
+  const mode = task.completion_mode || 'fixed_duration';
+  return mode === 'until_broadcast_end' || mode === 'duration_plus_end';
+}
+
+// Whether a live stream task requires a minimum verified duration for completion.
+export function requiresMinDuration(task) {
+  if (!isLiveStreamTask(task)) return false;
+  const mode = task.completion_mode || 'fixed_duration';
+  return mode === 'fixed_duration' || mode === 'duration_plus_end';
+}
+
+// Check if the live stream completion criteria are met given eligible seconds
+// and whether a verified broadcast-end event has been received.
+export function isLiveStreamCompletionReady(task, aggregateEligible, broadcastEnded) {
+  if (!isLiveStreamTask(task)) return true; // non-live-stream tasks don't use this
+  const mode = task.completion_mode || 'fixed_duration';
+  const req = effectiveRequiredSeconds(task);
+  const durationMet = req > 0 ? aggregateEligible >= req : true;
+  if (mode === 'fixed_duration') return durationMet;
+  if (mode === 'until_broadcast_end') return broadcastEnded && durationMet;
+  if (mode === 'duration_plus_end') return durationMet && broadcastEnded;
+  return false;
+}
+
 export function deriveRewardType(task) {
   if (!task) return 'none';
   if (task.reward_type && task.reward_type !== 'none') return task.reward_type;

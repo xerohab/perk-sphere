@@ -79,7 +79,17 @@ export default function AdminTasks() {
   const cols = [
     { key: "name", label: "Task", render: (t) => (<div><p className="font-medium">{t.name}</p><p className="text-xs text-muted-foreground">{typeLabel(t.task_type)}{t.verification_mode === "trusted_automatic" ? " · Trusted Auto" : t.verification_mode === "manual" ? " · Manual" : ""}</p></div>) },
     { key: "destination_name", label: "Destination", render: (t) => t.destination_name || "—" },
-    { key: "points_reward", label: "Reward", render: (t) => <span className="text-xs">{t.points_reward > 0 ? `${t.points_reward}pts ` : ""}{t.xp_reward > 0 ? `${t.xp_reward}XP` : ""}{!t.points_reward && !t.xp_reward ? "—" : ""}</span> },
+    { key: "points_reward", label: "Reward", render: (t) => {
+      const hasReward = t.points_reward > 0 || t.xp_reward > 0;
+      const untrusted = hasReward && t.verification_mode !== "trusted_automatic" && t.active && !t.archived;
+      return <span className="text-xs">{hasReward ? `${t.points_reward > 0 ? `${t.points_reward}pts ` : ""}${t.xp_reward > 0 ? `${t.xp_reward}XP` : ""}` : "—"}{untrusted && <span className="ml-1 inline-flex items-center rounded-full bg-amber-100 px-1.5 py-0.5 text-[10px] font-medium text-amber-700 dark:bg-amber-500/15 dark:text-amber-400" title="Reward-bearing task without trusted verification">⚠</span>}</span>;
+    } },
+    { key: "completion_limit_type", label: "Frequency", render: (t) => {
+      const labels = { once_ever: "Once", once_daily: "Daily", once_weekly: "Weekly", once_campaign: "Per Campaign", unlimited: "Unlimited", custom_max: `Max ${t.max_completions || 0}` };
+      const colors = { once_ever: "bg-slate-100 text-slate-700 dark:bg-slate-500/15 dark:text-slate-300", once_daily: "bg-blue-100 text-blue-700 dark:bg-blue-500/15 dark:text-blue-300", once_weekly: "bg-cyan-100 text-cyan-700 dark:bg-cyan-500/15 dark:text-cyan-300", unlimited: "bg-amber-100 text-amber-700 dark:bg-amber-500/15 dark:text-amber-300", once_campaign: "bg-violet-100 text-violet-700 dark:bg-violet-500/15 dark:text-violet-300", custom_max: "bg-orange-100 text-orange-700 dark:bg-orange-500/15 dark:text-orange-300" };
+      const l = labels[t.completion_limit_type] || "Once";
+      return <span className={`inline-flex rounded-full px-2 py-0.5 text-xs font-medium ${(colors[t.completion_limit_type] || colors.once_ever)}`}>{l}</span>;
+    } },
     { key: "active", label: "Status", render: (t) => t.archived ? <StatusBadge status="archived" /> : <StatusBadge status={t.active ? "active" : "inactive"} /> },
     { key: "featured", label: "Featured", render: (t) => t.featured ? "★" : "" },
     { key: "_action", label: "", align: "right", render: (t) => (

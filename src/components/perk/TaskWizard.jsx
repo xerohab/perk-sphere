@@ -13,7 +13,7 @@ import {
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter
 } from "@/components/ui/dialog";
-import { TASK_TYPES, COMPLETION_LIMITS, REWARD_TYPES, VERIFICATION_MODES } from "@/lib/task-utils";
+import { TASK_TYPES, COMPLETION_LIMITS, REWARD_TYPES, VERIFICATION_MODES, COMPLETION_MODES, BROADCAST_STATUSES } from "@/lib/task-utils";
 
 const STEPS = ["Information", "Destination", "Requirements", "Reward", "Limits", "Schedule", "Review"];
 const VIEWING_TYPES = ["watch_video", "live_stream", "spend_time"];
@@ -23,6 +23,8 @@ const empty = {
   destination_id: "", destination_type: "", destination_name: "", destination_platform: "",
   content_id: "", content_url: "", content_title: "", channel_name: "",
   required_seconds: 0, required_percentage: 0, require_continuous: false,
+  completion_mode: "fixed_duration", max_credited_seconds: 0, absence_tolerance_seconds: 0,
+  broadcast_status: "scheduled", partner_integration_id: "",
   event_start: "", event_end: "", available_from: "", available_until: "", timezone: "",
   points_reward: 0, xp_reward: 0, achievement_id: "", reward_type: "none",
   completion_limit_type: "once_ever", max_completions: 0, cooldown_seconds: 0,
@@ -93,7 +95,7 @@ export default function TaskWizard({ open, onClose, editing, onSaved }) {
       const payload = { ...form };
       // Clean empty date strings
       ["event_start", "event_end", "available_from", "available_until"].forEach((k) => { if (!payload[k]) delete payload[k]; });
-      ["required_seconds", "required_percentage", "max_completions", "cooldown_seconds", "points_reward", "xp_reward"].forEach((k) => { payload[k] = Number(payload[k]) || 0; });
+      ["required_seconds", "required_percentage", "max_completions", "cooldown_seconds", "points_reward", "xp_reward", "max_credited_seconds", "absence_tolerance_seconds"].forEach((k) => { payload[k] = Number(payload[k]) || 0; });
       const action = editing ? "update" : "create";
       await base44.functions.invoke("manageTask", { action, taskId: editing?.id, data: payload, confirmDisallowed });
       toast({ title: editing ? "Task updated" : "Task created" });
@@ -215,6 +217,27 @@ export default function TaskWizard({ open, onClose, editing, onSaved }) {
                 <>
                   <div><Label>Event Start</Label><Input type="datetime-local" value={form.event_start} onChange={(e) => set("event_start", e.target.value)} className="mt-1.5" /></div>
                   <div><Label>Event End</Label><Input type="datetime-local" value={form.event_end} onChange={(e) => set("event_end", e.target.value)} className="mt-1.5" /></div>
+                  <div>
+                    <Label>Completion Mode</Label>
+                    <Select value={form.completion_mode} onValueChange={(v) => set("completion_mode", v)}>
+                      <SelectTrigger className="mt-1.5"><SelectValue /></SelectTrigger>
+                      <SelectContent>{COMPLETION_MODES.map((m) => <SelectItem key={m.value} value={m.value}>{m.label}</SelectItem>)}</SelectContent>
+                    </Select>
+                    <p className="mt-1 text-xs text-muted-foreground">
+                      {form.completion_mode === "fixed_duration" ? "Complete when the required verified viewing time is reached." :
+                       form.completion_mode === "until_broadcast_end" ? "Requires a trusted broadcast-end event and sufficient verified attendance. Joining moments before the stream ends does not qualify." :
+                       "Requires both the minimum verified duration AND the broadcast to end."}
+                    </p>
+                  </div>
+                  <div>
+                    <Label>Broadcast Status</Label>
+                    <Select value={form.broadcast_status} onValueChange={(v) => set("broadcast_status", v)}>
+                      <SelectTrigger className="mt-1.5"><SelectValue /></SelectTrigger>
+                      <SelectContent>{BROADCAST_STATUSES.map((s) => <SelectItem key={s.value} value={s.value}>{s.label}</SelectItem>)}</SelectContent>
+                    </Select>
+                  </div>
+                  <div><Label>Maximum Credited Viewing Time (seconds, 0 = unlimited)</Label><Input type="number" value={form.max_credited_seconds} onChange={(e) => set("max_credited_seconds", e.target.value)} className="mt-1.5" placeholder="3600 = 1 hour" /><p className="mt-1 text-xs text-muted-foreground">Caps credited time but does not prove the broadcast ended.</p></div>
+                  <div><Label>Absence Tolerance (seconds)</Label><Input type="number" value={form.absence_tolerance_seconds} onChange={(e) => set("absence_tolerance_seconds", e.target.value)} className="mt-1.5" placeholder="120 = 2 minutes" /><p className="mt-1 text-xs text-muted-foreground">Allowed interruption or absence before viewing is considered broken.</p></div>
                 </>
               )}
               {!isViewing && (
@@ -272,6 +295,15 @@ export default function TaskWizard({ open, onClose, editing, onSaved }) {
                 </Select>
                 <p className="mt-1 text-xs text-muted-foreground">Trusted Automatic completes the task server-side when the Linux API reports enough verified activity. Client-Assisted requires the user's device to verify viewing. Manual needs an admin.</p>
               </div>
+              {form.active && (form.points_reward > 0 || form.xp_reward > 0) && form.verification_mode !== "trusted_automatic" && (
+                <div className="flex items-start gap-3 rounded-lg border border-amber-300 bg-amber-50 p-4 dark:border-amber-700 dark:bg-amber-950/30">
+                  <AlertTriangle className="mt-0.5 h-5 w-5 flex-shrink-0 text-amber-600 dark:text-amber-400" />
+                  <div>
+                    <p className="text-sm font-medium text-amber-800 dark:text-amber-300">Reward-bearing task without trusted verification</p>
+                    <p className="mt-1 text-xs text-amber-700 dark:text-amber-400">This task awards {form.points_reward > 0 ? `${form.points_reward} points` : ""} {form.xp_reward > 0 ? `${form.xp_reward} XP` : ""} but uses {VERIFICATION_MODES.find((m) => m.value === form.verification_mode)?.label}. Trusted Automatic verification is recommended for reward-bearing tasks to prevent abuse. Consider using Trusted Automatic or removing the reward.</p>
+                  </div>
+                </div>
+              )}
               <div className="flex items-center justify-between rounded-lg border border-border p-3"><Label>Active</Label><Switch checked={form.active} onCheckedChange={(c) => set("active", c)} /></div>
               <div className="flex items-center justify-between rounded-lg border border-border p-3"><Label>Publicly Visible</Label><Switch checked={form.publicly_visible} onCheckedChange={(c) => set("publicly_visible", c)} /></div>
               <div className="flex items-center justify-between rounded-lg border border-border p-3"><Label>Featured (shown on homepage)</Label><Switch checked={form.featured} onCheckedChange={(c) => set("featured", c)} /></div>

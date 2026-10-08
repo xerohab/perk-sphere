@@ -66,6 +66,40 @@
       "type": "boolean",
       "default": false
     },
+    "completion_mode": {
+      "type": "string",
+      "enum": [
+        "fixed_duration",
+        "until_broadcast_end",
+        "duration_plus_end"
+      ],
+      "default": "fixed_duration",
+      "description": "Live stream completion mode: fixed_duration = reach required seconds; until_broadcast_end = watch until broadcast ends; duration_plus_end = both"
+    },
+    "max_credited_seconds": {
+      "type": "number",
+      "default": 0,
+      "description": "Maximum credited viewing time for live streams (does not prove broadcast ended)"
+    },
+    "absence_tolerance_seconds": {
+      "type": "number",
+      "default": 0,
+      "description": "Allowed interruption or absence tolerance for live stream viewing"
+    },
+    "broadcast_status": {
+      "type": "string",
+      "enum": [
+        "scheduled",
+        "live",
+        "ended",
+        "cancelled"
+      ],
+      "default": "scheduled"
+    },
+    "partner_integration_id": {
+      "type": "string",
+      "description": "Reference to PartnerIntegration for partner-backed tasks"
+    },
     "event_start": {
       "type": "string",
       "format": "date-time"

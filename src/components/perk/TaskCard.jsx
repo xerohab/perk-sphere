@@ -74,6 +74,15 @@ export default function TaskCard({ task, progress, onStart, onComplete, starting
           </p>
         )}
 
+        {/* Live stream completion mode */}
+        {task.task_type === "live_stream" && task.completion_mode && task.completion_mode !== "fixed_duration" && (
+          <p className="mt-1 flex items-center gap-1 text-xs text-muted-foreground">
+            <Radio className="h-3 w-3" />
+            {task.completion_mode === "until_broadcast_end" ? "Watch until broadcast ends" : "Min duration + broadcast end"}
+            {task.max_credited_seconds > 0 && ` · max ${formatSeconds(task.max_credited_seconds)}`}
+          </p>
+        )}
+
         {/* Progress */}
         {isInProgress && (
           <div className="mt-3">

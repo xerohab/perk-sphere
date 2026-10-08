@@ -52,6 +52,19 @@ export const VERIFICATION_MODES = [
   { value: "manual", label: "Manual (Admin only)" }
 ];
 
+export const COMPLETION_MODES = [
+  { value: "fixed_duration", label: "Fixed Viewing Duration" },
+  { value: "until_broadcast_end", label: "Watch Until Broadcast Ends" },
+  { value: "duration_plus_end", label: "Minimum Duration + Broadcast End" }
+];
+
+export const BROADCAST_STATUSES = [
+  { value: "scheduled", label: "Scheduled" },
+  { value: "live", label: "Live" },
+  { value: "ended", label: "Ended" },
+  { value: "cancelled", label: "Cancelled" }
+];
+
 export function isTrustedProgress(progress) {
   if (!progress) return false;
   return progress.source === "trusted_bridge" || progress.source === "trusted_automatic" || progress.verification_status === "verified" && progress.source !== "user_started";

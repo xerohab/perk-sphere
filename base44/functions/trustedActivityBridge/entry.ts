@@ -10,7 +10,9 @@ import {
   isEventWindowOpen,
   canCompleteAgain,
   isInCooldown,
-  requiredSecondsFor
+  requiredSecondsFor,
+  effectiveRequiredSeconds,
+  isLiveStreamCompletionReady
 } from "../../shared/tasks.ts";
 import { validateBrowserUrl, domainsFor } from "../../shared/destinations.ts";
 
@@ -293,7 +295,8 @@ export default async function (req) {
       .reduce((sum, s) => sum + (s.highest_eligible_seconds || 0), 0);
 
     const reqSec = requiredSecondsFor(task);
-    const pct = reqSec > 0 ? Math.min(100, Math.round((aggregateEligible / reqSec) * 100)) : 0;
+    const effReq = isLiveStreamTask(task) ? effectiveRequiredSeconds(task) : reqSec;
+    const pct = effReq > 0 ? Math.min(100, Math.round((aggregateEligible / effReq) * 100)) : 0;
 
     // Find or create the in-progress TaskProgress record.
     const allProgress = await admin.entities.TaskProgress.filter({ user_id: user.id, task_id });
@@ -306,7 +309,7 @@ export default async function (req) {
         task_name: task.name,
         status: "in_progress",
         eligible_seconds: aggregateEligible,
-        required_seconds: reqSec,
+        required_seconds: effReq,
         progress_percentage: pct,
         started_at: now.toISOString(),
         last_activity: now.toISOString(),
@@ -325,7 +328,23 @@ export default async function (req) {
     // 7. Automatic completion for trusted_automatic tasks.
     const isTrustedAuto = (task.verification_mode || "client_assisted") === "trusted_automatic";
     const isAutoCompletableType = AUTO_COMPLETABLE_TYPES.has(task.task_type);
-    const requirementMet = reqSec > 0 ? aggregateEligible >= reqSec : (event_type === "SESSION_ENDED" || event_type === "TASK_PROGRESS_VERIFIED") && incomingState === "verified";
+    // For live streams, completion depends on the configured completion_mode:
+    //   fixed_duration      — eligible seconds >= required
+    //   until_broadcast_end — verified broadcast-end event + sufficient attendance
+    //   duration_plus_end  — both minimum duration AND broadcast end
+    // Browser observation alone is never accepted as proof that a broadcast ended.
+    const broadcastEnded = event_type === "SESSION_ENDED" && incomingState === "verified";
+    let requirementMet;
+    if (isLiveStreamTask(task)) {
+      const effReq = effectiveRequiredSeconds(task);
+      requirementMet = isLiveStreamCompletionReady(task, aggregateEligible, broadcastEnded);
+      // Also respect the effective requirement (with max_credited_seconds cap)
+      if (effReq > 0 && aggregateEligible < effReq && task.completion_mode === "fixed_duration") {
+        requirementMet = false;
+      }
+    } else {
+      requirementMet = reqSec > 0 ? aggregateEligible >= reqSec : (event_type === "SESSION_ENDED" || event_type === "TASK_PROGRESS_VERIFIED") && incomingState === "verified";
+    }
 
     if (isTrustedAuto && isAutoCompletableType && requirementMet && !progress.reward_issued) {
       const limitCheck = canCompleteAgain(task, completed, now);

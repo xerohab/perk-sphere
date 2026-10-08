@@ -1,0 +1,125 @@
+{
+  "name": "PartnerIntegration",
+  "type": "object",
+  "properties": {
+    "name": {
+      "type": "string"
+    },
+    "partner_type": {
+      "type": "string",
+      "enum": [
+        "custom_website",
+        "streaming_platform",
+        "membership_subscription",
+        "wordpress_woocommerce",
+        "other"
+      ],
+      "default": "custom_website"
+    },
+    "website_url": {
+      "type": "string"
+    },
+    "description": {
+      "type": "string"
+    },
+    "logo": {
+      "type": "string"
+    },
+    "verified_domains": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "integration_status": {
+      "type": "string",
+      "enum": [
+        "pending",
+        "active",
+        "suspended",
+        "disabled",
+        "archived"
+      ],
+      "default": "pending"
+    },
+    "supported_event_types": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "allowed_task_types": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "partner_key_id": {
+      "type": "string",
+      "description": "Public identifier for HMAC authentication (sent in X-PS-Partner-Key header)"
+    },
+    "partner_secret_hash": {
+      "type": "string",
+      "description": "SHA-256 hash of the HMAC secret for identification only \u2014 never used for verification"
+    },
+    "connection_health": {
+      "type": "string",
+      "enum": [
+        "healthy",
+        "degraded",
+        "down",
+        "unconfigured"
+      ],
+      "default": "unconfigured"
+    },
+    "last_event_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "last_failure_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "total_events_received": {
+      "type": "number",
+      "default": 0
+    },
+    "total_delivery_failures": {
+      "type": "number",
+      "default": 0
+    },
+    "setup_instructions": {
+      "type": "string"
+    },
+    "active": {
+      "type": "boolean",
+      "default": false
+    }
+  },
+  "required": [
+    "name",
+    "partner_type"
+  ],
+  "rls": {
+    "read": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "create": {
+      "user_condition": {
+        "role": "service_only"
+      }
+    },
+    "update": {
+      "user_condition": {
+        "role": "service_only"
+      }
+    },
+    "delete": {
+      "user_condition": {
+        "role": "service_only"
+      }
+    }
+  }
+}
