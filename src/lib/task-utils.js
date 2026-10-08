@@ -1,4 +1,4 @@
-// Frontend helpers for the Tasks system — mirrors base44/shared/tasks.ts for display.
+// Frontend helpers for the Tasks system — mirrors the shared tasks module for display.
 export function formatSeconds(s) {
   if (!s || s <= 0) return "0:00";
   const m = Math.floor(s / 60);

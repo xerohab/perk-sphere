@@ -1,6 +1,6 @@
 // Central extension release configuration.
 //
-// Chromium release metadata is fetched via the Base44 backend function
+// Chromium release metadata is fetched via the Perk Sphere backend function
 // getBrowserExtensionRelease, which calls the public Linux release endpoint
 // server-to-server. This avoids browser CORS issues — the frontend never
 // fetches api.perksphere.org directly.
@@ -25,7 +25,7 @@ export async function fetchRelease(browser = "chromium") {
 
   try {
     const res = await base44.functions.invoke("getBrowserExtensionRelease", {});
-    // The Base44 SDK wraps the function's JSON body under res.data.
+    // The Perk Sphere SDK wraps the function's JSON body under res.data.
     // Normalize both wrapped and direct shapes before validating.
     const body = res?.data ?? res;
     if (body?.ok && body.data) {

@@ -12,7 +12,7 @@ const LINUX_API_BASE = "https://api.perksphere.org";
 // partner-side implementation, verification) and keep the integration in
 // "Setup Required" until an admin marks them complete.
 export const SETUP_STEPS = [
-  { key: "base44_registered", label: "Partner registered in Base44", external: false },
+  { key: "base44_registered", label: "Partner registered in Perk Sphere", external: false },
   { key: "credentials_generated", label: "Credentials generated", external: false },
   { key: "linux_api_configured", label: "Credentials configured on Linux API", external: true },
   { key: "partner_implemented", label: "Partner-side implementation complete", external: true },
@@ -44,14 +44,14 @@ Generated: ${new Date().toISOString()}
 1. ARCHITECTURE
 ----------------------------------------
 
-Partner Website  -->  Linux API (${LINUX_API_BASE})  -->  Base44 (reward authority)
+Partner Website  -->  Linux API (${LINUX_API_BASE})  -->  Perk Sphere (reward authority)
 
 - Partner websites send HMAC-signed events to the Linux API.
 - The Linux API validates credentials, prevents replay, validates payloads,
-  and delivers trusted events to Base44.
-- Base44 is the SOLE reward authority. No partner or Linux API event can
+  and delivers trusted events to Perk Sphere.
+- Perk Sphere is the SOLE reward authority. No partner or Linux API event can
   issue Points or XP directly. Events feed task progress; rewards are issued
-  exclusively through Base44's server-side completion path.
+  exclusively through Perk Sphere's server-side completion path.
 
 ----------------------------------------
 2. CREDENTIALS
@@ -131,7 +131,7 @@ are completed and an administrator activates it.
 - Never expose the partner secret in client-side JavaScript or public repos.
 - Use server-to-server calls from the partner backend to the Linux API.
 - Rotate credentials immediately if a secret is compromised.
-- Base44 enforces that no event can directly issue rewards.
+- Perk Sphere enforces that no event can directly issue rewards.
 `;
 }
 
@@ -193,7 +193,7 @@ export default function PartnerSetupGuide({ partner, onUpdateChecklist }) {
         <div>
           <p className="text-sm font-medium text-blue-800 dark:text-blue-300">Setup Required until external work is verified</p>
           <p className="mt-1 text-xs text-blue-700 dark:text-blue-400">
-            Base44 has registered this partner and generated credentials. The Linux API configuration, partner-side implementation, and verification test require external work. The integration cannot be activated until all steps are complete.
+            Perk Sphere has registered this partner and generated credentials. The Linux API configuration, partner-side implementation, and verification test require external work. The integration cannot be activated until all steps are complete.
           </p>
         </div>
       </div>

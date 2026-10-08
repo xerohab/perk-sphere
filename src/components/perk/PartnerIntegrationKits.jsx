@@ -66,15 +66,15 @@ export default function PartnerIntegrationKits({ onSelectKit }) {
         <h3 className="text-sm font-semibold">Integration Architecture</h3>
         <p className="mt-1 text-xs text-muted-foreground">
           Partner websites send authenticated events to the Linux API at <code className="rounded bg-secondary px-1 py-0.5 text-xs">api.perksphere.org</code>.
-          The Linux API validates credentials, prevents replay, and delivers trusted events to Base44.
-          Base44 is the sole reward authority — no partner or Linux API event can issue Points or XP directly.
+          The Linux API validates credentials, prevents replay, and delivers trusted events to Perk Sphere.
+          Perk Sphere is the sole reward authority — no partner or Linux API event can issue Points or XP directly.
         </p>
         <div className="mt-3 flex flex-wrap items-center gap-2 text-xs">
           <span className="rounded-lg bg-secondary px-2.5 py-1 font-medium">Partner Website</span>
           <ArrowRight className="h-3.5 w-3.5 text-muted-foreground" />
           <span className="rounded-lg bg-indigo-100 px-2.5 py-1 font-medium text-indigo-700 dark:bg-indigo-500/15 dark:text-indigo-400">Linux API</span>
           <ArrowRight className="h-3.5 w-3.5 text-muted-foreground" />
-          <span className="rounded-lg bg-secondary px-2.5 py-1 font-medium">Base44 (rewards)</span>
+          <span className="rounded-lg bg-secondary px-2.5 py-1 font-medium">Perk Sphere (rewards)</span>
         </div>
       </div>
 
