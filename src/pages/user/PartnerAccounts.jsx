@@ -150,7 +150,7 @@ export default function PartnerAccounts() {
                   <Button variant="outline" size="sm" onClick={copyChallenge}>{copied ? <Check className="h-3.5 w-3.5 text-emerald-600" /> : <Copy className="h-3.5 w-3.5" />}</Button>
                 </div>
               </div>
-              <p className="text-xs text-muted-foreground">Send an ACCOUNT_LINKED event from {challengeDialog.partner.name} with this challenge_token and your account reference. The link completes automatically once the partner verifies the challenge.</p>
+              <p className="text-xs text-muted-foreground">Send an ACCOUNT_LINKED event to the Linux API from {challengeDialog.partner.name} with this challenge_token and your account reference. The link completes automatically once the partner verifies the challenge.</p>
             </div>
             <DialogFooter><DialogClose asChild><Button>Done</Button></DialogClose></DialogFooter>
           </DialogContent>

@@ -135,11 +135,14 @@ export async function verifyPartnerRequest(req, admin, partnerKeyId) {
   if (!partner) {
     return { ok: false, status: 401, code: "unknown_partner", error: "Unknown partner key id.", requestId };
   }
-  // A pending credential must NEVER authenticate ordinary partner events.
-  // Only "active" integrations may send events; "setup_required" partners may
-  // send only test events (handled separately via the proof-of-possession flow).
-  if (partner.integration_status !== "active") {
-    return { ok: false, status: 403, code: "partner_not_active", error: "Partner integration is not active.", requestId, partner };
+  // This is a MIGRATION-ONLY endpoint. Active production partners must submit
+  // events to the Linux API endpoint (api.perksphere.org/events), not here.
+  // Only setup_required partners may use this endpoint for testing/migration.
+  if (partner.integration_status === "active") {
+    return { ok: false, status: 400, code: "use_linux_endpoint", error: "Active production partners must submit events to the Linux API endpoint, not this migration endpoint.", requestId, partner };
+  }
+  if (partner.integration_status !== "setup_required") {
+    return { ok: false, status: 403, code: "partner_not_setup", error: "Partner must be in setup_required state to use this migration endpoint.", requestId, partner };
   }
 
   const creds = await admin.entities.PartnerCredential.filter({ partner_integration_id: partner.id });
@@ -316,7 +319,7 @@ export function generateAccountLinkChallenge() {
 
 export const ONBOARDING_STEPS = [
   { key: "base44_registered", label: "Partner registered in Perk Sphere", external: false, auto: true },
-  { key: "credentials_generated", label: "Secure credentials generated", external: false, auto: true },
+  { key: "credentials_generated", label: "Credentials provisioned by Linux", external: false, auto: true },
   { key: "domain_verified", label: "Domain ownership verified", external: true },
   { key: "admin_reviewed", label: "Administrator review approved", external: false },
   { key: "linux_api_configured", label: "Credentials configured on Linux API", external: true },
@@ -325,3 +328,33 @@ export const ONBOARDING_STEPS = [
   { key: "test_event_verified", label: "Test event verification passed", external: true },
   { key: "activated", label: "Integration activated by admin", external: false }
 ];
+
+// ─── Response Sanitisation ─────────────────────────────────────────────────
+// Partner-related responses must never expose plaintext secrets, credential
+// hashes, encryption metadata, or domain verification tokens. These helpers
+// enforce server-side stripping of sensitive fields before returning.
+
+// Sanitize for admin responses — keeps operational fields but removes secrets.
+export function sanitizePartnerRecord(record) {
+  if (!record) return record;
+  const sanitized = { ...record };
+  delete sanitized.partner_secret;
+  delete sanitized.partner_secret_hash;
+  delete sanitized.domain_verification_token;
+  return sanitized;
+}
+
+// Sanitize for user-facing responses — only public fields.
+export function sanitizePartnerForUser(record) {
+  if (!record) return record;
+  return {
+    id: record.id,
+    name: record.name,
+    partner_type: record.partner_type,
+    website_url: record.website_url,
+    logo: record.logo,
+    description: record.description,
+    integration_status: record.integration_status,
+    verification_status: record.verification_status
+  };
+}

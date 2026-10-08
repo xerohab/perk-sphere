@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { base44 } from "@/api/base44Client";
 import { useToast } from "@/components/ui/use-toast";
-import { Plus, Pencil, Trash2, KeyRound, Ban, AlertTriangle, ExternalLink, Activity, Package, Settings2, Eye, FileCheck, XCircle } from "lucide-react";
+import { Plus, Pencil, Trash2, KeyRound, Ban, AlertTriangle, ExternalLink, Activity, Package, Settings2, Eye, FileCheck, XCircle, RefreshCw } from "lucide-react";
 import PageHeader from "@/components/perk/PageHeader";
 import EmptyState from "@/components/perk/EmptyState";
 import ConfirmDialog from "@/components/perk/ConfirmDialog";
@@ -51,6 +51,7 @@ const VERIFICATION_STYLES = {
 
 const STATUS_STYLES = {
   pending: "bg-slate-100 text-slate-700 dark:bg-slate-500/15 dark:text-slate-300",
+  linux_integration_pending: "bg-orange-100 text-orange-700 dark:bg-orange-500/15 dark:text-orange-400",
   setup_required: "bg-blue-100 text-blue-700 dark:bg-blue-500/15 dark:text-blue-400",
   active: "bg-emerald-100 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-400",
   suspended: "bg-amber-100 text-amber-700 dark:bg-amber-500/15 dark:text-amber-400",
@@ -178,6 +179,21 @@ export default function AdminPartners() {
     }
   };
 
+  const retryProvisioning = async (partner) => {
+    try {
+      const res = await base44.functions.invoke("managePartner", { action: "retryProvisioning", partnerId: partner.id });
+      const body = res?.data || res;
+      if (body?.partner_secret) {
+        setCredentialResult({ partner_key_id: body.partner_key_id, partner_secret: body.partner_secret, domain_verification_token: body.domain_verification_token, linux_api_partner_id: body.linux_api_partner_id, name: partner.name, isNew: true });
+      } else {
+        toast({ title: "Provisioning completed" });
+      }
+      load(true);
+    } catch (e) {
+      toast({ title: "Provisioning still pending", description: e?.response?.data?.error || e.message, variant: "destructive" });
+    }
+  };
+
   const remove = async (partner) => {
     try {
       await base44.functions.invoke("managePartner", { action: "delete", partnerId: partner.id });
@@ -265,7 +281,8 @@ export default function AdminPartners() {
                   <div className="mt-4 flex flex-wrap gap-1">
                     <Button variant="outline" size="sm" onClick={() => setDetailPartner(p)}><Eye className="mr-1 h-3.5 w-3.5" /> Details</Button>
                     <Button variant="outline" size="sm" onClick={() => openEdit(p)}><Pencil className="mr-1 h-3.5 w-3.5" /> Edit</Button>
-                    <Button variant="outline" size="sm" onClick={() => setSetupGuidePartner(p)}><Settings2 className="mr-1 h-3.5 w-3.5" /> Setup</Button>
+                    {p.integration_status === "linux_integration_pending" && <Button variant="outline" size="sm" className="text-orange-600" onClick={() => retryProvisioning(p)} title="Retry Linux provisioning"><RefreshCw className="mr-1 h-3.5 w-3.5" /> Retry Provisioning</Button>}
+                    {p.integration_status !== "linux_integration_pending" && <Button variant="outline" size="sm" onClick={() => setSetupGuidePartner(p)}><Settings2 className="mr-1 h-3.5 w-3.5" /> Setup</Button>}
                     {p.integration_status === "setup_required" && !(p.setup_checklist?.admin_reviewed) && <Button variant="outline" size="sm" className="text-emerald-600" onClick={() => reviewPartner(p, true)} title="Approve partner application"><FileCheck className="mr-1 h-3.5 w-3.5" /> Approve</Button>}
                     {p.integration_status === "setup_required" && <Button size="sm" onClick={() => setStatus(p, "active")} title="Complete the onboarding checklist first">Activate</Button>}
                     {p.integration_status === "active" && <Button variant="outline" size="sm" onClick={() => setStatus(p, "suspended")}>Suspend</Button>}
@@ -319,8 +336,8 @@ export default function AdminPartners() {
             <div className="flex items-start gap-3 rounded-lg border border-blue-300 bg-blue-50 p-4 dark:border-blue-700 dark:bg-blue-950/30">
               <AlertTriangle className="mt-0.5 h-5 w-5 flex-shrink-0 text-blue-600 dark:text-blue-400" />
               <div>
-                <p className="text-sm font-medium text-blue-800 dark:text-blue-300">New integrations start as Pending</p>
-                <p className="mt-1 text-xs text-blue-700 dark:text-blue-400">No reward-bearing activity is permitted until an administrator activates the integration. Credentials are generated on creation.</p>
+                <p className="text-sm font-medium text-blue-800 dark:text-blue-300">Credentials are provisioned by the Linux API</p>
+                <p className="mt-1 text-xs text-blue-700 dark:text-blue-400">On creation, Base44 requests HMAC credentials from the Linux API. If the Linux API is unavailable, the partner enters a "Linux Integration Pending" state and you can retry provisioning later. No reward-bearing activity is permitted until an administrator activates the integration.</p>
               </div>
             </div>
           )}
@@ -388,10 +405,10 @@ export default function AdminPartners() {
                 </div>
               )}
               <div className="rounded-lg bg-secondary p-3 text-xs text-muted-foreground">
-                <p className="font-medium">Integration endpoint (Linux API):</p>
+                <p className="font-medium">Production event endpoint (Linux API):</p>
                 <p className="mt-1 font-mono">POST https://api.perksphere.org/events</p>
                 <p className="mt-2">Headers: X-PS-Partner-Key, X-PS-Timestamp, X-PS-Nonce, X-PS-Signature</p>
-                <p className="mt-2 text-amber-700 dark:text-amber-400">Configure these credentials on the Linux API, then complete the setup checklist before activating.</p>
+                <p className="mt-2 text-amber-700 dark:text-amber-400">These credentials were provisioned by the Linux API. Deliver them to the partner out-of-band. The Base44 migration endpoint must not be used for production events.</p>
               </div>
             </div>
             <DialogFooter><Button onClick={() => setCredentialResult(null)}>Done</Button></DialogFooter>

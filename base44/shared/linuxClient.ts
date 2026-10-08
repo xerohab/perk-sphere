@@ -91,3 +91,22 @@ export async function linuxTrustedPost(path, body) {
   console.log(`[linuxClient] req=${requestId} path=${path} status=${res.status} ok=true`);
   return { ok: true, status: res.status, data: (data && data.data) || data };
 }
+
+// ─── Partner Management Endpoints ──────────────────────────────────────────
+// Linux is the authoritative system for partner HMAC credentials. Base44
+// coordinates provisioning through these authenticated endpoints.
+//
+// If any endpoint is unavailable, the partner is left in linux_integration_pending
+// state and the admin can retry provisioning later via managePartner.retryProvisioning.
+
+export const LINUX_PARTNER_ENDPOINTS = {
+  PROVISION: "/partners/provision",
+  ROTATE_CREDENTIAL: "/partners/rotate-credential",
+  REVOKE: "/partners/revoke",
+  ACTIVATE: "/partners/activate",
+  VERIFY_DOMAIN: "/partners/verify-domain",
+  VERIFY_PROOF: "/partners/verify-proof",
+  ACCOUNT_LINK_CREATE: "/partners/account-link/create-challenge",
+  ACCOUNT_LINK_VERIFY: "/partners/account-link/verify",
+  ACCOUNT_LINK_UNLINK: "/partners/account-link/unlink"
+};

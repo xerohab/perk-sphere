@@ -6,22 +6,29 @@ import {
 } from '../../shared/partners.ts';
 import { writeAudit } from '../../shared/permissions.ts';
 
-// Authenticated event-ingestion endpoint for partner integrations.
+// MIGRATION-ONLY event-ingestion endpoint for partner integrations.
+//
+// Production partners MUST submit signed events to the Linux API endpoint
+// (api.perksphere.org/events). This Base44 endpoint is a controlled migration
+// path for setup_required partners only. Active production partners are rejected
+// with a clear "use_linux_endpoint" error.
 //
 // Partners send HMAC-signed events with headers:
 //   X-PS-Partner-Key, X-PS-Timestamp, X-PS-Nonce, X-PS-Signature
 //
 // Security layers (fail-closed, in order):
-//   1. HMAC authentication (key lookup → active check → credential decrypt →
+//   1. HMAC authentication (key lookup → setup_required check → credential decrypt →
 //      timestamp skew → nonce format → signature → nonce replay protection)
 //   2. Event type validation (supported + per-partner permitted types)
 //   3. Content evidence for watch events (self-reported duration is NOT sufficient)
 //   4. Idempotent storage (external_event_id deduplication)
 //   5. Refund/chargeback invalidation (marks original completions for review)
 //
-// Events NEVER issue Points/XP directly. Verified activity feeds task progress;
-// completion and reward issuance flow through the existing trusted completion path
-// (finalizeCompletion), called by trustedActivityBridge or completeTask.
+// Events NEVER issue Points/XP directly. This endpoint does NOT establish a
+// second authoritative event ledger. Verified activity feeds task progress;
+// completion and reward issuance flow exclusively through the trusted completion
+// path (finalizeCompletion), called only by trustedActivityBridge or completeTask.
+// Unsigned client-provided evidence is NEVER forwarded as trusted verified activity.
 
 function err(code, message, status = 400) {
   return Response.json({ ok: false, error: { code, message } }, { status });
@@ -261,7 +268,7 @@ export default async function(req) {
         task_validated: taskValid,
         is_refund: isRefund,
         refund_invalidated: refundInvalidated,
-        note: 'Event stored and validated. Completion requires trusted verification — partner events do not issue rewards directly.'
+        note: 'Migration endpoint: event stored and validated. Production partners must use the Linux API. Completion requires trusted verification — partner events do not issue rewards directly.'
       },
       request_id: requestId
     });

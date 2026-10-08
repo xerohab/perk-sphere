@@ -46,13 +46,15 @@
       "type": "string",
       "enum": [
         "pending",
+        "linux_integration_pending",
         "setup_required",
         "active",
         "suspended",
         "disabled",
         "archived"
       ],
-      "default": "pending"
+      "default": "pending",
+      "description": "linux_integration_pending = Linux provisioning endpoint unavailable; admin can retry"
     },
     "verification_status": {
       "type": "string",
@@ -79,19 +81,19 @@
     },
     "partner_key_id": {
       "type": "string",
-      "description": "Public identifier for HMAC authentication (sent in X-PS-Partner-Key header)"
+      "description": "Public identifier for HMAC authentication (sent in X-PS-Partner-Key header). Provisioned by Linux."
     },
     "partner_secret_hash": {
       "type": "string",
-      "description": "SHA-256 hash of the HMAC secret for identification only \u2014 never used for verification"
+      "description": "SHA-256 hash of the HMAC secret for identification only \u2014 never used for verification. Never returned in responses."
     },
     "linux_api_partner_id": {
       "type": "string",
-      "description": "Partner identifier registered on the Linux API side once credentials are configured there"
+      "description": "Linux partner_uuid \u2014 immutable after confirmation unless audited admin correction. Set by Linux during provisioning."
     },
     "domain_verification_token": {
       "type": "string",
-      "description": "Random token the partner must publish in a DNS TXT or well-known file to prove domain ownership"
+      "description": "Random token the partner must publish in a DNS TXT or well-known file to prove domain ownership. Provisioned by Linux. Never returned in general responses."
     },
     "domain_verified_at": {
       "type": "string",
