@@ -2,7 +2,7 @@ import React, { Suspense } from "react";
 import { Outlet } from "react-router-dom";
 import {
   LayoutDashboard, Gift, Coins, Activity, Award, History, TrendingUp,
-  Bell, Plug, User, ShieldCheck, Target, Globe
+  Bell, Plug, User, ShieldCheck, Target, Globe, Handshake
 } from "lucide-react";
 import SidebarLayout from "@/components/perk/SidebarLayout";
 import PageTransition, { ContentSpinner } from "@/components/perk/PageTransition";
@@ -18,6 +18,7 @@ const navItems = [
   { label: "Loyalty", path: "/loyalty", icon: TrendingUp },
   { label: "Notifications", path: "/notifications", icon: Bell },
   { label: "Connected Services", path: "/connected-services", icon: Plug },
+  { label: "Partner Accounts", path: "/partner-accounts", icon: Handshake },
   { label: "Browser Extension", path: "/browser-extension", icon: Globe },
   { label: "Profile", path: "/profile", icon: User },
   { label: "Privacy", path: "/privacy", icon: ShieldCheck }

@@ -54,6 +54,17 @@
       ],
       "default": "pending"
     },
+    "verification_status": {
+      "type": "string",
+      "enum": [
+        "unverified",
+        "domain_verified",
+        "credential_verified",
+        "fully_verified"
+      ],
+      "default": "unverified",
+      "description": "Independent from integration_status: tracks domain ownership, credential proof-of-possession, and test-event verification"
+    },
     "supported_event_types": {
       "type": "array",
       "items": {
@@ -78,9 +89,58 @@
       "type": "string",
       "description": "Partner identifier registered on the Linux API side once credentials are configured there"
     },
+    "domain_verification_token": {
+      "type": "string",
+      "description": "Random token the partner must publish in a DNS TXT or well-known file to prove domain ownership"
+    },
+    "domain_verified_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "proof_of_possession_verified": {
+      "type": "boolean",
+      "default": false,
+      "description": "True once the partner has demonstrated they hold the HMAC secret by signing a challenge"
+    },
+    "proof_of_possession_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "test_event_id": {
+      "type": "string",
+      "description": "The external_event_id of the partner's successful verification test event"
+    },
+    "test_event_verified": {
+      "type": "boolean",
+      "default": false
+    },
+    "test_event_at": {
+      "type": "string",
+      "format": "date-time"
+    },
     "setup_checklist": {
       "type": "object",
-      "description": "Tracks onboarding steps: base44_registered, credentials_generated, linux_api_configured, partner_implemented, verification_passed, activated"
+      "description": "Tracks onboarding steps: base44_registered, credentials_generated, domain_verified, admin_reviewed, linux_api_configured, partner_implemented, proof_of_possession, test_event_verified, activated"
+    },
+    "daily_points_limit": {
+      "type": "number",
+      "default": 0,
+      "description": "Per-partner daily Points cap across all users (0 = no cap)"
+    },
+    "daily_xp_limit": {
+      "type": "number",
+      "default": 0,
+      "description": "Per-partner daily XP cap across all users (0 = no cap)"
+    },
+    "points_per_event": {
+      "type": "number",
+      "default": 0,
+      "description": "Per-partner reward policy: Points issued per verified eligible event (0 = task-driven only)"
+    },
+    "xp_per_event": {
+      "type": "number",
+      "default": 0,
+      "description": "Per-partner reward policy: XP issued per verified eligible event (0 = task-driven only)"
     },
     "connection_health": {
       "type": "string",

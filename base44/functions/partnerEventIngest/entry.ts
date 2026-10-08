@@ -1,6 +1,9 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.52';
 import { waitUntil } from "base44:runtime";
-import { verifyPartnerRequest, validateEventPayload } from '../../shared/partners.ts';
+import {
+  verifyPartnerRequest, validateEventPayload,
+  REFUND_EVENT_TYPES, TASK_PROGRESS_EVENT_TYPES, WATCH_EVENT_TYPES
+} from '../../shared/partners.ts';
 import { writeAudit } from '../../shared/permissions.ts';
 
 // Authenticated event-ingestion endpoint for partner integrations.
@@ -8,14 +11,17 @@ import { writeAudit } from '../../shared/permissions.ts';
 // Partners send HMAC-signed events with headers:
 //   X-PS-Partner-Key, X-PS-Timestamp, X-PS-Nonce, X-PS-Signature
 //
-// Events are validated, stored idempotently (via external_event_id), and NEVER issue
-// Points/XP directly. When a partner is active and an event maps to a task, verified
-// activity is recorded against the task — but completion and reward issuance always
-// flow through the existing trusted completion path (finalizeCompletion), called by
-// trustedActivityBridge or completeTask. This function does NOT call finalizeCompletion.
+// Security layers (fail-closed, in order):
+//   1. HMAC authentication (key lookup → active check → credential decrypt →
+//      timestamp skew → nonce format → signature → nonce replay protection)
+//   2. Event type validation (supported + per-partner permitted types)
+//   3. Content evidence for watch events (self-reported duration is NOT sufficient)
+//   4. Idempotent storage (external_event_id deduplication)
+//   5. Refund/chargeback invalidation (marks original completions for review)
 //
-// Refunds and chargebacks are recorded as events for auditable reward policy enforcement;
-// they do NOT silently delete ledger transactions.
+// Events NEVER issue Points/XP directly. Verified activity feeds task progress;
+// completion and reward issuance flow through the existing trusted completion path
+// (finalizeCompletion), called by trustedActivityBridge or completeTask.
 
 function err(code, message, status = 400) {
   return Response.json({ ok: false, error: { code, message } }, { status });
@@ -54,13 +60,23 @@ export default async function(req) {
       content_id,
       content_url,
       eligible_seconds,
+      original_event_id,
       source_timestamp,
-      metadata
+      metadata,
+      is_test
     } = body;
 
-    // 2. Validate event type and required fields.
-    const validation = validateEventPayload(body);
+    // 2. Validate event type, required fields, and per-partner permitted types.
+    //    Watch events require content evidence; refund events require original_event_id.
+    const validation = validateEventPayload(body, partner);
     if (!validation.ok) {
+      waitUntil(writeAudit(admin, {
+        adminId: 'partner_ingest',
+        action: 'partner_event_rejected',
+        entityType: 'PartnerIntegration',
+        entityId: partner.id,
+        next: { code: validation.code, event_type, external_event_id }
+      }).catch(() => {}));
       return err(validation.code, validation.error, 400);
     }
 
@@ -75,7 +91,13 @@ export default async function(req) {
       });
     }
 
-    // 4. Store the event.
+    // 4. Determine event category.
+    const isRefund = REFUND_EVENT_TYPES.includes(event_type);
+    const isTest = !!is_test;
+    const isWatchEvent = WATCH_EVENT_TYPES.includes(event_type);
+    const isTaskProgress = TASK_PROGRESS_EVENT_TYPES.includes(event_type);
+
+    // 5. Store the event.
     const incomingEligible = Math.max(0, Number(eligible_seconds) || 0);
     const now = new Date();
     const eventRecord = priorRec || await admin.entities.PartnerEvent.create({
@@ -92,34 +114,80 @@ export default async function(req) {
       source_timestamp: source_timestamp || null,
       received_at: now.toISOString(),
       processing_status: 'pending',
+      is_test_event: isTest,
+      is_refund: isRefund,
+      original_event_id: original_event_id || null,
       request_id: requestId
     });
 
-    // 5. Update partner connection health (fire-and-forget).
-    waitUntil(admin.entities.PartnerIntegration.update(partner.id, {
-      last_event_at: now.toISOString(),
-      connection_health: 'healthy',
-      total_events_received: (partner.total_events_received || 0) + 1
-    }).catch(() => {}));
+    // 6. Update partner connection health (fire-and-forget).
+    if (!isTest) {
+      waitUntil(admin.entities.PartnerIntegration.update(partner.id, {
+        last_event_at: now.toISOString(),
+        connection_health: 'healthy',
+        total_events_received: (partner.total_events_received || 0) + 1
+      }).catch(() => {}));
+    }
 
-    // 6. Process the event.
-    // Partner events are recorded but do NOT directly trigger completion or issue rewards.
-    // When a task_id and user_reference are provided and the partner is active, we
-    // validate the task belongs to this partner and record the user linkage. Actual
-    // completion requires the trusted verification path (trustedActivityBridge or
-    // completeTask) to confirm the activity — partner events alone are not proof.
+    // 7. Process the event.
+    //    Test events are stored but never enter reward processing.
+    //    Partner events NEVER issue Points/XP directly.
     let resolvedUserId = null;
     let taskValid = false;
+    let refundInvalidated = false;
 
-    if (task_id && user_reference) {
-      // Resolve user
+    if (isTest) {
+      // Test events just need to be stored and marked processed.
+      await admin.entities.PartnerEvent.update(eventRecord.id, {
+        processing_status: 'processed',
+        processed_at: now.toISOString(),
+        completion_triggered: false
+      });
+      return Response.json({
+        ok: true,
+        data: {
+          external_event_id, accepted: true, duplicate: false, processed: true,
+          is_test: true, completion_triggered: false,
+          note: 'Test event stored. Test events do not enter reward processing.'
+        },
+        request_id: requestId
+      });
+    }
+
+    // 7a. Refund/chargeback handling — find and flag the original purchase event's
+    //     completions for review. This does NOT silently delete ledger transactions;
+    //     it creates a fraud flag for admin review and audit.
+    if (isRefund && original_event_id) {
+      const originalEvents = await admin.entities.PartnerEvent.filter({
+        partner_integration_id: partner.id,
+        external_event_id: original_event_id
+      });
+      const originalEvt = (originalEvents || [])[0];
+      if (originalEvt && originalEvt.completion_id) {
+        // Flag the completion for review — do NOT reverse rewards silently.
+        waitUntil(admin.entities.FraudFlag.create({
+          user_id: originalEvt.user_id || 'unknown',
+          flag_type: 'partner_refund',
+          risk_score: 50,
+          risk_flags: ['partner_refund', event_type.toLowerCase()],
+          review_status: 'pending',
+          details: `Partner ${partner.name} reported ${event_type} for original event ${original_event_id}. Completion ${originalEvt.completion_id} may need reversal.`,
+          admin_id: 'partner_ingest'
+        }).catch(() => {}));
+        refundInvalidated = true;
+      }
+    }
+
+    // 7b. Task progress — resolve user and validate task ownership.
+    //     Watch events: eligible_seconds from the partner is recorded but does NOT
+    //     prove genuine viewing. Completion requires the trusted verification path.
+    if (isTaskProgress && task_id && user_reference) {
       try {
         const user = await admin.entities.User.get(user_reference);
         resolvedUserId = user.id;
       } catch (_e) { resolvedUserId = null; }
 
       if (resolvedUserId) {
-        // Validate the task belongs to this partner
         const task = await admin.entities.Task.get(task_id).catch(() => null);
         if (task && task.partner_integration_id === partner.id) {
           taskValid = true;
@@ -127,12 +195,59 @@ export default async function(req) {
       }
     }
 
-    // 7. Mark event processed.
+    // 7c. Account linking — if this is an ACCOUNT_LINKED event, verify the challenge
+    //     token against pending PartnerAccountLink records. This proves the user
+    //     controls the partner account (the partner echoes back the challenge).
+    if (event_type === 'ACCOUNT_LINKED' && user_reference) {
+      const challengeToken = body.challenge_token;
+      if (challengeToken) {
+        const challengeHash = await sha256Hex(challengeToken);
+        const links = await admin.entities.PartnerAccountLink.filter({
+          partner_integration_id: partner.id,
+          status: 'pending',
+          challenge_hash: challengeHash
+        });
+        const link = (links || [])[0];
+        if (link && link.user_id) {
+          // Check expiry
+          const isExpired = link.expires_at && new Date(link.expires_at) < now;
+          if (!isExpired) {
+            // Link the accounts — store the partner account reference on ConnectedService.
+            resolvedUserId = link.user_id;
+            await admin.entities.PartnerAccountLink.update(link.id, {
+              status: 'linked',
+              linked_at: now.toISOString(),
+              used_at: now.toISOString(),
+              partner_account_reference: user_reference
+            });
+            // Create or update a ConnectedService record for the partner.
+            const existing = await admin.entities.ConnectedService.filter({
+              user_id: link.user_id,
+              service: 'partner_' + partner.id
+            });
+            if ((existing || []).length === 0) {
+              await admin.entities.ConnectedService.create({
+                user_id: link.user_id,
+                service: 'partner_' + partner.id,
+                account_handle: user_reference,
+                status: 'connected',
+                connected_at: now.toISOString(),
+                external_account_id: user_reference
+              });
+            }
+            taskValid = true; // account link succeeded
+          }
+        }
+      }
+    }
+
+    // 8. Mark event processed.
     await admin.entities.PartnerEvent.update(eventRecord.id, {
       user_id: resolvedUserId,
       processing_status: 'processed',
       processed_at: now.toISOString(),
-      completion_triggered: false
+      completion_triggered: false,
+      invalidated_completion_id: refundInvalidated ? (priorRec?.completion_id || null) : null
     });
 
     return Response.json({
@@ -144,6 +259,8 @@ export default async function(req) {
         processed: true,
         completion_triggered: false,
         task_validated: taskValid,
+        is_refund: isRefund,
+        refund_invalidated: refundInvalidated,
         note: 'Event stored and validated. Completion requires trusted verification — partner events do not issue rewards directly.'
       },
       request_id: requestId
@@ -161,4 +278,11 @@ export default async function(req) {
     }
     return Response.json({ ok: false, error: { code: 'internal_error', message: 'Processing failed.' }, request_id: requestId }, { status: 500 });
   }
+}
+
+// Inline sha256 for the account-link challenge comparison.
+async function sha256Hex(text) {
+  const data = new TextEncoder().encode(text);
+  const hash = await crypto.subtle.digest("SHA-256", data);
+  return [...new Uint8Array(hash)].map((b) => b.toString(16).padStart(2, "0")).join("");
 }

@@ -1,12 +1,13 @@
 import React, { useEffect, useState } from "react";
 import { base44 } from "@/api/base44Client";
 import { useToast } from "@/components/ui/use-toast";
-import { Plus, Pencil, Trash2, KeyRound, Ban, AlertTriangle, ExternalLink, Activity, Package, Settings2 } from "lucide-react";
+import { Plus, Pencil, Trash2, KeyRound, Ban, AlertTriangle, ExternalLink, Activity, Package, Settings2, Eye, FileCheck, XCircle } from "lucide-react";
 import PageHeader from "@/components/perk/PageHeader";
 import EmptyState from "@/components/perk/EmptyState";
 import ConfirmDialog from "@/components/perk/ConfirmDialog";
 import PartnerIntegrationKits from "@/components/perk/PartnerIntegrationKits";
 import PartnerSetupGuide from "@/components/perk/PartnerSetupGuide";
+import PartnerDetail from "@/components/perk/PartnerDetail";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -35,11 +36,18 @@ const PARTNER_TYPES = [
 ];
 
 const ALL_EVENT_TYPES = [
-  "ACCOUNT_REGISTERED", "ACCOUNT_LINKED", "VIDEO_WATCH_PROGRESS",
-  "STREAM_STARTED", "STREAM_VIEW_PROGRESS", "STREAM_ENDED",
-  "SUBSCRIPTION_ACTIVATED", "SUBSCRIPTION_RENEWED", "SUBSCRIPTION_CANCELLED",
-  "PAYMENT_REFUNDED", "ACCOUNT_DISABLED"
+  "ACCOUNT_REGISTERED", "ACCOUNT_LINKED", "ACCOUNT_DISABLED",
+  "VIDEO_WATCH_PROGRESS", "STREAM_STARTED", "STREAM_VIEW_PROGRESS", "STREAM_ENDED",
+  "PURCHASE_COMPLETED", "PURCHASE_REFUNDED", "CHARGEBACK_ISSUED",
+  "SUBSCRIPTION_ACTIVATED", "SUBSCRIPTION_RENEWED", "SUBSCRIPTION_CANCELLED"
 ];
+
+const VERIFICATION_STYLES = {
+  unverified: "bg-red-100 text-red-700 dark:bg-red-500/15 dark:text-red-400",
+  domain_verified: "bg-blue-100 text-blue-700 dark:bg-blue-500/15 dark:text-blue-400",
+  credential_verified: "bg-indigo-100 text-indigo-700 dark:bg-indigo-500/15 dark:text-indigo-400",
+  fully_verified: "bg-emerald-100 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-400"
+};
 
 const STATUS_STYLES = {
   pending: "bg-slate-100 text-slate-700 dark:bg-slate-500/15 dark:text-slate-300",
@@ -73,6 +81,7 @@ export default function AdminPartners() {
   const [saving, setSaving] = useState(false);
   const [credentialResult, setCredentialResult] = useState(null);
   const [setupGuidePartner, setSetupGuidePartner] = useState(null);
+  const [detailPartner, setDetailPartner] = useState(null);
   const [activeTab, setActiveTab] = useState("partners");
 
   const load = async (silent) => {
@@ -113,7 +122,7 @@ export default function AdminPartners() {
       const res = await base44.functions.invoke("managePartner", { action: editing?.id ? "update" : "create", partnerId: editing?.id, data: payload });
       const body = res?.data || res;
       if (body?.partner_secret) {
-        setCredentialResult({ partner_key_id: body.partner_key_id, partner_secret: body.partner_secret, name: payload.name, isNew: true });
+        setCredentialResult({ partner_key_id: body.partner_key_id, partner_secret: body.partner_secret, domain_verification_token: body.domain_verification_token, name: payload.name, isNew: true });
       } else {
         toast({ title: editing?.id ? "Partner updated" : "Partner created" });
       }
@@ -130,6 +139,16 @@ export default function AdminPartners() {
     try {
       await base44.functions.invoke("managePartner", { action: "setStatus", partnerId: partner.id, status });
       toast({ title: `Partner ${status}` });
+      load(true);
+    } catch (e) {
+      toast({ title: "Failed", description: e?.response?.data?.error || e.message, variant: "destructive" });
+    }
+  };
+
+  const reviewPartner = async (partner, approved) => {
+    try {
+      await base44.functions.invoke("managePartner", { action: "reviewPartner", partnerId: partner.id, data: { approved } });
+      toast({ title: approved ? "Partner approved" : "Partner rejected" });
       load(true);
     } catch (e) {
       toast({ title: "Failed", description: e?.response?.data?.error || e.message, variant: "destructive" });
@@ -211,7 +230,10 @@ export default function AdminPartners() {
                       <h3 className="truncate text-base font-semibold">{p.name}</h3>
                       <p className="mt-0.5 text-xs text-muted-foreground">{PARTNER_TYPES.find((t) => t.value === p.partner_type)?.label || p.partner_type}</p>
                     </div>
-                    <span className={`flex-shrink-0 rounded-full px-2 py-0.5 text-xs font-medium ${(STATUS_STYLES[p.integration_status] || STATUS_STYLES.pending)}`}>{p.integration_status}</span>
+                    <div className="flex flex-shrink-0 flex-col items-end gap-1">
+                      <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${(STATUS_STYLES[p.integration_status] || STATUS_STYLES.pending)}`}>{p.integration_status}</span>
+                      <span className={`rounded-full px-2 py-0.5 text-[10px] font-medium ${VERIFICATION_STYLES[p.verification_status] || VERIFICATION_STYLES.unverified}`}>{(p.verification_status || "unverified").replace(/_/g, " ")}</span>
+                    </div>
                   </div>
                   {p.website_url && <a href={p.website_url} target="_blank" rel="noopener noreferrer" className="mt-2 flex items-center gap-1 text-xs text-indigo-600 hover:underline dark:text-indigo-400"><ExternalLink className="h-3 w-3" /> {p.website_url}</a>}
                   {p.description && <p className="mt-2 line-clamp-2 text-sm text-muted-foreground">{p.description}</p>}
@@ -229,22 +251,23 @@ export default function AdminPartners() {
                   )}
                   {p.integration_status === "setup_required" && (() => {
                     const cl = p.setup_checklist || {};
-                    const steps = ["linux_api_configured", "partner_implemented", "verification_passed", "activated"];
+                    const steps = ["domain_verified", "admin_reviewed", "linux_api_configured", "partner_implemented", "proof_of_possession", "test_event_verified", "activated"];
                     const done = steps.filter((s) => cl[s]).length;
                     return (
                       <div className="mt-2">
                         <div className="h-1.5 w-full overflow-hidden rounded-full bg-secondary">
                           <div className="h-full rounded-full bg-blue-500 transition-all" style={{ width: `${(done / steps.length) * 100}%` }} />
                         </div>
-                        <p className="mt-1 text-xs text-muted-foreground">Setup {done}/{steps.length}</p>
+                        <p className="mt-1 text-xs text-muted-foreground">Onboarding {done}/{steps.length}</p>
                       </div>
                     );
                   })()}
                   <div className="mt-4 flex flex-wrap gap-1">
+                    <Button variant="outline" size="sm" onClick={() => setDetailPartner(p)}><Eye className="mr-1 h-3.5 w-3.5" /> Details</Button>
                     <Button variant="outline" size="sm" onClick={() => openEdit(p)}><Pencil className="mr-1 h-3.5 w-3.5" /> Edit</Button>
                     <Button variant="outline" size="sm" onClick={() => setSetupGuidePartner(p)}><Settings2 className="mr-1 h-3.5 w-3.5" /> Setup</Button>
-                    {p.integration_status === "setup_required" && <Button size="sm" onClick={() => setStatus(p, "active")} title="Complete the setup checklist first">Activate</Button>}
-                    {p.integration_status === "pending" && <Button size="sm" onClick={() => setStatus(p, "active")}>Activate</Button>}
+                    {p.integration_status === "setup_required" && !(p.setup_checklist?.admin_reviewed) && <Button variant="outline" size="sm" className="text-emerald-600" onClick={() => reviewPartner(p, true)} title="Approve partner application"><FileCheck className="mr-1 h-3.5 w-3.5" /> Approve</Button>}
+                    {p.integration_status === "setup_required" && <Button size="sm" onClick={() => setStatus(p, "active")} title="Complete the onboarding checklist first">Activate</Button>}
                     {p.integration_status === "active" && <Button variant="outline" size="sm" onClick={() => setStatus(p, "suspended")}>Suspend</Button>}
                     {p.integration_status === "suspended" && <Button size="sm" onClick={() => setStatus(p, "active")}>Resume</Button>}
                     <Button variant="ghost" size="sm" onClick={() => rotateCredential(p)} title="Rotate credentials"><KeyRound className="h-3.5 w-3.5" /></Button>
@@ -357,6 +380,13 @@ export default function AdminPartners() {
               </div>
               <div><Label>Partner Key ID</Label><Input readOnly value={credentialResult.partner_key_id} className="mt-1.5 font-mono" /></div>
               <div><Label>Partner Secret</Label><Input readOnly value={credentialResult.partner_secret} className="mt-1.5 font-mono" /></div>
+              {credentialResult.domain_verification_token && (
+                <div className="rounded-lg border border-blue-300 bg-blue-50 p-3 dark:border-blue-700 dark:bg-blue-950/30">
+                  <p className="text-xs font-medium text-blue-800 dark:text-blue-300">Domain Verification Token</p>
+                  <p className="mt-1 break-all font-mono text-xs text-blue-700 dark:text-blue-400">{credentialResult.domain_verification_token}</p>
+                  <p className="mt-1 text-xs text-blue-700 dark:text-blue-400">The partner must publish this in a DNS TXT record or at /.well-known/perksphere-verify.txt before domain verification can proceed.</p>
+                </div>
+              )}
               <div className="rounded-lg bg-secondary p-3 text-xs text-muted-foreground">
                 <p className="font-medium">Integration endpoint (Linux API):</p>
                 <p className="mt-1 font-mono">POST https://api.perksphere.org/events</p>
@@ -375,6 +405,17 @@ export default function AdminPartners() {
           <DialogHeader><DialogTitle>Setup Guide — {setupGuidePartner?.name}</DialogTitle></DialogHeader>
           {setupGuidePartner && (
             <PartnerSetupGuide partner={setupGuidePartner} onUpdateChecklist={updateSetup} />
+          )}
+          <DialogFooter><DialogClose asChild><Button variant="outline">Close</Button></DialogClose></DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Partner Detail / Dashboard Dialog */}
+      <Dialog open={!!detailPartner} onOpenChange={(o) => !o && setDetailPartner(null)}>
+        <DialogContent className="max-h-[90vh] max-w-3xl overflow-y-auto">
+          <DialogHeader><DialogTitle>Partner Dashboard — {detailPartner?.name}</DialogTitle></DialogHeader>
+          {detailPartner && (
+            <PartnerDetail partner={detailPartner} events={events} onRefresh={() => load(true)} />
           )}
           <DialogFooter><DialogClose asChild><Button variant="outline">Close</Button></DialogClose></DialogFooter>
         </DialogContent>

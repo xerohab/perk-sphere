@@ -1,24 +1,41 @@
 import React, { useState } from "react";
-import { Download, Copy, Check, ExternalLink, AlertTriangle } from "lucide-react";
+import { Download, Copy, Check, ExternalLink, AlertTriangle, Shield, Globe, KeyRound, FileCheck, TestTube, Rocket } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/components/ui/use-toast";
+import { Code2 } from "lucide-react";
 
 const LINUX_API_BASE = "https://api.perksphere.org";
 
-// Setup checklist steps. The first two are completed automatically on partner
-// creation. The remaining steps require external work (Linux API config,
-// partner-side implementation, verification) and keep the integration in
-// "Setup Required" until an admin marks them complete.
+// 8-step onboarding setup guide. Steps 1-2 are auto-completed on creation.
+// Steps 3-8 require domain verification, admin review, Linux API config,
+// partner implementation, proof of possession, test event verification,
+// and admin activation.
+
 export const SETUP_STEPS = [
-  { key: "base44_registered", label: "Partner registered in Perk Sphere", external: false },
-  { key: "credentials_generated", label: "Credentials generated", external: false },
+  { key: "base44_registered", label: "Partner registered in Perk Sphere", external: false, auto: true },
+  { key: "credentials_generated", label: "Secure credentials generated", external: false, auto: true },
+  { key: "domain_verified", label: "Domain ownership verified", external: true },
+  { key: "admin_reviewed", label: "Administrator review approved", external: false },
   { key: "linux_api_configured", label: "Credentials configured on Linux API", external: true },
   { key: "partner_implemented", label: "Partner-side implementation complete", external: true },
-  { key: "verification_passed", label: "Verification test passed", external: true },
-  { key: "activated", label: "Integration activated", external: false }
+  { key: "proof_of_possession", label: "Proof of possession verified", external: true },
+  { key: "test_event_verified", label: "Test event verification passed", external: true },
+  { key: "activated", label: "Integration activated by admin", external: false }
 ];
+
+const STEP_ICONS = {
+  base44_registered: Shield,
+  credentials_generated: KeyRound,
+  domain_verified: Globe,
+  admin_reviewed: FileCheck,
+  linux_api_configured: Rocket,
+  partner_implemented: Code2,
+  proof_of_possession: KeyRound,
+  test_event_verified: TestTube,
+  activated: Check
+};
 
 function buildGuide(partner) {
   const eventTypes = (partner.supported_event_types || []).join(", ") || "(none configured)";
@@ -37,6 +54,7 @@ Integration Kit: ${partner.integration_kit_type || "universal_api"}
 Website: ${partner.website_url || "(not set)"}
 Verified Domains: ${domains}
 Status: ${partner.integration_status}
+Verification: ${partner.verification_status || "unverified"}
 
 Generated: ${new Date().toISOString()}
 
@@ -54,14 +72,28 @@ Partner Website  -->  Linux API (${LINUX_API_BASE})  -->  Perk Sphere (reward au
   exclusively through Perk Sphere's server-side completion path.
 
 ----------------------------------------
-2. CREDENTIALS
+2. ONBOARDING (8 STEPS)
 ----------------------------------------
 
-Partner Key ID: ${partner.partner_key_id || "(not generated yet)"}
-Partner Secret: (shown once at creation or rotation — store securely)
-
-The partner secret is NEVER stored in plaintext and cannot be retrieved again.
-If lost, rotate credentials from the Admin > Partners page.
+1. Partner registered in Perk Sphere (auto-completed)
+2. Secure credentials generated (auto-completed)
+3. Domain ownership verified
+   - Publish this token in a DNS TXT record or at /.well-known/perksphere-verify.txt:
+     ${partner.domain_verification_token || "(not generated)"}
+   - An administrator verifies it in Admin > Partners > Setup
+4. Administrator review approved
+5. Credentials configured on Linux API
+   - Partner Key ID: ${partner.partner_key_id || "(not generated)"}
+   - Partner Secret: (shown once at creation — store securely)
+6. Partner-side implementation complete
+   - Implement HMAC signing and event submission from your backend
+7. Proof of possession verified
+   - An admin generates a challenge; you sign it with your secret
+   - Canonical: POST\\n/proof-of-possession\\nTIMESTAMP\\nNONCE\\nSHA256(challenge)
+8. Test event verification passed
+   - Send a test event with "is_test": true
+   - An admin confirms it was received and processed
+9. Integration activated by admin
 
 ----------------------------------------
 3. EVENT SUBMISSION
@@ -98,12 +130,15 @@ Signature = HMAC-SHA256(partner_secret, canonical_string).toLowerCase()
   "content_id": "<optional content identifier>",
   "content_url": "<optional content URL>",
   "eligible_seconds": 0,
+  "original_event_id": "<required for refund/chargeback events>",
+  "is_test": false,
   "source_timestamp": "<ISO-8601 when the event occurred>",
   "event_data": {}
 }
 
-external_event_id MUST be unique per event. The Linux API rejects duplicates
-(replay prevention).
+external_event_id MUST be unique per event. Duplicates are rejected (replay prevention).
+Watch events require content_id or content_url — self-reported duration is not sufficient.
+Refund events require original_event_id referencing the original purchase.
 
 Supported event types for this partner:
   ${eventTypes}
@@ -112,7 +147,7 @@ Allowed task types:
   ${taskTypes}
 
 ----------------------------------------
-5. SETUP CHECKLIST
+5. SETUP CHECKLIST STATUS
 ----------------------------------------
 
 Completed:
@@ -121,7 +156,7 @@ ${completed.length ? completed.map((s) => "  [x] " + s).join("\\n") : "  (none y
 Pending:
 ${pending.length ? pending.map((s) => "  [ ] " + s).join("\\n") : "  (all complete)"}
 
-The integration remains in "Setup Required" status until all external steps
+The integration remains in "Setup Required" status until all onboarding steps
 are completed and an administrator activates it.
 
 ----------------------------------------
@@ -132,6 +167,8 @@ are completed and an administrator activates it.
 - Use server-to-server calls from the partner backend to the Linux API.
 - Rotate credentials immediately if a secret is compromised.
 - Perk Sphere enforces that no event can directly issue rewards.
+- A pending credential can never authenticate ordinary partner events.
+- Nonces are single-use — replayed requests are rejected.
 `;
 }
 
@@ -191,33 +228,49 @@ export default function PartnerSetupGuide({ partner, onUpdateChecklist }) {
       <div className="flex items-start gap-3 rounded-lg border border-blue-300 bg-blue-50 p-4 dark:border-blue-700 dark:bg-blue-950/30">
         <AlertTriangle className="mt-0.5 h-5 w-5 flex-shrink-0 text-blue-600 dark:text-blue-400" />
         <div>
-          <p className="text-sm font-medium text-blue-800 dark:text-blue-300">Setup Required until external work is verified</p>
+          <p className="text-sm font-medium text-blue-800 dark:text-blue-300">8-step onboarding — Setup Required until all steps are verified</p>
           <p className="mt-1 text-xs text-blue-700 dark:text-blue-400">
-            Perk Sphere has registered this partner and generated credentials. The Linux API configuration, partner-side implementation, and verification test require external work. The integration cannot be activated until all steps are complete.
+            Perk Sphere has registered this partner and generated credentials. Domain verification, admin review, Linux API configuration, partner implementation, proof of possession, and test event verification are required before activation. A pending credential can never authenticate ordinary partner events.
           </p>
         </div>
       </div>
 
+      {/* Domain verification token */}
+      {partner.domain_verification_token && !partner.domain_verified_at && (
+        <div className="rounded-lg border border-amber-300 bg-amber-50 p-3 dark:border-amber-700 dark:bg-amber-950/30">
+          <p className="flex items-center gap-1.5 text-xs font-medium text-amber-800 dark:text-amber-300"><Globe className="h-3.5 w-3.5" /> Domain verification token</p>
+          <p className="mt-1 break-all font-mono text-xs text-amber-700 dark:text-amber-400">{partner.domain_verification_token}</p>
+          <p className="mt-1 text-xs text-amber-700 dark:text-amber-400">Publish this in a DNS TXT record for {(partner.verified_domains || [])[0] || "your domain"} or at /.well-known/perksphere-verify.txt, then ask an admin to verify.</p>
+        </div>
+      )}
+
       <div>
         <div className="mb-2 flex items-center justify-between">
-          <h3 className="text-sm font-semibold">Setup Checklist</h3>
+          <h3 className="text-sm font-semibold">Onboarding Checklist</h3>
           <span className="text-xs text-muted-foreground">{completedCount}/{SETUP_STEPS.length} complete</span>
         </div>
-        <div className="space-y-2">
+        <div className="h-1.5 w-full overflow-hidden rounded-full bg-secondary">
+          <div className="h-full rounded-full bg-blue-500 transition-all" style={{ width: `${(completedCount / SETUP_STEPS.length) * 100}%` }} />
+        </div>
+        <div className="mt-3 space-y-2">
           {SETUP_STEPS.map((step) => {
             const done = !!checklist[step.key];
+            const Icon = STEP_ICONS[step.key] || Check;
             return (
               <button
                 key={step.key}
                 type="button"
                 onClick={() => toggleStep(step.key)}
-                className="flex w-full items-center gap-3 rounded-lg border border-border bg-card p-3 text-left transition-colors hover:bg-accent"
+                disabled={step.auto}
+                className="flex w-full items-center gap-3 rounded-lg border border-border bg-card p-3 text-left transition-colors hover:bg-accent disabled:opacity-60"
               >
                 <div className={`flex h-5 w-5 flex-shrink-0 items-center justify-center rounded border ${done ? "border-emerald-600 bg-emerald-600 text-white" : "border-border"}`}>
                   {done && <Check className="h-3.5 w-3.5" />}
                 </div>
+                <Icon className="h-4 w-4 flex-shrink-0 text-muted-foreground" />
                 <span className={`text-sm ${done ? "text-muted-foreground line-through" : ""}`}>{step.label}</span>
-                {step.external && <span className="ml-auto rounded-full bg-blue-100 px-2 py-0.5 text-xs text-blue-700 dark:bg-blue-500/15 dark:text-blue-400">External</span>}
+                {step.auto && <span className="ml-auto rounded-full bg-emerald-100 px-2 py-0.5 text-xs text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-400">Auto</span>}
+                {step.external && !step.auto && <span className="ml-auto rounded-full bg-blue-100 px-2 py-0.5 text-xs text-blue-700 dark:bg-blue-500/15 dark:text-blue-400">External</span>}
               </button>
             );
           })}

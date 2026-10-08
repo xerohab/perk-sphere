@@ -1,0 +1,90 @@
+{
+  "name": "PartnerAccountLink",
+  "type": "object",
+  "properties": {
+    "user_id": {
+      "type": "string",
+      "description": "The Perk Sphere user requesting the link"
+    },
+    "partner_integration_id": {
+      "type": "string",
+      "description": "Which partner the user is linking to"
+    },
+    "partner_name": {
+      "type": "string"
+    },
+    "challenge_token": {
+      "type": "string",
+      "description": "Signed single-use challenge token the partner must echo back in an ACCOUNT_LINKED event"
+    },
+    "challenge_hash": {
+      "type": "string",
+      "description": "SHA-256 hash of the challenge token (stored for verification without keeping the token)"
+    },
+    "partner_account_reference": {
+      "type": "string",
+      "description": "The user's account identifier on the partner site (entered by the user or resolved from the partner event)"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "pending",
+        "linked",
+        "unlinked",
+        "expired",
+        "rejected"
+      ],
+      "default": "pending"
+    },
+    "linked_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "unlinked_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "expires_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "used_at": {
+      "type": "string",
+      "format": "date-time"
+    }
+  },
+  "required": [
+    "user_id",
+    "partner_integration_id",
+    "challenge_hash"
+  ],
+  "rls": {
+    "read": {
+      "$or": [
+        {
+          "data.user_id": "{{user.id}}"
+        },
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        }
+      ]
+    },
+    "create": {
+      "user_condition": {
+        "role": "service_only"
+      }
+    },
+    "update": {
+      "user_condition": {
+        "role": "service_only"
+      }
+    },
+    "delete": {
+      "user_condition": {
+        "role": "service_only"
+      }
+    }
+  }
+}

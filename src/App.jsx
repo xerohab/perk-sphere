@@ -36,6 +36,7 @@ const PointsHistory = lazy(() => import('@/pages/user/PointsHistory'));
 const Loyalty = lazy(() => import('@/pages/user/Loyalty'));
 const Notifications = lazy(() => import('@/pages/user/Notifications'));
 const ConnectedServices = lazy(() => import('@/pages/user/ConnectedServices'));
+const PartnerAccounts = lazy(() => import('@/pages/user/PartnerAccounts'));
 const BrowserExtension = lazy(() => import('@/pages/user/BrowserExtension'));
 const Profile = lazy(() => import('@/pages/user/Profile'));
 const Privacy = lazy(() => import('@/pages/user/Privacy'));
@@ -104,6 +105,7 @@ const AppRoutes = () => (
           <Route path="/loyalty" element={<Loyalty />} />
           <Route path="/notifications" element={<Notifications />} />
           <Route path="/connected-services" element={<ConnectedServices />} />
+          <Route path="/partner-accounts" element={<PartnerAccounts />} />
           <Route path="/browser-extension" element={<BrowserExtension />} />
           <Route path="/profile" element={<Profile />} />
           <Route path="/privacy" element={<Privacy />} />

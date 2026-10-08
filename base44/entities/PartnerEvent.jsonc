@@ -69,6 +69,24 @@
     "completion_id": {
       "type": "string"
     },
+    "is_test_event": {
+      "type": "boolean",
+      "default": false,
+      "description": "True for verification test events that never enter reward processing"
+    },
+    "is_refund": {
+      "type": "boolean",
+      "default": false,
+      "description": "True for refund/chargeback events that may invalidate prior completions"
+    },
+    "original_event_id": {
+      "type": "string",
+      "description": "For refund/chargeback events: the external_event_id of the original purchase event"
+    },
+    "invalidated_completion_id": {
+      "type": "string",
+      "description": "If a refund invalidated a task completion, the TaskProgress ID that was reversed"
+    },
     "error_code": {
       "type": "string"
     },
