@@ -35,14 +35,31 @@ async function hmacSha256Hex(secret, text) {
   return [...new Uint8Array(sig)].map((b) => b.toString(16).padStart(2, "0")).join("");
 }
 
+// Allowed path prefixes for Linux API requests. Prevents arbitrary external
+// URL construction — any path not starting with one of these is rejected.
+const ALLOWED_PATH_PREFIXES = [
+  "/v1/perk-sphere/",
+  "/partners/",
+  "/v1/partner-credentials/",
+  "/v1/partner-links/"
+];
+
+function isValidPath(path) {
+  if (!path || typeof path !== "string") return false;
+  if (!path.startsWith("/") || path.includes("://") || path.includes("..")) return false;
+  return ALLOWED_PATH_PREFIXES.some((prefix) => path.startsWith(prefix));
+}
+
 // Signs and sends a trusted POST to the Linux API.
 // Returns { ok: true, status, data } on success or
 // { ok: false, status, code, error } on failure.
 export async function linuxTrustedPost(path, body, extraHeaders) {
+  if (!isValidPath(path)) {
+    return { ok: false, status: 400, code: "invalid_path", error: "Invalid or unrecognised endpoint path." };
+  }
   const keyId = (secrets.get("PERKSPHERE_LINUX_KEY_ID") || "").trim();
   // Use the stored secret verbatim as UTF-8: no trimming, hex or base64 decoding.
   const hmacSecret = secrets.get("PERKSPHERE_LINUX_HMAC_SECRET") || "";
-  console.log(`[linuxClient] keyId length=${keyId.length} secret length=${hmacSecret.length}`);
   if (!keyId || !hmacSecret) {
     return { ok: false, status: 500, code: "server_misconfigured", error: "Linux API credentials are not configured." };
   }
@@ -61,11 +78,11 @@ export async function linuxTrustedPost(path, body, extraHeaders) {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
+        ...(extraHeaders || {}),
         "X-PS-Key-ID": keyId,
         "X-PS-Timestamp": timestamp,
         "X-PS-Nonce": nonce,
-        "X-PS-Signature": signature,
-        ...(extraHeaders || {})
+        "X-PS-Signature": signature
       },
       body: rawBody,
       signal: AbortSignal.timeout(10000)
@@ -77,8 +94,20 @@ export async function linuxTrustedPost(path, body, extraHeaders) {
 
   const data = await res.json().catch(() => null);
   if (!res.ok) {
-    const errCode = (data && data.error && data.error.code) || "linux_error";
-    const errMsg = (data && data.error && data.error.message) || "Linux API request failed.";
+    // Handle both Linux error formats:
+    //   {"ok":false,"error":"stage2_not_enabled"}           (string)
+    //   {"ok":false,"error":{"code":"...","message":"..."}}  (object)
+    let errCode = "linux_error";
+    let errMsg = "Linux API request failed.";
+    if (data && typeof data.error === "string") {
+      errCode = data.error;
+      errMsg = data.error === "stage2_not_enabled"
+        ? "This feature is not yet enabled on the Linux API."
+        : data.error;
+    } else if (data && data.error && typeof data.error === "object") {
+      errCode = data.error.code || "linux_error";
+      errMsg = data.error.message || "Linux API request failed.";
+    }
     // Safe diagnostic log: request ID, path, HTTP status, Linux error code/message.
     // Never logs secrets, signatures, device tokens, or pairing codes.
     console.log(`[linuxClient] req=${requestId} path=${path} status=${res.status} code=${errCode} message=${errMsg}`);
