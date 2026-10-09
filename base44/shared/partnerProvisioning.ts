@@ -79,7 +79,20 @@ export async function provisionViaLinux(admin, record) {
   }
 
   const result = await linuxTrustedPost(LINUX_PARTNER_ENDPOINTS.PROVISION, partnerProvisionRequest(record));
-  if (!result.ok) return { ok: false, code: result.code, error: result.error };
+  if (!result.ok) {
+    // Linux returns 409 partner_already_provisioned when a partner with the same
+    // base44_partner_reference already exists but the UUID was not saved in Base44.
+    // The admin must obtain the UUID from the Linux API team and use setLinuxPartnerId.
+    if (result.code === 'partner_already_provisioned') {
+      return {
+        ok: false,
+        code: 'partner_already_provisioned',
+        error: 'Partner was already provisioned on Linux but the UUID is not saved in Base44. Obtain the partner_uuid from the Linux API team and use the setLinuxPartnerId action to enter it manually.',
+        status: result.status
+      };
+    }
+    return { ok: false, code: result.code, error: result.error };
+  }
 
   const saved = await saveLinuxProvisioning(admin, record, result.data || {});
   if (!saved.ok) return saved;

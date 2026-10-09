@@ -40,7 +40,8 @@ const ACTION_PERMS = {
   verifyTestEvent: 'partners.manage',
   updateRewardPolicy: 'partners.manage',
   reviewPartner: 'partners.manage',
-  retryProvisioning: 'partners.manage'
+  retryProvisioning: 'partners.manage',
+  setLinuxPartnerId: 'partners.manage'
 };
 
 const SYSTEM_FIELDS = ['id', 'created_date', 'updated_date', 'created_by', 'created_by_id', 'is_sample'];
@@ -172,6 +173,14 @@ export default async function(req) {
 
       if (!provResult.ok) {
         await writeAudit(admin, { adminId: user.id, action: 'partner_provisioning_retry_failed', entityType: 'PartnerIntegration', entityId: partnerId, next: { code: provResult.code } });
+        if (provResult.code === 'partner_already_provisioned') {
+          return Response.json({
+            ok: false,
+            code: 'partner_already_provisioned',
+            error: provResult.error,
+            action_required: 'setLinuxPartnerId'
+          }, { status: 409 });
+        }
         return Response.json({
           ok: false,
           linux_integration_pending: true,
@@ -203,6 +212,33 @@ export default async function(req) {
     }
 
     if (!partnerId) return Response.json({ error: 'Missing partnerId' }, { status: 400 });
+
+    // ── Set Linux Partner ID (manual reconciliation) ──────────────────────
+    if (action === 'setLinuxPartnerId') {
+      const before = await admin.entities.PartnerIntegration.get(partnerId);
+      const { linux_api_partner_id } = data || {};
+      if (!linux_api_partner_id || typeof linux_api_partner_id !== 'string') {
+        return Response.json({ error: 'Missing or invalid linux_api_partner_id' }, { status: 400 });
+      }
+      // Basic UUID format validation
+      const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+      if (!uuidRegex.test(linux_api_partner_id)) {
+        return Response.json({ error: 'linux_api_partner_id must be a valid UUID' }, { status: 400 });
+      }
+      const record = await admin.entities.PartnerIntegration.update(partnerId, {
+        linux_api_partner_id,
+        integration_status: before.integration_status === 'linux_integration_pending' ? 'setup_required' : before.integration_status
+      });
+      await writeAudit(admin, {
+        adminId: user.id,
+        action: 'partner_linux_id_manually_set',
+        entityType: 'PartnerIntegration',
+        entityId: partnerId,
+        previous: { linux_api_partner_id: before.linux_api_partner_id },
+        next: { linux_api_partner_id }
+      });
+      return Response.json({ ok: true, record: sanitizePartnerRecord(record), message: 'Linux Partner ID set. You can now use Rotate Credential to issue new credentials.' });
+    }
 
     // ── Update ────────────────────────────────────────────────────────────
     if (action === 'update') {
