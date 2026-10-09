@@ -14,7 +14,7 @@
 
 import { secrets } from "base44:runtime";
 
-const LINUX_API_BASE = "https://api.perksphere.org";
+export const LINUX_API_BASE = "https://api.perksphere.org";
 
 async function sha256Hex(text) {
   const data = new TextEncoder().encode(text);
