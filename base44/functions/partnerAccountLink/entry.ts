@@ -74,6 +74,18 @@ export default async function(req) {
         return Response.json({ error: 'You already have a linked account with this partner' }, { status: 400 });
       }
 
+      // Auto-expire any previous pending challenges for this partner+user so the
+      // user can always request a fresh challenge without waiting for the old
+      // one to expire. The old challenge token becomes invalid on Linux too.
+      const oldPending = await admin.entities.PartnerAccountLink.filter({
+        user_id: user.id,
+        partner_integration_id: partnerId,
+        status: 'pending'
+      });
+      for (const l of (oldPending || [])) {
+        await admin.entities.PartnerAccountLink.update(l.id, { status: 'expired' });
+      }
+
       // Delegate challenge creation to Linux (the authority).
       if (!partner.linux_api_partner_id) {
         return Response.json({ error: 'Partner is not provisioned for account linking' }, { status: 400 });
@@ -133,7 +145,8 @@ export default async function(req) {
         partner_integration_id: l.partner_integration_id,
         status: l.status,
         linked_at: l.linked_at,
-        partner_account_reference: l.partner_account_reference
+        partner_account_reference: l.partner_account_reference,
+        expires_at: l.expires_at
       }));
 
       const sanitizedConnected = partnerLinks.map((c) => ({
@@ -205,7 +218,9 @@ export default async function(req) {
     if (action === 'listPartners') {
       const partners = await admin.entities.PartnerIntegration.list('-created_date', 200);
       const available = (partners || []).filter((p) =>
-        p.integration_status === 'active' || p.integration_status === 'setup_required'
+        p.integration_status === 'active' ||
+        p.integration_status === 'setup_required' ||
+        p.integration_status === 'linux_integration_pending'
       );
       // Sanitize: only return public fields — no secrets, hashes, or internal info.
       return Response.json({ ok: true, partners: available.map(sanitizePartnerForUser) });

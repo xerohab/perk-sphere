@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useCallback } from "react";
 import { base44 } from "@/api/base44Client";
 import { useToast } from "@/components/ui/use-toast";
-import { Link2, Unlink, Copy, Check, Clock, ShieldCheck, ExternalLink } from "lucide-react";
+import { Link2, Unlink, Copy, Check, Clock, ShieldCheck, ExternalLink, Loader2, XCircle, AlertTriangle, RefreshCw } from "lucide-react";
 import PageHeader from "@/components/perk/PageHeader";
 import EmptyState from "@/components/perk/EmptyState";
 import { Button } from "@/components/ui/button";
@@ -10,16 +10,39 @@ import {
 } from "@/components/ui/dialog";
 import ConfirmDialog from "@/components/perk/ConfirmDialog";
 
+function getPartnerState(partner, links, connected) {
+  const conn = connected.find((c) => c.service === `partner_${partner.id}`);
+  if (conn && conn.status === "connected") return { state: "connected", conn };
+  if (partner.integration_status !== "active") return { state: "coming_soon" };
+  const link = links.find((l) => l.partner_integration_id === partner.id && l.status === "pending");
+  if (link) {
+    const expired = link.expires_at && new Date(link.expires_at) < new Date();
+    return { state: expired ? "expired" : "pending", link };
+  }
+  if (conn && conn.status === "disconnected") return { state: "disconnected", conn };
+  return { state: "connect" };
+}
+
+const STATE_BADGE = {
+  connected: { label: "Connected", cls: "bg-emerald-100 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-400", icon: ShieldCheck },
+  pending: { label: "Pending", cls: "bg-amber-100 text-amber-700 dark:bg-amber-500/15 dark:text-amber-400", icon: Clock },
+  expired: { label: "Expired", cls: "bg-red-100 text-red-700 dark:bg-red-500/15 dark:text-red-400", icon: XCircle },
+  connect: { label: "Not linked", cls: "bg-slate-100 text-slate-600 dark:bg-slate-500/15 dark:text-slate-300", icon: Link2 },
+  disconnected: { label: "Disconnected", cls: "bg-slate-100 text-slate-600 dark:bg-slate-500/15 dark:text-slate-300", icon: Unlink },
+  coming_soon: { label: "Coming soon", cls: "bg-blue-100 text-blue-700 dark:bg-blue-500/15 dark:text-blue-400", icon: Clock }
+};
+
 export default function PartnerAccounts() {
   const { toast } = useToast();
   const [partners, setPartners] = useState([]);
+  const [links, setLinks] = useState([]);
   const [connected, setConnected] = useState([]);
   const [loading, setLoading] = useState(true);
   const [challengeDialog, setChallengeDialog] = useState(null);
   const [copied, setCopied] = useState(false);
+  const [linking, setLinking] = useState(null);
 
   const load = useCallback(async () => {
-    setLoading(true);
     try {
       const [partnersRes, linksRes] = await Promise.all([
         base44.functions.invoke("partnerAccountLink", { action: "listPartners" }),
@@ -28,6 +51,7 @@ export default function PartnerAccounts() {
       const pData = partnersRes?.data || partnersRes;
       const lData = linksRes?.data || linksRes;
       setPartners(pData?.partners || []);
+      setLinks(lData?.links || []);
       setConnected(lData?.connected || []);
     } catch (e) {
       toast({ title: "Failed to load", description: e.message, variant: "destructive" });
@@ -38,23 +62,26 @@ export default function PartnerAccounts() {
 
   useEffect(() => { load(); }, [load]);
 
+  const hasPending = links.some((l) => l.status === "pending" && (!l.expires_at || new Date(l.expires_at) > new Date()));
+  useEffect(() => {
+    if (!hasPending) return;
+    const interval = setInterval(load, 5000);
+    return () => clearInterval(interval);
+  }, [hasPending, load]);
+
   const startLink = async (partner) => {
+    setLinking(partner.id);
     try {
-      const res = await base44.functions.invoke("partnerAccountLink", {
-        action: "createChallenge",
-        partnerId: partner.id
-      });
+      const res = await base44.functions.invoke("partnerAccountLink", { action: "createChallenge", partnerId: partner.id });
       const data = res?.data || res;
       if (data?.challenge_token) {
-        setChallengeDialog({
-          partner,
-          challenge_token: data.challenge_token,
-          expires_at: data.expires_at,
-          instructions: data.instructions
-        });
+        setChallengeDialog({ partner, challenge_token: data.challenge_token, expires_at: data.expires_at, instructions: data.instructions });
+        load();
       }
     } catch (e) {
       toast({ title: "Failed", description: e?.response?.data?.error || e.message, variant: "destructive" });
+    } finally {
+      setLinking(null);
     }
   };
 
@@ -80,12 +107,8 @@ export default function PartnerAccounts() {
       await navigator.clipboard.writeText(challengeDialog.challenge_token);
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
-    } catch (_e) {
-      toast({ title: "Copy failed", variant: "destructive" });
-    }
+    } catch (_e) { toast({ title: "Copy failed", variant: "destructive" }); }
   };
-
-  const isLinked = (partnerId) => connected.some((c) => c.service === `partner_${partnerId}` && c.status === "connected");
 
   if (loading) {
     return <div className="flex h-64 items-center justify-center"><div className="h-8 w-8 animate-spin rounded-full border-4 border-secondary border-t-foreground" /></div>;
@@ -100,8 +123,9 @@ export default function PartnerAccounts() {
           <div className="col-span-full"><EmptyState title="No partners available" description="Partner integrations will appear here once they are configured." /></div>
         ) : (
           partners.map((p) => {
-            const linked = isLinked(p.id);
-            const conn = connected.find((c) => c.service === `partner_${p.id}` && c.status === "connected");
+            const { state, conn, link } = getPartnerState(p, links, connected);
+            const badge = STATE_BADGE[state];
+            const BadgeIcon = badge.icon;
             return (
               <div key={p.id} className="flex flex-col rounded-2xl border border-border bg-card p-5 shadow-sm">
                 <div className="flex items-start justify-between gap-2">
@@ -109,23 +133,54 @@ export default function PartnerAccounts() {
                     <h3 className="truncate text-base font-semibold">{p.name}</h3>
                     {p.website_url && <a href={p.website_url} target="_blank" rel="noopener noreferrer" className="mt-1 flex items-center gap-1 text-xs text-indigo-600 hover:underline dark:text-indigo-400"><ExternalLink className="h-3 w-3" /> {p.website_url}</a>}
                   </div>
-                  {linked ? (
-                    <span className="flex-shrink-0 rounded-full bg-emerald-100 px-2 py-0.5 text-xs font-medium text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-400"><ShieldCheck className="mr-1 inline h-3 w-3" /> Linked</span>
-                  ) : (
-                    <span className="flex-shrink-0 rounded-full bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-600 dark:bg-slate-500/15 dark:text-slate-300">Not linked</span>
-                  )}
+                  <span className={`flex flex-shrink-0 items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium ${badge.cls}`}><BadgeIcon className="h-3 w-3" /> {badge.label}</span>
                 </div>
                 {p.description && <p className="mt-2 line-clamp-2 text-sm text-muted-foreground">{p.description}</p>}
-                {linked && conn && <p className="mt-2 text-xs text-muted-foreground">Account: {conn.account_handle || conn.external_account_id}</p>}
-                <div className="mt-4 flex gap-2">
-                  {!linked ? (
-                    <Button size="sm" onClick={() => startLink(p)}><Link2 className="mr-1 h-3.5 w-3.5" /> Link account</Button>
-                  ) : (
+
+                {state === "connected" && conn && (
+                  <p className="mt-2 text-xs text-muted-foreground">Account: <span className="font-medium">{conn.account_handle || conn.external_account_id}</span></p>
+                )}
+                {state === "pending" && link && (
+                  <p className="mt-2 flex items-center gap-1.5 text-xs text-amber-600 dark:text-amber-400"><Loader2 className="h-3 w-3 animate-spin" /> Waiting for {p.name} to confirm...{link.expires_at && <span className="ml-1">expires {new Date(link.expires_at).toLocaleTimeString()}</span>}</p>
+                )}
+                {state === "expired" && (
+                  <p className="mt-2 flex items-center gap-1.5 text-xs text-red-600 dark:text-red-400"><AlertTriangle className="h-3 w-3" /> Challenge expired. Request a new one to continue.</p>
+                )}
+                {state === "coming_soon" && (
+                  <p className="mt-2 text-xs text-muted-foreground">This partner is being set up. Account linking will be available once the integration is activated.</p>
+                )}
+
+                <div className="mt-4 flex flex-wrap gap-2">
+                  {state === "connect" && (
+                    <Button size="sm" onClick={() => startLink(p)} disabled={linking === p.id}>
+                      {linking === p.id ? <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" /> : <Link2 className="mr-1.5 h-3.5 w-3.5" />}
+                      Connect
+                    </Button>
+                  )}
+                  {state === "pending" && (
+                    <Button size="sm" variant="outline" onClick={() => startLink(p)} disabled={linking === p.id}>
+                      {linking === p.id ? <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" /> : <RefreshCw className="mr-1.5 h-3.5 w-3.5" />}
+                      New challenge
+                    </Button>
+                  )}
+                  {state === "expired" && (
+                    <Button size="sm" onClick={() => startLink(p)} disabled={linking === p.id}>
+                      {linking === p.id ? <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" /> : <RefreshCw className="mr-1.5 h-3.5 w-3.5" />}
+                      Retry
+                    </Button>
+                  )}
+                  {state === "disconnected" && (
+                    <Button size="sm" onClick={() => startLink(p)} disabled={linking === p.id}>
+                      {linking === p.id ? <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" /> : <Link2 className="mr-1.5 h-3.5 w-3.5" />}
+                      Reconnect
+                    </Button>
+                  )}
+                  {state === "connected" && (
                     <ConfirmDialog
-                      trigger={<Button variant="outline" size="sm" className="text-red-600"><Unlink className="mr-1 h-3.5 w-3.5" /> Unlink</Button>}
-                      title={`Unlink from ${p.name}?`}
-                      description="You will stop earning rewards from this partner until you link again."
-                      confirmLabel="Unlink"
+                      trigger={<Button variant="outline" size="sm" className="text-red-600"><Unlink className="mr-1.5 h-3.5 w-3.5" /> Disconnect</Button>}
+                      title={`Disconnect from ${p.name}?`}
+                      description="You will stop earning rewards from this partner until you connect again."
+                      confirmLabel="Disconnect"
                       destructive
                       onConfirm={() => unlink(conn.id)}
                     />
@@ -137,16 +192,15 @@ export default function PartnerAccounts() {
         )}
       </div>
 
-      {/* Challenge Dialog */}
       {challengeDialog && (
         <Dialog open={!!challengeDialog} onOpenChange={(o) => !o && setChallengeDialog(null)}>
           <DialogContent>
-            <DialogHeader><DialogTitle>Link {challengeDialog.partner.name} account</DialogTitle></DialogHeader>
+            <DialogHeader><DialogTitle>Connect to {challengeDialog.partner.name}</DialogTitle></DialogHeader>
             <div className="space-y-4">
               <div className="flex items-start gap-3 rounded-lg border border-blue-300 bg-blue-50 p-4 dark:border-blue-700 dark:bg-blue-950/30">
                 <Clock className="mt-0.5 h-5 w-5 flex-shrink-0 text-blue-600 dark:text-blue-400" />
                 <div>
-                  <p className="text-sm font-medium text-blue-800 dark:text-blue-300">Single-use challenge</p>
+                  <p className="text-sm font-medium text-blue-800 dark:text-blue-300">Single-use challenge — expires in 10 minutes</p>
                   <p className="mt-1 text-xs text-blue-700 dark:text-blue-400">{challengeDialog.instructions}</p>
                 </div>
               </div>
@@ -157,9 +211,23 @@ export default function PartnerAccounts() {
                   <Button variant="outline" size="sm" onClick={copyChallenge}>{copied ? <Check className="h-3.5 w-3.5 text-emerald-600" /> : <Copy className="h-3.5 w-3.5" />}</Button>
                 </div>
               </div>
-              <p className="text-xs text-muted-foreground">Send an ACCOUNT_LINKED event to the Linux API from {challengeDialog.partner.name} with this challenge_token and your account reference. The link completes automatically once the partner verifies the challenge.</p>
+              <div className="rounded-lg bg-secondary p-3 text-xs text-muted-foreground">
+                <p className="font-medium text-foreground">Next steps:</p>
+                <ol className="mt-1.5 list-decimal space-y-1 pl-4">
+                  <li>Copy the challenge token above.</li>
+                  <li>Go to <a href={challengeDialog.partner.website_url} target="_blank" rel="noopener noreferrer" className="font-medium text-indigo-600 hover:underline dark:text-indigo-400">{challengeDialog.partner.name}</a> and log in to your account.</li>
+                  <li>Find the Perk Sphere connection page and paste the challenge token.</li>
+                  <li>Approve the connection. The link completes automatically here once {challengeDialog.partner.name} confirms.</li>
+                </ol>
+              </div>
+              <p className="text-xs text-muted-foreground">This page will update automatically when the connection is confirmed.</p>
             </div>
-            <DialogFooter><DialogClose asChild><Button>Done</Button></DialogClose></DialogFooter>
+            <DialogFooter>
+              <a href={challengeDialog.partner.website_url} target="_blank" rel="noopener noreferrer" className="mr-auto">
+                <Button variant="outline"><ExternalLink className="mr-1.5 h-3.5 w-3.5" /> Open {challengeDialog.partner.name}</Button>
+              </a>
+              <DialogClose asChild><Button>Done</Button></DialogClose>
+            </DialogFooter>
           </DialogContent>
         </Dialog>
       )}
