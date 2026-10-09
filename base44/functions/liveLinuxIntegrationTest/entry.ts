@@ -43,7 +43,7 @@ export default async function(req) {
     // 1. Existing partners
     try {
       const ex = await admin.entities.PartnerIntegration.filter({ active: false }, { limit: 20, fields: ['name', 'integration_status', 'linux_api_partner_id', 'created_date'] });
-      R.p1 = L('Existing inactive partners', { n: ex.items?.length || 0, names: (ex.items||[]).map(p => p.name) });
+      R.p1 = L('Inactive partners', { n: ex.items?.length || 0 });
     } catch (e) { R.p1 = { err: redact(e.message) }; }
 
     // 2. Health
@@ -51,7 +51,7 @@ export default async function(req) {
       const t0 = Date.now();
       const res = await fetch(LINUX_API_BASE + '/health', { signal: AbortSignal.timeout(10000) });
       await res.text();
-      R.p2 = L('GET /health', { st: res.status, ms: Date.now()-t0 });
+      R.p2 = L('GET /health', { st: res.status });
     } catch (e) { R.p2 = L('GET /health', { st: 0, err: redact(e.message) }); blk.push('Health failed'); }
 
     // 3. Provision
@@ -70,19 +70,19 @@ export default async function(req) {
     const pd = prov.data || {};
     pk = pd.partner_key_id; ps = pd.partner_secret; lpid = pd.partner_uuid;
     sens.push(pk, ps, pd.domain_verification_token);
-    R.p3 = L('POST /partners/provision', { st: prov.status, ok: prov.ok, f: { uuid: !!lpid, key: !!pk, secret: !!ps, dvt: !!pd.domain_verification_token } });
+    R.p3 = L('POST /partners/provision', { st: prov.status, ok: prov.ok, uuid: !!lpid, key: !!pk, secret: !!ps, dvt: !!pd.domain_verification_token });
     await saveLinuxProvisioning(admin, record, pd);
     // Small delay to let Linux commit the new partner.
     await new Promise(r => setTimeout(r, 1500));
 
     // 4. Domain verification (expect failure — no DNS TXT)
     const dv = await linuxTrustedPost(LINUX_PARTNER_ENDPOINTS.VERIFY_DOMAIN, { partner_uuid: lpid });
-    R.p4 = L('verify-domain', { st: dv.status, ok: dv.ok, ec: dv.ok ? null : dv.code, note: 'No DNS TXT. Expected fail.' });
+    R.p4 = L('verify-domain', { st: dv.status, ok: dv.ok, ec: dv.ok ? null : dv.code });
 
     // 5. Proof-of-possession — capture raw response for debugging
     try {
       const ch = await linuxTrustedPost(LINUX_PARTNER_ENDPOINTS.PROOF_CHALLENGE, { partner_uuid: lpid });
-      R.p5a = L('proof-challenge', { st: ch.status, ok: ch.ok, ec: ch.ok ? null : ch.code, uuid_ok: lpid?.length === 36 });
+      R.p5a = L('proof-challenge', { st: ch.status, ok: ch.ok, ec: ch.ok ? null : ch.code });
       if (ch.ok) {
         const cd = ch.data || {};
         const cid = cd.challenge_id, chal = cd.challenge;
@@ -118,7 +118,7 @@ export default async function(req) {
     // 6. Account-link
     try {
       const lc = await linuxTrustedPost(LINUX_PARTNER_ENDPOINTS.ACCOUNT_LINK_CREATE, { partner_uuid: lpid, user_reference: uid });
-      R.p6a = L('link-create-challenge', { st: lc.status, ok: lc.ok, ec: lc.ok ? null : lc.code, em: lc.ok ? null : redact(lc.error) });
+      R.p6a = L('link-create-challenge', { st: lc.status, ok: lc.ok, ec: lc.ok ? null : lc.code });
       if (lc.ok) {
         const lcd = lc.data || {};
         const ct = lcd.challenge_token;
@@ -163,7 +163,7 @@ export default async function(req) {
         const sigB = await hmacSha256Hex(ps, canonB);
         const b44Res = await fetch('https://perk-sphere-hub.base44.app' + b44Path, { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-PS-Partner-Key': pk, 'X-PS-Timestamp': tsB, 'X-PS-Nonce': ncB, 'X-PS-Signature': sigB }, body: b44Body, signal: AbortSignal.timeout(10000) });
         const b44Data = await b44Res.json().catch(() => null);
-        R.p7a2 = L('Base44 migration endpoint (partner auth)', { st: b44Res.status, ok: b44Res.ok, ec: b44Data?.error?.code || null, note: 'Proves signing correct' });
+        R.p7a2 = L('Base44 migration (partner auth)', { st: b44Res.status, ok: b44Res.ok, ec: b44Data?.error?.code || null });
         // Clean up migration event if created
         if (b44Res.ok) {
           const me = await admin.entities.PartnerEvent.filter({ partner_integration_id: record.id }, { limit: 5, sort: '-created_date' });
@@ -199,7 +199,7 @@ export default async function(req) {
     try {
       const yt = buildResult(parseTarget({ url: 'https://www.youtube.com/watch?v=dQw4w9WgXcQ' }), [], []);
       const nm = buildResult(parseTarget({ url: 'https://perksphere.org' }), [], []);
-      R.p9 = C('YouTube zero-reward', { yt_plat: yt.target?.platform, yt_cls: yt.classification, yt_pts: yt.points_eligible, yt_xp: yt.xp_eligible, yt_trk: yt.tracking_enabled, ctrl_cls: nm.classification });
+      R.p9 = C('YouTube zero-reward', { cls: yt.classification, pts: yt.points_eligible, xp: yt.xp_eligible, trk: yt.tracking_enabled });
     } catch (e) { R.p9 = { err: redact(e.message) }; }
 
     // 10. Extension release
@@ -207,7 +207,7 @@ export default async function(req) {
       const t0 = Date.now();
       const res = await fetch(LINUX_API_BASE + '/v1/extension/releases/chromium', { signal: AbortSignal.timeout(10000) });
       const j = await res.json().catch(() => null);
-      R.p10 = L('GET /v1/extension/releases/chromium', { st: res.status, ms: Date.now()-t0, ok: !!(j?.ok && j?.data), ver: j?.data?.version || null, ch: j?.data?.channel || null, dl_ok: j?.data?.download_url ? (() => { try { return new URL(j.data.download_url).hostname === 'api.perksphere.org'; } catch { return false; } })() : null });
+      R.p10 = L('Extension release', { st: res.status, ok: !!(j?.ok && j?.data), ver: j?.data?.version || null, ch: j?.data?.channel || null });
     } catch (e) { R.p10 = L('GET /v1/extension/releases/chromium', { st: 0, err: redact(e.message) }); }
 
   } catch (error) {
