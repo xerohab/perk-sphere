@@ -1,6 +1,6 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.52';
 import { secrets } from 'base44:runtime';
-import { LINUX_API_BASE, LINUX_PARTNER_ENDPOINTS, linuxTrustedPost, computeActivationApproval } from '../../shared/linuxClient.ts';
+import { LINUX_API_BASE, LINUX_PARTNER_ENDPOINTS, linuxTrustedPost } from '../../shared/linuxClient.ts';
 import { partnerProvisionRequest, saveLinuxProvisioning } from '../../shared/partnerProvisioning.ts';
 import { partnerSignedPost, computePossessionSignature, sha256Hex, hmacSha256Hex } from '../../shared/partnerSign.ts';
 import { parseTarget, buildResult } from '../../shared/classify.ts';
@@ -170,15 +170,16 @@ export default async function(req) {
       R.p8 = C('Activation blocking', { steps: stepsOk, dv: !!fr.domain_verified_at, pv: !!fr.proof_of_possession_verified, ar: !!cl.admin_reviewed, lid: !!fr.linux_api_partner_id, blocked: !canAct });
     } catch (e) { R.p8 = { err: redact(e.message) }; }
 
-    // 8b. Activation probe — guarded activation v2 with signed admin approval
+    // 8b. Activation probe — contract unknown, needs Linux source inspection.
+    // The guarded activation v2 endpoint returns 400 invalid_request for all
+    // probed body variants. The exact contract (field names, signature format,
+    // guard conditions) must be obtained from Linux source before activation
+    // can be implemented. This probe confirms the endpoint exists and rejects
+    // authenticated requests (400) — expected while activation is disabled by
+    // default and the contract is unconfirmed.
     try {
-      const hmacSecret = secrets.get('PERKSPHERE_LINUX_HMAC_SECRET') || '';
-      const aTs = String(Math.floor(Date.now()/1000));
-      const aSig = await computeActivationApproval(hmacSecret, lpid, uid, aTs);
-      const aRes = await linuxTrustedPost(LINUX_PARTNER_ENDPOINTS.ACTIVATE, {
-        partner_uuid: lpid, admin_id: uid, timestamp: aTs, approval_signature: aSig
-      });
-      R.p11 = L('activate-v2', { st: aRes.status, ok: aRes.ok, ec: aRes.ok ? null : aRes.code, expected_guard: !aRes.ok });
+      const aRes = await linuxTrustedPost(LINUX_PARTNER_ENDPOINTS.ACTIVATE, { partner_uuid: lpid });
+      R.p11 = L('activate-v2', { st: aRes.status, ok: aRes.ok, ec: aRes.ok ? null : aRes.code, contract_unknown: true, note: 'Exact contract requires Linux source inspection.' });
     } catch (e) { R.p11err = redact(e.message); }
 
     // 9. YouTube zero-reward (CODE)
@@ -215,7 +216,8 @@ export default async function(req) {
 
   R.summary = {
     pass: ['p2','p3','p5a','p5b','p7a2','p10'],
-    expected_reject: { p4: 'no_dns_txt', p5c: 'replay_rejected', p6a: 'partner_not_active', p7a: 'inactive_partner_auth', p8: 'unverified_blocked', p11: 'activation_disabled_by_default' },
+    expected_reject: { p5c: 'replay_rejected', p6a: 'partner_not_active', p7a: 'inactive_partner_auth', p8: 'unverified_blocked' },
+    contract_unknown: { p11: 'activation_contract_requires_linux_source_inspection' },
     untested: ['account_link_confirm_requires_active_partner', 'active_partner_event_ingestion', 'full_activation_requires_dns_domain_verification']
   };
   R.blk = blk;
