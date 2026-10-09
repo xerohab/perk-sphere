@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { base44 } from "@/api/base44Client";
 import { useToast } from "@/components/ui/use-toast";
-import { Plus, Pencil, Trash2, KeyRound, Ban, AlertTriangle, ExternalLink, Activity, Package, Settings2, Eye, FileCheck, XCircle, RefreshCw, Rocket, Loader2, Link2, ShieldCheck, LifeBuoy } from "lucide-react";
+import { Plus, Pencil, Trash2, KeyRound, Ban, AlertTriangle, ExternalLink, Activity, Package, Settings2, Eye, FileCheck, XCircle, RefreshCw, Rocket, Loader2, Link2, ShieldCheck, LifeBuoy, Globe, CheckCircle2 } from "lucide-react";
 import PageHeader from "@/components/perk/PageHeader";
 import EmptyState from "@/components/perk/EmptyState";
 import ConfirmDialog from "@/components/perk/ConfirmDialog";
@@ -87,6 +87,7 @@ export default function AdminPartners() {
   const [activeTab, setActiveTab] = useState("partners");
   const [approving, setApproving] = useState(null);
   const [reissuing, setReissuing] = useState(null);
+  const [verifying, setVerifying] = useState(null);
   const [uuidPartner, setUuidPartner] = useState(null);
   const [uuidForm, setUuidForm] = useState({ linux_api_partner_id: "", partner_key_id: "" });
   const [savingUuid, setSavingUuid] = useState(false);
@@ -160,6 +161,26 @@ export default function AdminPartners() {
       load(true);
     } catch (e) {
       toast({ title: "Failed", description: e?.response?.data?.error || e.message, variant: "destructive" });
+    }
+  };
+
+  const verifyDomain = async (partner) => {
+    if (verifying) return;
+    setVerifying(partner.id);
+    try {
+      const res = await base44.functions.invoke("managePartner", { action: "verifyDomain", partnerId: partner.id });
+      const body = res?.data || res;
+      toast({ title: "Domain verified", description: `Linux confirmed DNS ownership (HTTP ${body.linux_status || 200}).` });
+      load(true);
+    } catch (e) {
+      const errData = e?.response?.data || {};
+      toast({
+        title: errData.retryable ? "Domain verification failed" : "Linux error",
+        description: errData.message || errData.error || e.message,
+        variant: "destructive"
+      });
+    } finally {
+      setVerifying(null);
     }
   };
 
@@ -350,6 +371,15 @@ export default function AdminPartners() {
                     <span className={HEALTH_STYLES[p.connection_health] || "text-muted-foreground"}>● {p.connection_health || "unconfigured"}</span>
                     <span className="text-muted-foreground">{p.total_events_received || 0} events</span>
                   </div>
+                  {p.domain_verified_at ? (
+                    <div className="mt-1.5 flex items-center gap-1 text-xs text-emerald-600 dark:text-emerald-400">
+                      <CheckCircle2 className="h-3 w-3" /> Domain verified {new Date(p.domain_verified_at).toLocaleDateString("en-GB")}
+                    </div>
+                  ) : p.linux_api_partner_id && (
+                    <div className="mt-1.5 flex items-center gap-1 text-xs text-amber-600 dark:text-amber-400">
+                      <Globe className="h-3 w-3" /> Domain not verified
+                    </div>
+                  )}
                   {p.linux_api_partner_id && <p className="mt-2 font-mono text-xs text-muted-foreground">UUID: {p.linux_api_partner_id.slice(0, 18)}…</p>}
                   {p.partner_key_id && <p className="mt-2 font-mono text-xs text-muted-foreground">Key: {p.partner_key_id.slice(0, 20)}…</p>}
                   {p.linux_api_partner_id && p.partner_key_id?.startsWith("pk_") && (
@@ -385,6 +415,7 @@ export default function AdminPartners() {
                     {p.linux_api_partner_id && <Button variant="outline" size="sm" className="text-indigo-600" onClick={() => setHandoffPartner(p)} title="Secure credential handoff"><ShieldCheck className="mr-1 h-3.5 w-3.5" /> Handoff</Button>}
                     {p.integration_status === "linux_integration_pending" && <Button variant="outline" size="sm" className="text-orange-600" onClick={() => retryProvisioning(p)} title="Retry Linux provisioning"><RefreshCw className="mr-1 h-3.5 w-3.5" /> Retry Provisioning</Button>}
                     {p.integration_status !== "linux_integration_pending" && <Button variant="outline" size="sm" onClick={() => setSetupGuidePartner(p)}><Settings2 className="mr-1 h-3.5 w-3.5" /> Setup</Button>}
+                    {p.linux_api_partner_id && <Button variant="outline" size="sm" disabled={verifying === p.id} onClick={() => verifyDomain(p)} title="Verify DNS domain ownership via Linux">{verifying === p.id ? <Loader2 className="mr-1 h-3.5 w-3.5 animate-spin" /> : <Globe className="mr-1 h-3.5 w-3.5" />} Verify Domain</Button>}
                     {p.integration_status === "setup_required" && !(p.setup_checklist?.admin_reviewed) && <Button variant="outline" size="sm" className="text-emerald-600" onClick={() => reviewPartner(p, true)} title="Approve partner application"><FileCheck className="mr-1 h-3.5 w-3.5" /> Approve</Button>}
                     {p.integration_status === "setup_required" && (() => {
                       const cl = p.setup_checklist || {};

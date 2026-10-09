@@ -297,13 +297,38 @@ export default async function(req) {
     }
 
     // ── Verify Domain (delegated to Linux) ───────────────────────────────
+    // Linux checks the DNS TXT record (or well-known file) for the partner's
+    // domain verification token. Base44 only marks domain_verified after Linux
+    // confirms. Proof-of-possession and test-event verification are preserved
+    // (never reset by this action).
+    //
+    // Linux response codes:
+    //   200 { verified: true }              → success, mark domain_verified
+    //   422 domain_verification_failed      → DNS record not found (retryable —
+    //                                         likely DNS caching; do NOT retry
+    //                                         automatically, allow manual retry)
+    //   503/500                             → Linux server error
     if (action === 'verifyDomain') {
       const before = await admin.entities.PartnerIntegration.get(partnerId);
-      if (before.linux_api_partner_id) {
-        const verifyResult = await linuxTrustedPost(LINUX_PARTNER_ENDPOINTS.VERIFY_DOMAIN, { partner_uuid: before.linux_api_partner_id });
-        if (!verifyResult.ok) {
-          return Response.json({ error: 'Linux domain verification failed: ' + (verifyResult.error || verifyResult.code), code: verifyResult.code }, { status: 503 });
-        }
+      if (!before.linux_api_partner_id) {
+        return Response.json({ error: 'Cannot verify domain: partner has no Linux API Partner ID.', code: 'missing_linux_partner_id' }, { status: 400 });
+      }
+      const verifyResult = await linuxTrustedPost(LINUX_PARTNER_ENDPOINTS.VERIFY_DOMAIN, { partner_uuid: before.linux_api_partner_id });
+      if (!verifyResult.ok) {
+        const linuxStatus = verifyResult.status || 0;
+        const code = verifyResult.code || 'unknown';
+        const isVerificationFailed = linuxStatus === 422 || code === 'domain_verification_failed';
+        await writeAudit(admin, { adminId: user.id, action: 'partner_domain_verification_failed', entityType: 'PartnerIntegration', entityId: partnerId, next: { linux_status: linuxStatus, code } });
+        return Response.json({
+          ok: false,
+          error: verifyResult.error || 'Domain verification failed',
+          code,
+          linux_status: linuxStatus,
+          retryable: isVerificationFailed,
+          message: isVerificationFailed
+            ? `Linux could not find the DNS TXT record (HTTP ${linuxStatus}, code: ${code}). This may be due to DNS caching. Wait a few minutes and retry manually. No changes were made to the partner record.`
+            : `Linux domain verification endpoint error (HTTP ${linuxStatus}, code: ${code}). Try again later.`
+        }, { status: isVerificationFailed ? 422 : 503 });
       }
       const now = new Date().toISOString();
       const cl = before.setup_checklist || {};
@@ -313,8 +338,8 @@ export default async function(req) {
         domain_verified_at: now,
         verification_status: computeVerificationStatus({ ...before, domain_verified_at: now })
       });
-      await writeAudit(admin, { adminId: user.id, action: 'partner_domain_verified', entityType: 'PartnerIntegration', entityId: partnerId });
-      return Response.json({ ok: true, record: sanitizePartnerRecord(record) });
+      await writeAudit(admin, { adminId: user.id, action: 'partner_domain_verified', entityType: 'PartnerIntegration', entityId: partnerId, next: { linux_status: verifyResult.status } });
+      return Response.json({ ok: true, record: sanitizePartnerRecord(record), linux_status: verifyResult.status, verified: true });
     }
 
     // ── Create Proof Challenge (via Linux) ───────────────────────────────
