@@ -134,11 +134,11 @@ export const LINUX_PARTNER_ENDPOINTS = {
   ACCOUNT_LINK_CONFIRM: "/v1/partner-links/confirm",
   ACCOUNT_LINK_UNLINK: "/partners/account-link/unlink",
   // ─── Pending Linux contract confirmation ───────────────────────────────
-  // These endpoints are NOT yet confirmed by the Linux API team.
-  // The paths below are placeholders — do NOT make live requests until the
-  // contract is confirmed and the corresponding flag in
-  // LINUX_ENDPOINT_CONTRACT_CONFIRMED is set to true.
-  REISSUE_INITIAL_CREDENTIAL: "/partners/reissue-initial-credential",
+  // RECOVER_PARTNER is NOT yet confirmed by the Linux API team. The path below
+  // is a placeholder — do NOT make live requests until the contract is
+  // confirmed and the corresponding flag in LINUX_ENDPOINT_CONTRACT_CONFIRMED
+  // is set to true.
+  REISSUE_INITIAL_CREDENTIAL: "/partners/reissue-onboarding-credential",
   RECOVER_PARTNER: "/partners/recover"
 };
 
@@ -156,10 +156,11 @@ export const LINUX_ENDPOINT_CONTRACT_CONFIRMED = {
   ACCOUNT_LINK_CREATE: true,
   ACCOUNT_LINK_CONFIRM: true,
   ACCOUNT_LINK_UNLINK: true,
-  // Pending — set to true once the Linux API team confirms the endpoint path
-  // and request/response schema for initial credential reissue and partner
-  // recovery. Until then, the admin actions return a clear message and make
-  // NO live request.
-  REISSUE_INITIAL_CREDENTIAL: false,
+  // REISSUE_INITIAL_CREDENTIAL confirmed: POST /partners/reissue-onboarding-credential
+  // Request: { partner_uuid }. Response 201: { ok, partner_uuid, partner_key_id, partner_secret, status: "pending", activated: false }
+  // RECOVER_PARTNER still pending — set to true once the Linux API team confirms
+  // the endpoint path and request/response schema. Until then, the admin action
+  // returns a clear message and makes NO live request.
+  REISSUE_INITIAL_CREDENTIAL: true,
   RECOVER_PARTNER: false
 };

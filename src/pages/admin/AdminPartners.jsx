@@ -86,6 +86,7 @@ export default function AdminPartners() {
   const [detailPartner, setDetailPartner] = useState(null);
   const [activeTab, setActiveTab] = useState("partners");
   const [approving, setApproving] = useState(null);
+  const [reissuing, setReissuing] = useState(null);
   const [uuidPartner, setUuidPartner] = useState(null);
   const [uuidForm, setUuidForm] = useState({ linux_api_partner_id: "", partner_key_id: "" });
   const [savingUuid, setSavingUuid] = useState(false);
@@ -176,15 +177,21 @@ export default function AdminPartners() {
   };
 
   const reissueInitialCredential = async (partner) => {
+    if (reissuing) return;
+    setReissuing(partner.id);
     try {
       const res = await base44.functions.invoke("managePartner", { action: "reissueInitialCredential", partnerId: partner.id });
       const body = res?.data || res;
       if (body?.partner_secret) {
         setCredentialResult({ partner_key_id: body.partner_key_id, partner_secret: body.partner_secret, name: partner.name, isNew: false });
+      } else {
+        toast({ title: "Credential reissued" });
       }
       load(true);
     } catch (e) {
       toast({ title: "Reissue failed", description: e?.response?.data?.error || e.message, variant: "destructive" });
+    } finally {
+      setReissuing(null);
     }
   };
 
@@ -398,7 +405,7 @@ export default function AdminPartners() {
                       <Button variant="ghost" size="sm" onClick={() => rotateCredential(p)} title="Rotate active credential"><KeyRound className="h-3.5 w-3.5" /></Button>
                     )}
                     {p.integration_status === "setup_required" && p.linux_api_partner_id && (
-                      <Button variant="ghost" size="sm" onClick={() => reissueInitialCredential(p)} title="Reissue initial credential"><RefreshCw className="h-3.5 w-3.5" /></Button>
+                      <Button variant="ghost" size="sm" disabled={reissuing === p.id} onClick={() => reissueInitialCredential(p)} title="Reissue onboarding credential">{reissuing === p.id ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <RefreshCw className="h-3.5 w-3.5" />}</Button>
                     )}
                     {(p.integration_status === "disabled" || p.integration_status === "suspended") && p.linux_api_partner_id && (
                       <Button variant="ghost" size="sm" className="text-amber-600" onClick={() => recoverPartner(p)} title="Recover partner with new credentials"><LifeBuoy className="h-3.5 w-3.5" /></Button>
