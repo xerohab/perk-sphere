@@ -44,7 +44,7 @@ export default async function(req) {
     };
     const healthStart = Date.now();
     try {
-      const response = await fetch(LINUX_API_BASE + '/health', { method: 'GET', redirect: 'error', signal: AbortSignal.timeout(10000) });
+      const response = await fetch(LINUX_API_BASE + '/health', { method: 'GET', signal: AbortSignal.timeout(10000) });
       await response.text();
       report.health = { http_status: response.status, elapsed_ms: Date.now() - healthStart, response_received: true, tls_certificate_validation: 'Default HTTPS verification, not bypassed', server_date: response.headers.get('date') };
     } catch (error) {
@@ -60,7 +60,7 @@ export default async function(req) {
     record = await admin.entities.PartnerIntegration.create({
       name: testName, description: 'Disposable signed Linux connectivity test. Never activate. No rewards. Revoke and remove after the test.',
       partner_type: 'custom_website', integration_kit_type: 'universal_api', website_url: 'https://perksphere.org',
-      verified_domains: [], supported_event_types: ['ACCOUNT_REGISTERED'],
+      verified_domains: ['perksphere.org'], supported_event_types: ['ACCOUNT_REGISTERED'],
       integration_status: 'linux_integration_pending', verification_status: 'unverified', active: false,
       connection_health: 'unconfigured', points_per_event: 0, xp_per_event: 0, daily_points_limit: 0, daily_xp_limit: 0,
       proof_of_possession_verified: false, test_event_verified: false,
