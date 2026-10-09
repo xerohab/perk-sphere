@@ -15,6 +15,18 @@ import { memberRequest, adminRequest, linuxResponse, PERK_SPHERE_ENDPOINTS } fro
 // Never label an acknowledged Linux request as a confirmed Base44 credit
 // unless the ledger has been reconciled.
 
+// Computes the Monday of the current week in UTC as YYYY-MM-DD.
+// Reports use Monday-to-Sunday UTC weeks.
+function getCurrentWeekStartUTC() {
+  const now = new Date();
+  const day = now.getUTCDay(); // 0 = Sunday, 1 = Monday, ..., 6 = Saturday
+  const diff = (day === 0 ? 6 : day - 1); // days since Monday
+  const monday = new Date(now);
+  monday.setUTCDate(now.getUTCDate() - diff);
+  monday.setUTCHours(0, 0, 0, 0);
+  return monday.toISOString().split("T")[0];
+}
+
 export default async function(req) {
   try {
     const base44 = createClientFromRequest(req);
@@ -22,8 +34,11 @@ export default async function(req) {
     const { action, archiveId, userReference, filters } = body;
 
     // ── Current week preview (member) ─────────────────────────────────
+    // Linux requires { actor, week_start }. week_start is a Monday in UTC
+    // as YYYY-MM-DD. The actor is derived server-side by memberRequest().
     if (action === "preview") {
-      const result = await memberRequest(base44, PERK_SPHERE_ENDPOINTS.REPORTS_PREVIEW, {});
+      const weekStart = body.week_start || getCurrentWeekStartUTC();
+      const result = await memberRequest(base44, PERK_SPHERE_ENDPOINTS.REPORTS_PREVIEW, { week_start: weekStart });
       return linuxResponse(result);
     }
 
@@ -43,7 +58,8 @@ export default async function(req) {
     // ── Admin: preview any member's report ────────────────────────────
     if (action === "adminPreview") {
       if (!userReference) return Response.json({ error: "Missing userReference" }, { status: 400 });
-      const result = await adminRequest(base44, PERK_SPHERE_ENDPOINTS.REPORTS_PREVIEW, { userReference }, "analytics.view");
+      const weekStart = body.week_start || getCurrentWeekStartUTC();
+      const result = await adminRequest(base44, PERK_SPHERE_ENDPOINTS.REPORTS_PREVIEW, { userReference, week_start: weekStart }, "analytics.view");
       return linuxResponse(result);
     }
 

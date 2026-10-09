@@ -25,27 +25,49 @@ export default function WeeklyReports() {
   const [activeArchive, setActiveArchive] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [archivesError, setArchivesError] = useState(null);
   const [loadingArchive, setLoadingArchive] = useState(false);
+
+  // Loads the current-week preview (primary content). A failure here is a
+  // hard error — the page cannot function without it.
+  const loadPreview = async () => {
+    try {
+      const res = await base44.functions.invoke("perkSphereReports", { action: "preview" });
+      const data = res?.data || res;
+      if (data?.ok === false) throw new Error(data.error);
+      // Linux returns { ok, report: { week_start, activity, reward_requests, ... } }
+      const report = data.report || data.data?.report || getData(data, "preview") || data;
+      setPreview(report);
+      setError(null);
+    } catch (e) {
+      const errData = e?.response?.data || {};
+      setError(errData.error || e.message || "Failed to load reports");
+    }
+  };
+
+  // Loads historical archives (optional feature). A failure here must NOT
+  // prevent the weekly preview from loading — archives require a separate
+  // identity-verification gate that may be disabled.
+  const loadArchives = async () => {
+    setArchivesError(null);
+    try {
+      const res = await base44.functions.invoke("perkSphereReports", { action: "archives", filters: {} });
+      const data = res?.data || res;
+      if (data?.ok === false) throw new Error(data.error);
+      setArchives(getArray(data, "archives"));
+    } catch (e) {
+      const errData = e?.response?.data || {};
+      setArchivesError(errData.error || errData.code || e.message);
+      setArchives([]);
+    }
+  };
 
   const load = async () => {
     setLoading(true);
     setError(null);
-    try {
-      const [pRes, aRes] = await Promise.all([
-        base44.functions.invoke("perkSphereReports", { action: "preview" }),
-        base44.functions.invoke("perkSphereReports", { action: "archives", filters: {} })
-      ]);
-      const pData = pRes?.data || pRes;
-      const aData = aRes?.data || aRes;
-      if (pData?.ok === false) throw new Error(pData.error);
-      setPreview(getData(pData, "preview") || pData);
-      setArchives(getArray(aData, "archives"));
-    } catch (e) {
-      const errData = e?.response?.data || {};
-      setError(errData.error || e.message || "Failed to load reports");
-    } finally {
-      setLoading(false);
-    }
+    await loadPreview();
+    setLoading(false);
+    loadArchives();
   };
 
   useEffect(() => { load(); }, []);
@@ -71,9 +93,38 @@ export default function WeeklyReports() {
   }
 
   const pv = preview || {};
-  const stats = pv.stats || pv.summary || {};
-  const activitiesByType = stats.activities_by_type || pv.activities_by_type || [];
-  const activitiesByClass = stats.activities_by_classification || pv.activities_by_classification || [];
+  const activities = pv.activity || pv.activities || [];
+  const rewardRequests = pv.reward_requests || [];
+  const acknowledged = pv.acknowledged_reward_requests || {};
+
+  // Compute stats from raw activity arrays returned by Linux.
+  const totalActivities = activities.length;
+  const verified = activities.filter(a => a.verification_status === "api_verified" || a.verification_status === "extension_detected" || a.verification_status === "admin_entered" || a.processing_state === "processed").length;
+  const pending = activities.filter(a => a.verification_status === "unverified" || a.processing_state === "pending").length;
+  const rejected = activities.filter(a => a.verification_status === "rejected" || a.processing_state === "rejected").length;
+
+  // Group activities by type and classification.
+  const byType = {};
+  activities.forEach(a => {
+    const t = a.activity_type || a.type || "unknown";
+    byType[t] = (byType[t] || 0) + 1;
+  });
+  const activitiesByType = Object.entries(byType).map(([type, count]) => ({ type, count }));
+
+  const byClass = {};
+  activities.forEach(a => {
+    const c = a.classification || a.eligibility || "neutral";
+    byClass[c] = (byClass[c] || 0) + 1;
+  });
+  const activitiesByClass = Object.entries(byClass).map(([classification, count]) => ({ classification, count }));
+
+  // Reward request counts — acknowledged requests are NOT confirmed payouts
+  // until the ledger has been reconciled.
+  const rewardPending = rewardRequests.filter(r => r.status === "pending" || r.review_status === "pending").length;
+  const rewardApproved = rewardRequests.filter(r => r.status === "approved" || r.status === "acknowledged" || r.review_status === "approved").length;
+  const rewardConfirmed = acknowledged.ledger_reconciled ? (acknowledged.points_delta_total || 0) : 0;
+
+  const isEmptyWeek = totalActivities === 0 && rewardRequests.length === 0;
 
   return (
     <div>
@@ -96,12 +147,29 @@ export default function WeeklyReports() {
               {pv.week_start && <span className="text-xs font-normal text-muted-foreground">{new Date(pv.week_start).toLocaleDateString("en-GB")} - {pv.week_end ? new Date(pv.week_end).toLocaleDateString("en-GB") : ""}</span>}
             </h3>
             <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-              <StatCard label="Total Activities" value={stats.total_activities ?? pv.total_activities ?? 0} icon={Activity} />
-              <StatCard label="Verified" value={stats.verified ?? pv.verified ?? 0} icon={TrendingUp} accent="text-emerald-600" />
-              <StatCard label="Pending" value={stats.pending ?? pv.pending ?? 0} icon={Calendar} accent="text-amber-600" />
-              <StatCard label="Rejected" value={stats.rejected ?? pv.rejected ?? 0} icon={Activity} accent="text-red-600" />
+              <StatCard label="Total Activities" value={totalActivities} icon={Activity} />
+              <StatCard label="Verified" value={verified} icon={TrendingUp} accent="text-emerald-600" />
+              <StatCard label="Pending" value={pending} icon={Calendar} accent="text-amber-600" />
+              <StatCard label="Rejected" value={rejected} icon={Activity} accent="text-red-600" />
             </div>
           </div>
+
+          {/* Friendly empty-week summary */}
+          {isEmptyWeek && (
+            <Card className="mt-4 p-5">
+              <div className="flex items-start gap-3">
+                <div className="rounded-full bg-secondary p-2 text-muted-foreground">
+                  <Calendar className="h-5 w-5" />
+                </div>
+                <div>
+                  <p className="text-sm font-medium">No activity recorded this week</p>
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    Complete tasks, watch content, or participate in quizzes to see your weekly activity here. This preview does not create an archive or award rewards.
+                  </p>
+                </div>
+              </div>
+            </Card>
+          )}
 
           {/* Classification breakdown */}
           {activitiesByClass.length > 0 && (
@@ -141,15 +209,15 @@ export default function WeeklyReports() {
             <div className="mt-3 grid gap-3 sm:grid-cols-3">
               <div className="rounded-lg bg-secondary/50 p-3">
                 <p className="text-xs text-muted-foreground">Pending</p>
-                <p className="mt-1 text-lg font-semibold">{stats.reward_requests_pending ?? 0}</p>
+                <p className="mt-1 text-lg font-semibold">{rewardPending}</p>
               </div>
               <div className="rounded-lg bg-secondary/50 p-3">
                 <p className="text-xs text-muted-foreground">Approved (not yet paid)</p>
-                <p className="mt-1 text-lg font-semibold">{stats.reward_requests_approved ?? 0}</p>
+                <p className="mt-1 text-lg font-semibold">{rewardApproved}</p>
               </div>
               <div className="rounded-lg bg-secondary/50 p-3">
                 <p className="text-xs text-muted-foreground">Ledger Confirmed</p>
-                <p className="mt-1 text-lg font-semibold">{stats.reward_requests_confirmed ?? 0}</p>
+                <p className="mt-1 text-lg font-semibold">{rewardConfirmed}</p>
               </div>
             </div>
             <p className="mt-3 text-xs text-muted-foreground">
@@ -157,12 +225,19 @@ export default function WeeklyReports() {
             </p>
           </Card>
 
-          {/* Historical archives */}
+          {/* Historical archives (optional — requires separate identity gate) */}
           <div className="mt-6">
             <h3 className="flex items-center gap-2 text-sm font-semibold">
               <FileText className="h-4 w-4" /> Historical Reports
             </h3>
-            {loadingArchive ? (
+            {archivesError ? (
+              <div className="mt-4 rounded-xl border border-border bg-secondary/30 p-4">
+                <p className="text-sm font-medium text-muted-foreground">Archives unavailable</p>
+                <p className="mt-1 text-xs text-muted-foreground">
+                  Historical report archives require an additional identity-verification step that is not yet enabled. Your current-week preview above is unaffected.
+                </p>
+              </div>
+            ) : loadingArchive ? (
               <div className="mt-4 flex h-20 items-center justify-center"><Loader2 className="h-6 w-6 animate-spin text-muted-foreground" /></div>
             ) : activeArchive ? (
               <Card className="mt-4 p-5">
