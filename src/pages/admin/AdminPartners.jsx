@@ -1,13 +1,14 @@
 import React, { useEffect, useState } from "react";
 import { base44 } from "@/api/base44Client";
 import { useToast } from "@/components/ui/use-toast";
-import { Plus, Pencil, Trash2, KeyRound, Ban, AlertTriangle, ExternalLink, Activity, Package, Settings2, Eye, FileCheck, XCircle, RefreshCw, Rocket, Loader2 } from "lucide-react";
+import { Plus, Pencil, Trash2, KeyRound, Ban, AlertTriangle, ExternalLink, Activity, Package, Settings2, Eye, FileCheck, XCircle, RefreshCw, Rocket, Loader2, Link2, ShieldCheck } from "lucide-react";
 import PageHeader from "@/components/perk/PageHeader";
 import EmptyState from "@/components/perk/EmptyState";
 import ConfirmDialog from "@/components/perk/ConfirmDialog";
 import PartnerIntegrationKits from "@/components/perk/PartnerIntegrationKits";
 import PartnerSetupGuide from "@/components/perk/PartnerSetupGuide";
 import PartnerDetail from "@/components/perk/PartnerDetail";
+import PartnerCredentialHandoff from "@/components/perk/PartnerCredentialHandoff";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -85,6 +86,10 @@ export default function AdminPartners() {
   const [detailPartner, setDetailPartner] = useState(null);
   const [activeTab, setActiveTab] = useState("partners");
   const [approving, setApproving] = useState(null);
+  const [uuidPartner, setUuidPartner] = useState(null);
+  const [uuidForm, setUuidForm] = useState({ linux_api_partner_id: "", partner_key_id: "" });
+  const [savingUuid, setSavingUuid] = useState(false);
+  const [handoffPartner, setHandoffPartner] = useState(null);
 
   const load = async (silent) => {
     if (!silent) setLoading(true);
@@ -242,6 +247,29 @@ export default function AdminPartners() {
     }
   };
 
+  const openUuidDialog = (partner) => {
+    setUuidPartner(partner);
+    setUuidForm({ linux_api_partner_id: partner.linux_api_partner_id || "", partner_key_id: partner.partner_key_id || "" });
+  };
+
+  const saveLinuxUuid = async () => {
+    if (!uuidPartner) return;
+    const uuid = uuidForm.linux_api_partner_id.trim();
+    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+    if (!uuidRegex.test(uuid)) { toast({ title: "Invalid UUID format", description: "Linux Partner UUID must be a valid UUID", variant: "destructive" }); return; }
+    setSavingUuid(true);
+    try {
+      await base44.functions.invoke("managePartner", { action: "setLinuxPartnerId", partnerId: uuidPartner.id, data: { linux_api_partner_id: uuid } });
+      toast({ title: "Linux UUID saved", description: "You can now rotate credentials and use the credential handoff." });
+      setUuidPartner(null);
+      load(true);
+    } catch (e) {
+      toast({ title: "Failed", description: e?.response?.data?.error || e.message, variant: "destructive" });
+    } finally {
+      setSavingUuid(false);
+    }
+  };
+
   const toggleEventType = (et) => {
     const current = form.supported_event_types || [];
     setForm({ ...form, supported_event_types: current.includes(et) ? current.filter((x) => x !== et) : [...current, et] });
@@ -289,7 +317,18 @@ export default function AdminPartners() {
                     <span className={HEALTH_STYLES[p.connection_health] || "text-muted-foreground"}>● {p.connection_health || "unconfigured"}</span>
                     <span className="text-muted-foreground">{p.total_events_received || 0} events</span>
                   </div>
+                  {p.linux_api_partner_id && <p className="mt-2 font-mono text-xs text-muted-foreground">UUID: {p.linux_api_partner_id.slice(0, 18)}…</p>}
                   {p.partner_key_id && <p className="mt-2 font-mono text-xs text-muted-foreground">Key: {p.partner_key_id.slice(0, 20)}…</p>}
+                  {p.linux_api_partner_id && p.partner_key_id?.startsWith("pk_") && (
+                    <div className="mt-2 flex items-center gap-1.5 rounded-md bg-amber-50 px-2 py-1 text-xs text-amber-700 dark:bg-amber-950/30 dark:text-amber-400">
+                      <AlertTriangle className="h-3 w-3 flex-shrink-0" /> Stale pk_ key — rotate to issue psp_ credentials
+                    </div>
+                  )}
+                  {p.linux_api_partner_id && !p.partner_key_id && (
+                    <div className="mt-2 flex items-center gap-1.5 rounded-md bg-amber-50 px-2 py-1 text-xs text-amber-700 dark:bg-amber-950/30 dark:text-amber-400">
+                      <AlertTriangle className="h-3 w-3 flex-shrink-0" /> No active credential — rotate to issue credentials
+                    </div>
+                  )}
                   {p.integration_kit_type && p.integration_kit_type !== "universal_api" && (
                     <p className="mt-1 text-xs text-muted-foreground">Kit: {KIT_TYPES.find((k) => k.value === p.integration_kit_type)?.label || p.integration_kit_type}</p>
                   )}
@@ -309,6 +348,8 @@ export default function AdminPartners() {
                   <div className="mt-4 flex flex-wrap gap-1">
                     <Button variant="outline" size="sm" onClick={() => setDetailPartner(p)}><Eye className="mr-1 h-3.5 w-3.5" /> Details</Button>
                     <Button variant="outline" size="sm" onClick={() => openEdit(p)}><Pencil className="mr-1 h-3.5 w-3.5" /> Edit</Button>
+                    {!p.linux_api_partner_id && <Button variant="outline" size="sm" className="text-indigo-600" onClick={() => openUuidDialog(p)} title="Set Linux Partner UUID"><Link2 className="mr-1 h-3.5 w-3.5" /> Set UUID</Button>}
+                    {p.linux_api_partner_id && <Button variant="outline" size="sm" className="text-indigo-600" onClick={() => setHandoffPartner(p)} title="Secure credential handoff"><ShieldCheck className="mr-1 h-3.5 w-3.5" /> Handoff</Button>}
                     {p.integration_status === "linux_integration_pending" && <Button variant="outline" size="sm" className="text-orange-600" onClick={() => retryProvisioning(p)} title="Retry Linux provisioning"><RefreshCw className="mr-1 h-3.5 w-3.5" /> Retry Provisioning</Button>}
                     {p.integration_status !== "linux_integration_pending" && <Button variant="outline" size="sm" onClick={() => setSetupGuidePartner(p)}><Settings2 className="mr-1 h-3.5 w-3.5" /> Setup</Button>}
                     {p.integration_status === "setup_required" && !(p.setup_checklist?.admin_reviewed) && <Button variant="outline" size="sm" className="text-emerald-600" onClick={() => reviewPartner(p, true)} title="Approve partner application"><FileCheck className="mr-1 h-3.5 w-3.5" /> Approve</Button>}
@@ -477,6 +518,40 @@ export default function AdminPartners() {
           <DialogFooter><DialogClose asChild><Button variant="outline">Close</Button></DialogClose></DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Set Linux UUID Dialog */}
+      <Dialog open={!!uuidPartner} onOpenChange={(o) => !o && setUuidPartner(null)}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader><DialogTitle className="flex items-center gap-2"><Link2 className="h-5 w-5" /> Set Linux Partner UUID — {uuidPartner?.name}</DialogTitle></DialogHeader>
+          <div className="space-y-4">
+            <div className="flex items-start gap-3 rounded-lg border border-blue-300 bg-blue-50 p-4 dark:border-blue-700 dark:bg-blue-950/30">
+              <AlertTriangle className="mt-0.5 h-5 w-5 flex-shrink-0 text-blue-600 dark:text-blue-400" />
+              <div>
+                <p className="text-sm font-medium text-blue-800 dark:text-blue-300">Manual Linux reconciliation</p>
+                <p className="mt-1 text-xs text-blue-700 dark:text-blue-400">Enter the Linux partner UUID recovered from the production Linux database. Verify the domain and partner reference match before saving. Once saved, you can rotate credentials and use the credential handoff.</p>
+              </div>
+            </div>
+            <div className="rounded-lg bg-secondary p-3 text-xs text-muted-foreground">
+              <p>Base44 Partner Reference: <span className="font-mono">{uuidPartner?.id}</span></p>
+              <p className="mt-1">Domain: <span className="font-mono">{uuidPartner?.website_url}</span></p>
+            </div>
+            <div>
+              <Label>Linux Partner UUID</Label>
+              <Input value={uuidForm.linux_api_partner_id} onChange={(e) => setUuidForm({ ...uuidForm, linux_api_partner_id: e.target.value })} className="mt-1.5 font-mono text-xs" placeholder="e.g. 630feee8-2649-4c4f-b2a0-c26746a696fd" />
+              <p className="mt-1 text-xs text-muted-foreground">Must be a valid UUID (8-4-4-4-12 hex format).</p>
+            </div>
+          </div>
+          <DialogFooter>
+            <DialogClose asChild><Button variant="outline">Cancel</Button></DialogClose>
+            <Button onClick={saveLinuxUuid} disabled={savingUuid}>{savingUuid ? <Loader2 className="mr-1 h-4 w-4 animate-spin" /> : null} Save UUID</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Credential Handoff Dialog */}
+      {handoffPartner && (
+        <PartnerCredentialHandoff partner={handoffPartner} onClose={() => setHandoffPartner(null)} onRefresh={() => load(true)} />
+      )}
     </div>
   );
 }
