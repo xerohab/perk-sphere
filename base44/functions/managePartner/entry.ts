@@ -150,8 +150,22 @@ export default async function(req) {
     if (action === 'retryProvisioning') {
       if (!partnerId) return Response.json({ error: 'Missing partnerId' }, { status: 400 });
       const before = await admin.entities.PartnerIntegration.get(partnerId);
-      if (before.integration_status !== 'linux_integration_pending') {
-        return Response.json({ error: 'Partner is not in linux_integration_pending state' }, { status: 400 });
+      // Allow retry for linux_integration_pending, or setup_required if the Linux UUID is missing.
+      const needsProvisioning = before.integration_status === 'linux_integration_pending' ||
+        (before.integration_status === 'setup_required' && !before.linux_api_partner_id);
+      if (!needsProvisioning) {
+        return Response.json({ error: 'Partner does not need provisioning retry (already provisioned or not in a retryable state)' }, { status: 400 });
+      }
+
+      // If the partner has an old pk_ key ID (Base44-local, not Linux-issued), revoke the old credential.
+      if (before.partner_key_id && before.partner_key_id.startsWith('pk_') && !before.linux_api_partner_id) {
+        const oldCreds = await admin.entities.PartnerCredential.filter({ partner_integration_id: partnerId });
+        for (const c of (oldCreds || [])) {
+          if (!c.revoked_at) {
+            await admin.entities.PartnerCredential.update(c.id, { revoked_at: new Date().toISOString() });
+          }
+        }
+        await writeAudit(admin, { adminId: user.id, action: 'partner_stale_credential_revoked', entityType: 'PartnerIntegration', entityId: partnerId, next: { old_key_prefix: 'pk_' } });
       }
 
       const provResult = await provisionViaLinux(admin, before);
@@ -164,6 +178,16 @@ export default async function(req) {
           error: provResult.error || 'Linux provisioning still unavailable',
           code: provResult.code || 'linux_unavailable'
         }, { status: 503 });
+      }
+
+      if (provResult.already_provisioned) {
+        return Response.json({
+          ok: true,
+          already_provisioned: true,
+          record: sanitizePartnerRecord(provResult.record),
+          linux_api_partner_id: provResult.linux_api_partner_id,
+          message: 'Partner is already provisioned with Linux.'
+        });
       }
 
       await writeAudit(admin, { adminId: user.id, action: 'partner_provisioning_completed', entityType: 'PartnerIntegration', entityId: partnerId, next: { linux_api_partner_id: provResult.linux_api_partner_id } });
@@ -364,7 +388,7 @@ export default async function(req) {
     if (action === 'rotateCredential') {
       const before = await admin.entities.PartnerIntegration.get(partnerId);
       if (!before.linux_api_partner_id) {
-        return Response.json({ error: 'Cannot rotate: partner has not been provisioned by Linux' }, { status: 400 });
+        return Response.json({ error: 'Cannot rotate: partner has no Linux API Partner ID. Use Retry Provisioning to reconcile with Linux first.', code: 'missing_linux_partner_id' }, { status: 400 });
       }
 
       const rotateResult = await linuxTrustedPost(LINUX_PARTNER_ENDPOINTS.ROTATE_CREDENTIAL, { partner_uuid: before.linux_api_partner_id });
