@@ -41,6 +41,7 @@ const ACTION_PERMS = {
   verifyDomain: 'partners.manage',
   createProofChallenge: 'partners.manage',
   verifyProofOfPossession: 'partners.manage',
+  syncProofStatus: 'partners.manage',
   verifyTestEvent: 'partners.manage',
   updateRewardPolicy: 'partners.manage',
   reviewPartner: 'partners.manage',
@@ -406,6 +407,41 @@ export default async function(req) {
       await admin.entities.PartnerIntegration.update(partnerId, { verification_status: computeVerificationStatus(updated) });
       await writeAudit(admin, { adminId: user.id, action: 'partner_proof_verified', entityType: 'PartnerIntegration', entityId: partnerId });
       return Response.json({ ok: true, record: sanitizePartnerRecord(record) });
+    }
+
+    // ── Sync Proof Status (query Linux, update Base44) ──────────────────
+    // Queries the Linux API for the authoritative proof-of-possession status
+    // of the partner's current pending credential. If Linux confirms
+    // possession_verified: true, the Base44 record is updated to match.
+    // Does NOT blindly mark all partners verified — only updates based on
+    // authoritative Linux evidence.
+    if (action === 'syncProofStatus') {
+      const before = await admin.entities.PartnerIntegration.get(partnerId);
+      if (!before.linux_api_partner_id) {
+        return Response.json({ error: 'Cannot sync proof status: partner has no Linux API Partner ID.', code: 'missing_linux_partner_id' }, { status: 400 });
+      }
+      const result = await linuxTrustedPost(LINUX_PARTNER_ENDPOINTS.PROOF_STATUS, { partner_uuid: before.linux_api_partner_id });
+      if (!result.ok) {
+        return Response.json({ error: result.error || 'Proof status query failed', code: result.code, linux_status: result.status }, { status: 503 });
+      }
+      const data = result.data || {};
+      if (data.possession_verified === true) {
+        const verifiedAt = data.possession_verified_at || new Date().toISOString();
+        const cl = before.setup_checklist || {};
+        cl.proof_of_possession = true;
+        const updateFields = {
+          setup_checklist: cl,
+          proof_of_possession_verified: true,
+          proof_of_possession_at: verifiedAt
+        };
+        const record = await admin.entities.PartnerIntegration.update(partnerId, updateFields);
+        const updated = { ...before, ...updateFields };
+        await admin.entities.PartnerIntegration.update(partnerId, { verification_status: computeVerificationStatus(updated) });
+        await writeAudit(admin, { adminId: user.id, action: 'partner_proof_status_synced', entityType: 'PartnerIntegration', entityId: partnerId, next: { possession_verified: true, verified_at: verifiedAt } });
+        return Response.json({ ok: true, record: sanitizePartnerRecord(record), linux_status: result.status, possession_verified: true, possession_verified_at: verifiedAt });
+      }
+      await writeAudit(admin, { adminId: user.id, action: 'partner_proof_status_checked', entityType: 'PartnerIntegration', entityId: partnerId, next: { possession_verified: false } });
+      return Response.json({ ok: true, record: sanitizePartnerRecord(before), linux_status: result.status, possession_verified: false, message: 'Linux has not yet confirmed proof of possession for this partner.' });
     }
 
     // ── Verify Test Event ────────────────────────────────────────────────

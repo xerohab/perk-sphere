@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { base44 } from "@/api/base44Client";
 import { useToast } from "@/components/ui/use-toast";
-import { Plus, Pencil, Trash2, KeyRound, Ban, AlertTriangle, ExternalLink, Activity, Package, Settings2, Eye, FileCheck, XCircle, RefreshCw, Rocket, Loader2, Link2, ShieldCheck, LifeBuoy, Globe, CheckCircle2 } from "lucide-react";
+import { Plus, Pencil, Trash2, KeyRound, Ban, AlertTriangle, ExternalLink, Activity, Package, Settings2, Eye, FileCheck, XCircle, RefreshCw, Rocket, Loader2, Link2, ShieldCheck, LifeBuoy, Globe, CheckCircle2, ShieldCheck as ShieldCheckIcon } from "lucide-react";
 import PageHeader from "@/components/perk/PageHeader";
 import EmptyState from "@/components/perk/EmptyState";
 import ConfirmDialog from "@/components/perk/ConfirmDialog";
@@ -88,6 +88,7 @@ export default function AdminPartners() {
   const [approving, setApproving] = useState(null);
   const [reissuing, setReissuing] = useState(null);
   const [verifying, setVerifying] = useState(null);
+  const [syncingProof, setSyncingProof] = useState(null);
   const [uuidPartner, setUuidPartner] = useState(null);
   const [uuidForm, setUuidForm] = useState({ linux_api_partner_id: "", partner_key_id: "" });
   const [savingUuid, setSavingUuid] = useState(false);
@@ -181,6 +182,26 @@ export default function AdminPartners() {
       });
     } finally {
       setVerifying(null);
+    }
+  };
+
+  const syncProofStatus = async (partner) => {
+    if (syncingProof) return;
+    setSyncingProof(partner.id);
+    try {
+      const res = await base44.functions.invoke("managePartner", { action: "syncProofStatus", partnerId: partner.id });
+      const body = res?.data || res;
+      if (body?.possession_verified) {
+        toast({ title: "Proof status synced", description: `Linux confirmed credential possession (HTTP ${body.linux_status || 200}).` });
+        load(true);
+      } else {
+        toast({ title: "Proof not yet verified", description: body?.message || "Linux has not confirmed proof of possession.", variant: "default" });
+      }
+    } catch (e) {
+      const errData = e?.response?.data || {};
+      toast({ title: "Sync failed", description: errData.error || e.message, variant: "destructive" });
+    } finally {
+      setSyncingProof(null);
     }
   };
 
@@ -416,6 +437,7 @@ export default function AdminPartners() {
                     {p.integration_status === "linux_integration_pending" && <Button variant="outline" size="sm" className="text-orange-600" onClick={() => retryProvisioning(p)} title="Retry Linux provisioning"><RefreshCw className="mr-1 h-3.5 w-3.5" /> Retry Provisioning</Button>}
                     {p.integration_status !== "linux_integration_pending" && <Button variant="outline" size="sm" onClick={() => setSetupGuidePartner(p)}><Settings2 className="mr-1 h-3.5 w-3.5" /> Setup</Button>}
                     {p.linux_api_partner_id && <Button variant="outline" size="sm" disabled={verifying === p.id} onClick={() => verifyDomain(p)} title="Verify DNS domain ownership via Linux">{verifying === p.id ? <Loader2 className="mr-1 h-3.5 w-3.5 animate-spin" /> : <Globe className="mr-1 h-3.5 w-3.5" />} Verify Domain</Button>}
+                    {p.linux_api_partner_id && !p.proof_of_possession_verified && <Button variant="outline" size="sm" disabled={syncingProof === p.id} onClick={() => syncProofStatus(p)} title="Sync proof-of-possession status from Linux">{syncingProof === p.id ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <ShieldCheck className="h-3.5 w-3.5" />} Sync Proof</Button>}
                     {p.integration_status === "setup_required" && !(p.setup_checklist?.admin_reviewed) && <Button variant="outline" size="sm" className="text-emerald-600" onClick={() => reviewPartner(p, true)} title="Approve partner application"><FileCheck className="mr-1 h-3.5 w-3.5" /> Approve</Button>}
                     {p.integration_status === "setup_required" && (() => {
                       const cl = p.setup_checklist || {};

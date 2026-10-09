@@ -24,6 +24,8 @@ const DestinationDetail = lazy(() => import('@/pages/public/DestinationDetail'))
 const About = lazy(() => import('@/pages/public/About'));
 const PrivacyPolicy = lazy(() => import('@/pages/public/PrivacyPolicy'));
 const TermsOfService = lazy(() => import('@/pages/public/TermsOfService'));
+const PartnerRegister = lazy(() => import('@/pages/public/PartnerRegister'));
+const PartnerGuide = lazy(() => import('@/pages/public/PartnerGuide'));
 
 // User portal - lazy loaded
 const UserLayout = lazy(() => import('@/components/user/UserLayout'));
@@ -91,6 +93,8 @@ const AppRoutes = () => (
         <Route path="/about" element={<About />} />
         <Route path="/privacy-policy" element={<PrivacyPolicy />} />
         <Route path="/terms-of-service" element={<TermsOfService />} />
+        <Route path="/partners/register" element={<PartnerRegister />} />
+        <Route path="/partners/guide" element={<PartnerGuide />} />
       </Route>
 
       <Route element={<ProtectedRoute unauthenticatedElement={<Navigate to="/login" replace />} />}>

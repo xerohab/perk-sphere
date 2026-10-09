@@ -394,17 +394,13 @@ export default function PartnerSetupGuide({ partner, onUpdateChecklist, onRefres
                   </div>
                 )}
 
-                {/* Test event verification */}
+                {/* Test event verification — awaiting backend test verification */}
                 {isLinux && step.key === "test_event_verified" && !done && (
-                  <div className="ml-8 mt-1.5 space-y-2">
-                    <div>
-                      <Label className="text-xs">Test Event ID (optional — auto-detects latest)</Label>
-                      <Input value={testEventId} onChange={(e) => setTestEventId(e.target.value)} className="mt-1 font-mono text-xs" placeholder="evt_..." />
+                  <div className="ml-8 mt-1.5">
+                    <div className="rounded-lg border border-amber-300 bg-amber-50 p-3 text-xs text-amber-700 dark:border-amber-700 dark:bg-amber-950/30 dark:text-amber-400">
+                      <p className="flex items-center gap-1.5 font-medium"><TestTube className="h-3.5 w-3.5" /> Awaiting backend test verification</p>
+                      <p className="mt-1">The Linux event receiver requires an active partner. Pre-activation test events are not supported. Test event verification will be performed in a controlled post-activation environment. Do not activate a partner solely to test events.</p>
                     </div>
-                    <Button size="sm" variant="outline" onClick={verifyTestEvent} disabled={verifyingTest}>
-                      {verifyingTest ? <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" /> : <TestTube className="mr-1.5 h-3.5 w-3.5" />}
-                      Verify Test Event
-                    </Button>
                   </div>
                 )}
 
