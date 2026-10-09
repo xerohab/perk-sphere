@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { base44 } from "@/api/base44Client";
 import { useToast } from "@/components/ui/use-toast";
-import { Plus, Pencil, Trash2, KeyRound, Ban, AlertTriangle, ExternalLink, Activity, Package, Settings2, Eye, FileCheck, XCircle, RefreshCw, Rocket, Loader2, Link2, ShieldCheck } from "lucide-react";
+import { Plus, Pencil, Trash2, KeyRound, Ban, AlertTriangle, ExternalLink, Activity, Package, Settings2, Eye, FileCheck, XCircle, RefreshCw, Rocket, Loader2, Link2, ShieldCheck, LifeBuoy } from "lucide-react";
 import PageHeader from "@/components/perk/PageHeader";
 import EmptyState from "@/components/perk/EmptyState";
 import ConfirmDialog from "@/components/perk/ConfirmDialog";
@@ -171,7 +171,33 @@ export default function AdminPartners() {
       }
       load(true);
     } catch (e) {
-      toast({ title: "Failed", description: e?.response?.data?.error || e.message, variant: "destructive" });
+      toast({ title: "Rotation failed", description: e?.response?.data?.error || e.message, variant: "destructive" });
+    }
+  };
+
+  const reissueInitialCredential = async (partner) => {
+    try {
+      const res = await base44.functions.invoke("managePartner", { action: "reissueInitialCredential", partnerId: partner.id });
+      const body = res?.data || res;
+      if (body?.partner_secret) {
+        setCredentialResult({ partner_key_id: body.partner_key_id, partner_secret: body.partner_secret, name: partner.name, isNew: false });
+      }
+      load(true);
+    } catch (e) {
+      toast({ title: "Reissue failed", description: e?.response?.data?.error || e.message, variant: "destructive" });
+    }
+  };
+
+  const recoverPartner = async (partner) => {
+    try {
+      const res = await base44.functions.invoke("managePartner", { action: "recoverPartner", partnerId: partner.id });
+      const body = res?.data || res;
+      if (body?.partner_secret) {
+        setCredentialResult({ partner_key_id: body.partner_key_id, partner_secret: body.partner_secret, name: partner.name, isNew: false });
+      }
+      load(true);
+    } catch (e) {
+      toast({ title: "Recovery failed", description: e?.response?.data?.error || e.message, variant: "destructive" });
     }
   };
 
@@ -321,12 +347,12 @@ export default function AdminPartners() {
                   {p.partner_key_id && <p className="mt-2 font-mono text-xs text-muted-foreground">Key: {p.partner_key_id.slice(0, 20)}…</p>}
                   {p.linux_api_partner_id && p.partner_key_id?.startsWith("pk_") && (
                     <div className="mt-2 flex items-center gap-1.5 rounded-md bg-amber-50 px-2 py-1 text-xs text-amber-700 dark:bg-amber-950/30 dark:text-amber-400">
-                      <AlertTriangle className="h-3 w-3 flex-shrink-0" /> Stale pk_ key — rotate to issue psp_ credentials
+                      <AlertTriangle className="h-3 w-3 flex-shrink-0" /> Stale pk_ key — {p.integration_status === "active" ? "rotate" : "reissue"} to issue psp_ credentials
                     </div>
                   )}
                   {p.linux_api_partner_id && !p.partner_key_id && (
                     <div className="mt-2 flex items-center gap-1.5 rounded-md bg-amber-50 px-2 py-1 text-xs text-amber-700 dark:bg-amber-950/30 dark:text-amber-400">
-                      <AlertTriangle className="h-3 w-3 flex-shrink-0" /> No active credential — rotate to issue credentials
+                      <AlertTriangle className="h-3 w-3 flex-shrink-0" /> No active credential — {p.integration_status === "active" ? "rotate" : p.integration_status === "disabled" ? "recover" : "reissue"} to issue credentials
                     </div>
                   )}
                   {p.integration_kit_type && p.integration_kit_type !== "universal_api" && (
@@ -368,7 +394,15 @@ export default function AdminPartners() {
                     })()}
                     {p.integration_status === "active" && <Button variant="outline" size="sm" onClick={() => setStatus(p, "suspended")}>Suspend</Button>}
                     {p.integration_status === "suspended" && <Button size="sm" onClick={() => setStatus(p, "active")}>Resume</Button>}
-                    <Button variant="ghost" size="sm" onClick={() => rotateCredential(p)} title="Rotate credentials"><KeyRound className="h-3.5 w-3.5" /></Button>
+                    {p.integration_status === "active" && p.linux_api_partner_id && (
+                      <Button variant="ghost" size="sm" onClick={() => rotateCredential(p)} title="Rotate active credential"><KeyRound className="h-3.5 w-3.5" /></Button>
+                    )}
+                    {p.integration_status === "setup_required" && p.linux_api_partner_id && (
+                      <Button variant="ghost" size="sm" onClick={() => reissueInitialCredential(p)} title="Reissue initial credential"><RefreshCw className="h-3.5 w-3.5" /></Button>
+                    )}
+                    {(p.integration_status === "disabled" || p.integration_status === "suspended") && p.linux_api_partner_id && (
+                      <Button variant="ghost" size="sm" className="text-amber-600" onClick={() => recoverPartner(p)} title="Recover partner with new credentials"><LifeBuoy className="h-3.5 w-3.5" /></Button>
+                    )}
                     <ConfirmDialog trigger={<Button variant="ghost" size="sm" className="text-red-600" title="Revoke credentials"><Ban className="h-3.5 w-3.5" /></Button>} title="Revoke all credentials?" description="This disables the partner and revokes all API keys. The partner will need new credentials to reconnect." confirmLabel="Revoke" destructive onConfirm={() => revokeCredential(p)} />
                     <ConfirmDialog trigger={<Button variant="ghost" size="sm" className="text-red-600" title="Delete"><Trash2 className="h-3.5 w-3.5" /></Button>} title={`Delete "${p.name}"?`} description="This permanently removes the partner integration." confirmLabel="Delete" destructive onConfirm={() => remove(p)} />
                   </div>

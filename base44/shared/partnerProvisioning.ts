@@ -68,6 +68,71 @@ export async function saveLinuxProvisioning(admin, record, linuxData) {
   return { ok: true, record: updated, partner_key_id: partnerKeyId, partner_secret: partnerSecret, domain_verification_token: domainToken, linux_api_partner_id: linuxPartnerId };
 }
 
+// Saves a NEW Linux-issued credential (from rotation, initial reissue, or
+// recovery) to Base44. Revokes all old credentials, stores the new secret
+// encrypted (AES-GCM), updates the key ID + hash, and resets proof-of-possession
+// and test-event verification (the new credential must be re-verified).
+//
+// Never restores revoked credentials — always issues and stores a fresh one.
+// Preserves linux_api_partner_id (immutable), domain verification, and audit
+// history. Returns { ok, record, partner_key_id, partner_secret }.
+export async function saveLinuxCredential(admin, partnerId, before, linuxData) {
+  const newKeyId = linuxData.partner_key_id;
+  const newSecret = linuxData.partner_secret;
+  if (!newKeyId) {
+    return { ok: false, code: 'linux_response_incomplete', error: 'Linux response is missing partner_key_id.' };
+  }
+
+  // Revoke all old credentials locally.
+  const oldCreds = await admin.entities.PartnerCredential.filter({ partner_integration_id: partnerId });
+  for (const c of (oldCreds || [])) {
+    if (!c.revoked_at) {
+      await admin.entities.PartnerCredential.update(c.id, { revoked_at: new Date().toISOString() });
+    }
+  }
+
+  const updateFields = { partner_key_id: newKeyId };
+  if (newSecret) {
+    updateFields.partner_secret_hash = await sha256Hex(newSecret);
+    const encKey = secrets.get('OAUTH_TOKEN_ENCRYPTION_KEY');
+    if (encKey) {
+      const { ciphertext, iv } = await encryptToken(newSecret, encKey);
+      await admin.entities.PartnerCredential.create({
+        partner_integration_id: partnerId,
+        encrypted_hmac_secret: ciphertext,
+        hmac_secret_iv: iv,
+        rotated_at: new Date().toISOString()
+      });
+    }
+  }
+
+  // New credential must re-pass proof-of-possession and test-event verification.
+  const cl = before.setup_checklist || {};
+  cl.proof_of_possession = false;
+  cl.test_event_verified = false;
+  updateFields.setup_checklist = cl;
+  updateFields.proof_of_possession_verified = false;
+  updateFields.test_event_verified = false;
+  updateFields.verification_status = computeVerificationStatusFromFields({
+    ...before, proof_of_possession_verified: false, test_event_verified: false
+  });
+
+  const record = await admin.entities.PartnerIntegration.update(partnerId, updateFields);
+  return { ok: true, record, partner_key_id: newKeyId, partner_secret: newSecret };
+}
+
+// Computes the verification status from individual flags (mirrors the logic in
+// managePartner.computeVerificationStatus without importing the function).
+function computeVerificationStatusFromFields(record) {
+  const domainOk = !!(record.domain_verified_at);
+  const credOk = !!(record.proof_of_possession_verified);
+  const testOk = !!(record.test_event_verified);
+  if (domainOk && credOk && testOk) return 'fully_verified';
+  if (domainOk && credOk) return 'credential_verified';
+  if (domainOk) return 'domain_verified';
+  return 'unverified';
+}
+
 // Provisions a partner via Linux. Does NOT re-provision if the partner already
 // has a linux_api_partner_id — returns the existing record for admin review
 // instead of creating a duplicate Linux partner.

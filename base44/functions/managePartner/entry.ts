@@ -9,6 +9,8 @@ import {
   ONBOARDING_STEPS,
   sanitizePartnerRecord
 } from '../../shared/partners.ts';
+import { saveLinuxCredential } from '../../shared/partnerProvisioning.ts';
+import { LINUX_ENDPOINT_CONTRACT_CONFIRMED } from '../../shared/linuxClient.ts';
 
 // Admin partner integration management. Linux is the authoritative system for
 // partner HMAC credentials — Base44 coordinates provisioning through authenticated
@@ -31,6 +33,8 @@ const ACTION_PERMS = {
   update: 'partners.manage',
   delete: 'partners.manage',
   rotateCredential: 'partners.manage',
+  reissueInitialCredential: 'partners.manage',
+  recoverPartner: 'partners.manage',
   revokeCredential: 'partners.manage',
   setStatus: 'partners.manage',
   updateSetup: 'partners.manage',
@@ -420,17 +424,26 @@ export default async function(req) {
       return Response.json({ ok: true, record: sanitizePartnerRecord(record) });
     }
 
-    // ── Rotate Credential (via Linux) ───────────────────────────────────
+    // ── Rotate Credential (ACTIVE partners only, via Linux) ────────────
+    // Rotation is for partners that are already active with a live credential.
+    // setup_required partners must use reissueInitialCredential instead —
+    // Linux prepareCredentialRotation requires an active, enabled, verified
+    // partner with an existing active credential and no pending credential.
     if (action === 'rotateCredential') {
       const before = await admin.entities.PartnerIntegration.get(partnerId);
       if (!before.linux_api_partner_id) {
         return Response.json({ error: 'Cannot rotate: partner has no Linux API Partner ID. Use Retry Provisioning to reconcile with Linux first.', code: 'missing_linux_partner_id' }, { status: 400 });
       }
+      if (before.integration_status !== 'active') {
+        return Response.json({
+          error: `Credential rotation is only available for active partners. This partner is "${before.integration_status}". Use "Reissue Initial Credential" for setup_required partners or "Recover Partner" for revoked/disabled partners.`,
+          code: 'rotation_requires_active_partner',
+          current_status: before.integration_status
+        }, { status: 400 });
+      }
 
       const rotateResult = await linuxTrustedPost(LINUX_PARTNER_ENDPOINTS.ROTATE_CREDENTIAL, { partner_uuid: before.linux_api_partner_id });
       if (!rotateResult.ok) {
-        // Provide useful diagnostics: HTTP status + safe error code from Linux.
-        // Never expose secrets, signatures, or the HMAC secret in the error.
         const code = rotateResult.code || 'unknown';
         const status = rotateResult.status || 0;
         let userMessage;
@@ -446,45 +459,106 @@ export default async function(req) {
         return Response.json({ error: userMessage, code, linux_status: status }, { status: 503 });
       }
 
-      const linuxData = rotateResult.data || {};
-      const newKeyId = linuxData.partner_key_id;
-      const newSecret = linuxData.partner_secret;
-
-      // Revoke old credentials locally.
-      const oldCreds = await admin.entities.PartnerCredential.filter({ partner_integration_id: partnerId });
-      for (const c of (oldCreds || [])) {
-        if (!c.revoked_at) {
-          await admin.entities.PartnerCredential.update(c.id, { revoked_at: new Date().toISOString() });
-        }
+      const saved = await saveLinuxCredential(admin, partnerId, before, rotateResult.data || {});
+      if (!saved.ok) {
+        return Response.json({ error: saved.error, code: saved.code }, { status: 500 });
       }
-
-      const updateFields = { partner_key_id: newKeyId };
-      if (newSecret) {
-        updateFields.partner_secret_hash = await sha256Hex(newSecret);
-        const encKey = secrets.get('OAUTH_TOKEN_ENCRYPTION_KEY');
-        if (encKey) {
-          const { ciphertext, iv } = await encryptToken(newSecret, encKey);
-          await admin.entities.PartnerCredential.create({
-            partner_integration_id: partnerId,
-            encrypted_hmac_secret: ciphertext,
-            hmac_secret_iv: iv,
-            rotated_at: new Date().toISOString()
-          });
-        }
-      }
-
-      const cl = before.setup_checklist || {};
-      cl.proof_of_possession = false;
-      cl.test_event_verified = false;
-      updateFields.setup_checklist = cl;
-      updateFields.proof_of_possession_verified = false;
-      updateFields.test_event_verified = false;
-      updateFields.verification_status = computeVerificationStatus({ ...before, proof_of_possession_verified: false, test_event_verified: false });
-
-      await admin.entities.PartnerIntegration.update(partnerId, updateFields);
       await writeAudit(admin, { adminId: user.id, action: 'partner_credential_rotated', entityType: 'PartnerIntegration', entityId: partnerId, previous: { partner_key_id: before.partner_key_id } });
 
-      return Response.json({ ok: true, partner_key_id: newKeyId, partner_secret: newSecret });
+      return Response.json({ ok: true, partner_key_id: saved.partner_key_id, partner_secret: saved.partner_secret });
+    }
+
+    // ── Reissue Initial Credential (setup_required partners) ───────────
+    // For partners that have not completed onboarding (setup_required) and
+    // need their initial credential reissued — e.g. the original secret was
+    // lost, or provisioning partially failed. This is distinct from rotation
+    // (which requires an active partner with a live credential).
+    //
+    // Uses a dedicated Linux endpoint whose contract is PENDING confirmation.
+    // No live request is made until the Linux API team confirms the endpoint
+    // path and request/response schema and LINUX_ENDPOINT_CONTRACT_CONFIRMED
+    // .REISSUE_INITIAL_CREDENTIAL is set to true.
+    if (action === 'reissueInitialCredential') {
+      const before = await admin.entities.PartnerIntegration.get(partnerId);
+      if (!before.linux_api_partner_id) {
+        return Response.json({ error: 'Cannot reissue: partner has no Linux API Partner ID. Use Retry Provisioning or Set UUID to reconcile with Linux first.', code: 'missing_linux_partner_id' }, { status: 400 });
+      }
+      if (before.integration_status === 'active') {
+        return Response.json({ error: 'Active partners must use credential rotation, not initial reissue.', code: 'use_rotation_for_active' }, { status: 400 });
+      }
+
+      if (!LINUX_ENDPOINT_CONTRACT_CONFIRMED.REISSUE_INITIAL_CREDENTIAL) {
+        await writeAudit(admin, { adminId: user.id, action: 'partner_initial_reissue_blocked_contract_pending', entityType: 'PartnerIntegration', entityId: partnerId });
+        return Response.json({
+          ok: false,
+          code: 'linux_contract_pending',
+          error: 'The Linux initial credential reissue endpoint contract has not been confirmed yet. No live request was made. Once the Linux API team provides the confirmed endpoint path and request schema, update LINUX_PARTNER_ENDPOINTS.REISSUE_INITIAL_CREDENTIAL and set LINUX_ENDPOINT_CONTRACT_CONFIRMED.REISSUE_INITIAL_CREDENTIAL to true.',
+          partner_uuid: before.linux_api_partner_id,
+          current_status: before.integration_status
+        }, { status: 503 });
+      }
+
+      const reissueResult = await linuxTrustedPost(LINUX_PARTNER_ENDPOINTS.REISSUE_INITIAL_CREDENTIAL, { partner_uuid: before.linux_api_partner_id });
+      if (!reissueResult.ok) {
+        const code = reissueResult.code || 'unknown';
+        return Response.json({ error: `Linux initial credential reissue failed (HTTP ${reissueResult.status}, code: ${code}). ${reissueResult.error || ''}`.trim(), code, linux_status: reissueResult.status }, { status: 503 });
+      }
+
+      const saved = await saveLinuxCredential(admin, partnerId, before, reissueResult.data || {});
+      if (!saved.ok) {
+        return Response.json({ error: saved.error, code: saved.code }, { status: 500 });
+      }
+      await writeAudit(admin, { adminId: user.id, action: 'partner_initial_credential_reissued', entityType: 'PartnerIntegration', entityId: partnerId, previous: { partner_key_id: before.partner_key_id } });
+
+      return Response.json({ ok: true, partner_key_id: saved.partner_key_id, partner_secret: saved.partner_secret });
+    }
+
+    // ── Recover Partner (revoked/disabled partners) ───────────────────
+    // Admin-only recovery for partners that were accidentally revoked or
+    // disabled. Issues NEW credentials — never restores revoked ones.
+    // Preserves the Linux partner UUID (immutable), domain verification, and
+    // audit history. The partner is moved back to setup_required so onboarding
+    // can resume.
+    //
+    // Uses a dedicated Linux endpoint whose contract is PENDING confirmation.
+    // No live request is made until the Linux API team confirms the endpoint
+    // path and request/response schema and LINUX_ENDPOINT_CONTRACT_CONFIRMED
+    // .RECOVER_PARTNER is set to true.
+    if (action === 'recoverPartner') {
+      const before = await admin.entities.PartnerIntegration.get(partnerId);
+      if (!before.linux_api_partner_id) {
+        return Response.json({ error: 'Cannot recover: partner has no Linux API Partner ID.', code: 'missing_linux_partner_id' }, { status: 400 });
+      }
+      if (before.integration_status === 'active') {
+        return Response.json({ error: 'Active partners do not need recovery. Use credential rotation instead.', code: 'use_rotation_for_active' }, { status: 400 });
+      }
+
+      if (!LINUX_ENDPOINT_CONTRACT_CONFIRMED.RECOVER_PARTNER) {
+        await writeAudit(admin, { adminId: user.id, action: 'partner_recovery_blocked_contract_pending', entityType: 'PartnerIntegration', entityId: partnerId });
+        return Response.json({
+          ok: false,
+          code: 'linux_contract_pending',
+          error: 'The Linux partner recovery endpoint contract has not been confirmed yet. No live request was made. Once the Linux API team provides the confirmed endpoint path and request schema, update LINUX_PARTNER_ENDPOINTS.RECOVER_PARTNER and set LINUX_ENDPOINT_CONTRACT_CONFIRMED.RECOVER_PARTNER to true.',
+          partner_uuid: before.linux_api_partner_id,
+          current_status: before.integration_status
+        }, { status: 503 });
+      }
+
+      const recoverResult = await linuxTrustedPost(LINUX_PARTNER_ENDPOINTS.RECOVER_PARTNER, { partner_uuid: before.linux_api_partner_id });
+      if (!recoverResult.ok) {
+        const code = recoverResult.code || 'unknown';
+        return Response.json({ error: `Linux partner recovery failed (HTTP ${recoverResult.status}, code: ${code}). ${recoverResult.error || ''}`.trim(), code, linux_status: recoverResult.status }, { status: 503 });
+      }
+
+      const saved = await saveLinuxCredential(admin, partnerId, before, recoverResult.data || {});
+      if (!saved.ok) {
+        return Response.json({ error: saved.error, code: saved.code }, { status: 500 });
+      }
+      // Move back to setup_required so onboarding can resume. Do NOT activate.
+      const record = await admin.entities.PartnerIntegration.update(partnerId, { integration_status: 'setup_required', active: false });
+      await writeAudit(admin, { adminId: user.id, action: 'partner_recovered', entityType: 'PartnerIntegration', entityId: partnerId, previous: { integration_status: before.integration_status }, next: { integration_status: 'setup_required' } });
+
+      return Response.json({ ok: true, record: sanitizePartnerRecord(record), partner_key_id: saved.partner_key_id, partner_secret: saved.partner_secret });
     }
 
     // ── Revoke Credential (via Linux) ────────────────────────────────────

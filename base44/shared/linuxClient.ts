@@ -132,5 +132,34 @@ export const LINUX_PARTNER_ENDPOINTS = {
   PROOF_CONFIRM: "/v1/partner-credentials/confirm",
   ACCOUNT_LINK_CREATE: "/v1/partner-links/challenges",
   ACCOUNT_LINK_CONFIRM: "/v1/partner-links/confirm",
-  ACCOUNT_LINK_UNLINK: "/partners/account-link/unlink"
+  ACCOUNT_LINK_UNLINK: "/partners/account-link/unlink",
+  // ─── Pending Linux contract confirmation ───────────────────────────────
+  // These endpoints are NOT yet confirmed by the Linux API team.
+  // The paths below are placeholders — do NOT make live requests until the
+  // contract is confirmed and the corresponding flag in
+  // LINUX_ENDPOINT_CONTRACT_CONFIRMED is set to true.
+  REISSUE_INITIAL_CREDENTIAL: "/partners/reissue-initial-credential",
+  RECOVER_PARTNER: "/partners/recover"
+};
+
+// Tracks which Linux endpoint contracts have been confirmed by the Linux API
+// team. Actions check this map before making live requests; unconfirmed
+// endpoints return a clear "contract pending" message instead of calling Linux.
+export const LINUX_ENDPOINT_CONTRACT_CONFIRMED = {
+  PROVISION: true,
+  ROTATE_CREDENTIAL: true,
+  REVOKE: true,
+  ACTIVATE: true,
+  VERIFY_DOMAIN: true,
+  PROOF_CHALLENGE: true,
+  PROOF_CONFIRM: true,
+  ACCOUNT_LINK_CREATE: true,
+  ACCOUNT_LINK_CONFIRM: true,
+  ACCOUNT_LINK_UNLINK: true,
+  // Pending — set to true once the Linux API team confirms the endpoint path
+  // and request/response schema for initial credential reissue and partner
+  // recovery. Until then, the admin actions return a clear message and make
+  // NO live request.
+  REISSUE_INITIAL_CREDENTIAL: false,
+  RECOVER_PARTNER: false
 };
