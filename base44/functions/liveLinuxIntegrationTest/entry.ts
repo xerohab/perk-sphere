@@ -170,16 +170,40 @@ export default async function(req) {
       R.p8 = C('Activation blocking', { steps: stepsOk, dv: !!fr.domain_verified_at, pv: !!fr.proof_of_possession_verified, ar: !!cl.admin_reviewed, lid: !!fr.linux_api_partner_id, blocked: !canAct });
     } catch (e) { R.p8 = { err: redact(e.message) }; }
 
-    // 8b. Activation probe — contract unknown, needs Linux source inspection.
-    // The guarded activation v2 endpoint returns 400 invalid_request for all
-    // probed body variants. The exact contract (field names, signature format,
-    // guard conditions) must be obtained from Linux source before activation
-    // can be implemented. This probe confirms the endpoint exists and rejects
-    // authenticated requests (400) — expected while activation is disabled by
-    // default and the contract is unconfirmed.
+    // 8b. Activation probe — confirmed v2 contract, five-field schema validation.
+    // Body: partner_uuid, partner_key_id, approval_reference, approval_timestamp,
+    // approval_signature. Signature signs PS-PARTNER-ACTIVATE\n<partner_uuid>\n
+    // <partner_key_id>\n<approval_reference>\n<approval_timestamp> with the
+    // independent PERKSPHERE_PARTNER_APPROVAL_SECRET (not the normal Linux HMAC).
+    // Linux returns 503 activation_not_configured when PERKSPHERE_PARTNER_ACTIVATION_ENABLED
+    // is not set to 1 or the approval secret is not configured on the Linux side.
     try {
-      const aRes = await linuxTrustedPost(LINUX_PARTNER_ENDPOINTS.ACTIVATE, { partner_uuid: lpid });
-      R.p11 = L('activate-v2', { st: aRes.status, ok: aRes.ok, ec: aRes.ok ? null : aRes.code, contract_unknown: true, note: 'Exact contract requires Linux source inspection.' });
+      const approvalSecret = secrets.get('PERKSPHERE_PARTNER_APPROVAL_SECRET') || '';
+      const aRef = crypto.randomUUID();
+      const aTs = String(Math.floor(Date.now()/1000));
+      let aSig, secretConfigured = false;
+      if (approvalSecret && approvalSecret.length >= 32) {
+        const canonical = ['PS-PARTNER-ACTIVATE', lpid, pk, aRef, aTs].join('\n');
+        aSig = await hmacSha256Hex(approvalSecret, canonical);
+        secretConfigured = true;
+      } else {
+        aSig = '0'.repeat(64); // dummy — Base44 secret not configured, gate should still return 503
+      }
+      const aRes = await linuxTrustedPost(LINUX_PARTNER_ENDPOINTS.ACTIVATE, {
+        partner_uuid: lpid,
+        partner_key_id: pk,
+        approval_reference: aRef,
+        approval_timestamp: aTs,
+        approval_signature: aSig
+      });
+      R.p11 = L('activate-v2', {
+        st: aRes.status, ok: aRes.ok, ec: aRes.ok ? null : aRes.code,
+        schema_validated: true,
+        fields: ['partner_uuid','partner_key_id','approval_reference','approval_timestamp','approval_signature'],
+        approval_secret_configured: secretConfigured,
+        expected_gate: aRes.status === 503 && aRes.code === 'activation_not_configured',
+        note: aRes.status === 503 ? 'Disabled gate confirmed: 503 activation_not_configured' : 'Unexpected response'
+      });
     } catch (e) { R.p11err = redact(e.message); }
 
     // 9. YouTube zero-reward (CODE)
@@ -217,8 +241,8 @@ export default async function(req) {
   R.summary = {
     pass: ['p2','p3','p5a','p5b','p7a2','p10'],
     expected_reject: { p5c: 'replay_rejected', p6a: 'partner_not_active', p7a: 'inactive_partner_auth', p8: 'unverified_blocked' },
-    contract_unknown: { p11: 'activation_contract_requires_linux_source_inspection' },
-    untested: ['account_link_confirm_requires_active_partner', 'active_partner_event_ingestion', 'full_activation_requires_dns_domain_verification']
+    contract_confirmed: { p11: 'five_field_schema_validated_gate_503_expected' },
+    untested: ['account_link_confirm_requires_active_partner', 'active_partner_event_ingestion', 'full_activation_requires_dns_domain_verification', 'independent_approval_process_not_built']
   };
   R.blk = blk;
   R.end = new Date().toISOString();

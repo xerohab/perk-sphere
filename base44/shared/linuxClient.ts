@@ -100,14 +100,26 @@ export async function linuxTrustedPost(path, body, extraHeaders) {
 // If any endpoint is unavailable, the partner is left in linux_integration_pending
 // state and the admin can retry provisioning later via managePartner.retryProvisioning.
 
-// Computes a signed admin approval for partner activation using the PS-ACTIVATE
-// canonical format. NOTE: This signature format is UNVERIFIED — the exact deployed
-// contract for POST /partners/activate must be obtained from Linux source inspection
-// before this helper is used in production. Kept here as a utility for when the
-// contract is confirmed; currently unused by managePartner.
-export async function computeActivationApproval(hmacSecret, partnerUuid, adminId, timestamp) {
-  const canonical = ["PS-ACTIVATE", partnerUuid, adminId, timestamp].join("\n");
-  return await hmacSha256Hex(hmacSecret, canonical);
+// Computes the partner activation approval signature using the INDEPENDENT
+// PERKSPHERE_PARTNER_APPROVAL_SECRET — NOT the normal Base44/Linux service HMAC
+// secret. The approval signature must come from an independently authorised
+// approval process, not a client-provided admin_id or a browser-controlled request.
+//
+// Canonical (newline-joined):
+//   PS-PARTNER-ACTIVATE
+//   <partner_uuid>
+//   <partner_key_id>
+//   <approval_reference>
+//   <approval_timestamp>
+//
+// Returns a 64-character lowercase hexadecimal HMAC-SHA256 digest.
+export async function computePartnerActivationApproval(partnerUuid, partnerKeyId, approvalReference, approvalTimestamp) {
+  const approvalSecret = secrets.get("PERKSPHERE_PARTNER_APPROVAL_SECRET") || "";
+  if (!approvalSecret || approvalSecret.length < 32) {
+    throw new Error("PERKSPHERE_PARTNER_APPROVAL_SECRET is not configured or is too short (minimum 32 characters).");
+  }
+  const canonical = ["PS-PARTNER-ACTIVATE", partnerUuid, partnerKeyId, approvalReference, approvalTimestamp].join("\n");
+  return await hmacSha256Hex(approvalSecret, canonical);
 }
 
 export const LINUX_PARTNER_ENDPOINTS = {

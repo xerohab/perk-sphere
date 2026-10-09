@@ -213,18 +213,15 @@ export default async function(req) {
         if (!cl.admin_reviewed) {
           return Response.json({ error: 'Cannot activate: administrator review has not been approved.' }, { status: 400 });
         }
-        // Call Linux to activate. The exact deployed contract for POST /partners/activate
-        // is NOT yet confirmed — the request body schema, approval signature format, and
-        // guard conditions must be obtained from Linux source inspection before this call
-        // can succeed. Currently sends the minimal { partner_uuid } body.
-        // Linux returns 400 invalid_request until the contract is confirmed and activation
-        // is enabled on the Linux side. Do not bypass this or mark the partner active locally.
-        const activateResult = await linuxTrustedPost(LINUX_PARTNER_ENDPOINTS.ACTIVATE, { partner_uuid: before.linux_api_partner_id });
-        if (!activateResult.ok) {
-          return Response.json({ error: 'Linux activation failed: ' + (activateResult.error || activateResult.code), code: activateResult.code }, { status: 503 });
-        }
-        cl.activated = true;
-        await admin.entities.PartnerIntegration.update(partnerId, { setup_checklist: cl });
+        // Activation v2 contract confirmed: POST /partners/activate requires exactly
+        // partner_uuid, partner_key_id, approval_reference, approval_timestamp,
+        // approval_signature. The approval signature is signed with the independent
+        // PERKSPHERE_PARTNER_APPROVAL_SECRET (NOT the normal Linux HMAC secret).
+        // The approval signature must come from an independently authorised approval
+        // process, not from this admin function or a browser-controlled request.
+        // The independent approval process is NOT yet built — activation is blocked
+        // until it is. Do not generate the approval signature inline or fabricate one.
+        return Response.json({ error: 'Partner activation requires an independently authorised approval signature. The independent approval process is not yet configured.' }, { status: 503 });
       }
 
       const isActive = status === 'active';

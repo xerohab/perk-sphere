@@ -217,28 +217,69 @@ Revokes all credentials for a partner. The partner is disabled.
 
 **Expected status codes:** 200, 503, 500.
 
-### 4.4 POST /partners/activate (Guarded Activation v2) — CONTRACT UNCONFIRMED
+### 4.4 POST /partners/activate (Guarded Activation v2) — CONFIRMED
 
 Activates a partner for production event submission. Called only after all onboarding steps are complete and the admin has approved.
 
-**STATUS: The exact deployed contract for this endpoint is NOT confirmed.** Endpoint probing returned 400 `invalid_request` for all tested body variants. The request body schema, approval signature format (if any), and guard conditions must be obtained from Linux source inspection before Base44 can implement this correctly. Base44 currently sends the minimal `{ partner_uuid }` body and does not bypass the guard.
+**Authentication:** Standard Base44 → Linux HMAC (section 2.1) via `linuxTrustedPost`.
 
-**What is known from probing:**
-- Endpoint exists at `POST /partners/activate`
-- Unauthenticated requests → 401 (HMAC auth required)
-- Authenticated requests with any tested body → 400 `invalid_request` (no error message)
-- No activation-challenge endpoint exists at any probed path
-- Activation is disabled by default
+**Request body (exactly 5 fields):**
 
-**What is unknown (requires Linux source inspection):**
-1. Request body schema — exact field names, types, required/optional fields
-2. Approval signature — whether one is required, what canonical string is signed, where it goes (body vs header)
-3. Guard conditions — what determines whether activation is enabled (global flag, per-partner verification state, or both)
-4. Challenge step — whether a separate challenge-issuance step is required before activation (like proof-of-possession)
-5. Response schema on success
-6. Error codes for specific failure conditions (schema validation vs disabled vs partner not ready)
+| Field | Type | Description |
+|-------|------|-------------|
+| `partner_uuid` | string | Valid Linux UUID |
+| `partner_key_id` | string | Issued Linux credential key ID, matching `psp_` followed by 24 permitted characters |
+| `approval_reference` | string | Unique, non-empty approval reference |
+| `approval_timestamp` | string | 10-digit Unix timestamp in seconds |
+| `approval_signature` | string | 64-character hexadecimal HMAC-SHA256 |
 
-**Base44 behaviour (current):** `managePartner` enforces all pre-activation guards (onboarding complete, domain verified, proof-of-possession verified, admin reviewed) before calling Linux. If Linux rejects, the partner stays inactive. No local bypass exists.
+**Canonical approval message (newline-joined):**
+
+```
+PS-PARTNER-ACTIVATE
+<partner_uuid>
+<partner_key_id>
+<approval_reference>
+<approval_timestamp>
+```
+
+**Signing secret:** `PERKSPHERE_PARTNER_APPROVAL_SECRET` — an **independent** secret, NOT the normal Base44/Linux service HMAC secret. Must be at least 32 characters.
+
+**Linux requirements:**
+- `PERKSPHERE_PARTNER_ACTIVATION_ENABLED=1` (Linux env var)
+- A separately configured approval secret of at least 32 characters
+
+**Timestamp:** must be within 300 seconds of Linux server time.
+
+**Linux verifies:**
+1. Partner status is `setup_required` or `pending_review`
+2. DNS domain verification has succeeded
+3. The specified pending credential has passed proof-of-possession
+4. The credential has not expired
+5. An activation approval reference has not already been recorded for that partner
+
+**Response (200):**
+
+```json
+{
+  "data": {
+    "activated": true,
+    "partner_uuid": "f3a2b1c4-5d6e-7f8a-9b0c-1d2e3f4a5b6c",
+    "partner_key_id": "psp_a1b2c3d4e5f6a7b8c9d0e1f2"
+  }
+}
+```
+
+**Response (503) — activation not configured:**
+
+```json
+{
+  "ok": false,
+  "error": { "code": "activation_not_configured" }
+}
+```
+
+**Base44 behaviour:** The approval signature must come from an **independently authorised approval process**, not a client-provided `admin_id` or a browser-controlled request. The independent approval process is not yet built — `managePartner` blocks activation with HTTP 503 until it is. Do not generate the approval signature inline or fabricate one. The `computePartnerActivationApproval` helper in `linuxClient.ts` signs the correct canonical with `PERKSPHERE_PARTNER_APPROVAL_SECRET` and is available for the future independent approval process to use.
 
 ### 4.5 POST /partners/verify-domain
 
