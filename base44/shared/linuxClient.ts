@@ -100,11 +100,11 @@ export async function linuxTrustedPost(path, body, extraHeaders) {
 // If any endpoint is unavailable, the partner is left in linux_integration_pending
 // state and the admin can retry provisioning later via managePartner.retryProvisioning.
 
-// Computes the signed admin approval for partner activation.
-// Canonical: PS-ACTIVATE\n<partner_uuid>\n<admin_id>\n<timestamp>
-// The HMAC secret is the same Base44→Linux secret used for all outbound requests.
-// This proves a specific Base44 admin authorised the activation — Linux verifies
-// the signature before enabling production event acceptance for the partner.
+// Computes a signed admin approval for partner activation using the PS-ACTIVATE
+// canonical format. NOTE: This signature format is UNVERIFIED — the exact deployed
+// contract for POST /partners/activate must be obtained from Linux source inspection
+// before this helper is used in production. Kept here as a utility for when the
+// contract is confirmed; currently unused by managePartner.
 export async function computeActivationApproval(hmacSecret, partnerUuid, adminId, timestamp) {
   const canonical = ["PS-ACTIVATE", partnerUuid, adminId, timestamp].join("\n");
   return await hmacSha256Hex(hmacSecret, canonical);
