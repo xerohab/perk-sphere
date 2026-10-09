@@ -49,7 +49,7 @@ export default async function(req) {
 
     // ── Admin: list all archives ──────────────────────────────────────
     if (action === "adminArchives") {
-      const result = await adminRequest(base44, PERK_SPHERE_ENDPOINTS.REPORTS_ARCHIVES, { filters: filters || {}, scope: "all" }, "analytics.view");
+      const result = await adminRequest(base44, PERK_SPHERE_ENDPOINTS.REPORTS_ARCHIVES, { filters: filters || {} }, "analytics.view");
       return linuxResponse(result);
     }
 

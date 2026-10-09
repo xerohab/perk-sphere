@@ -18,14 +18,6 @@ export default async function(req) {
     const body = await req.json().catch(() => ({}));
     const { action, quiz, quizId, answers, filters, scope } = body;
 
-    // ── Debug: return the derived actor without calling Linux ─────────
-    if (action === "debug") {
-      let user = null;
-      try { user = await base44.auth.me(); } catch { user = null; }
-      const actor = user ? { user_reference: String(user.id), role: user.role === "admin" ? "admin" : "member" } : null;
-      return Response.json({ user: user ? { id: user.id, role: user.role, idType: typeof user.id } : null, actor });
-    }
-
     // ── Create quiz (admin) ────────────────────────────────────────────
     if (action === "create") {
       if (!quiz || !quiz.title || !quiz.video_ref) {

@@ -32,13 +32,13 @@ export default async function(req) {
 
     // ── List own requests (member) ─────────────────────────────────────
     if (action === "list") {
-      const result = await memberRequest(base44, PERK_SPHERE_ENDPOINTS.REQUESTS_LIST, { filters: filters || {}, scope: "mine" });
+      const result = await memberRequest(base44, PERK_SPHERE_ENDPOINTS.REQUESTS_LIST, { filters: filters || {} });
       return linuxResponse(result);
     }
 
     // ── List all requests (admin) ──────────────────────────────────────
     if (action === "listAll") {
-      const result = await adminRequest(base44, PERK_SPHERE_ENDPOINTS.REQUESTS_LIST, { filters: filters || {}, scope: "all" }, "destinations.manage");
+      const result = await adminRequest(base44, PERK_SPHERE_ENDPOINTS.REQUESTS_LIST, { filters: filters || {} }, "destinations.manage");
       return linuxResponse(result);
     }
 

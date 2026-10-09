@@ -56,6 +56,19 @@ const MEMBER_SAFE_PATHS = new Set([
   PERK_SPHERE_ENDPOINTS.REWARD_REVIEW_MINE
 ]);
 
+// Strips undefined, null, and empty objects from a body before sending to Linux.
+// Linux rejects requests with unrecognised fields (returns trusted_actor_required),
+// so only send fields that have actual values.
+function cleanBody(body) {
+  const cleaned = {};
+  for (const [key, value] of Object.entries(body || {})) {
+    if (value === undefined || value === null) continue;
+    if (typeof value === "object" && !Array.isArray(value) && Object.keys(value).length === 0) continue;
+    cleaned[key] = value;
+  }
+  return cleaned;
+}
+
 // Derives the signed actor object server-side from the authenticated Base44
 // user. The Linux Stage 2 API expects EXACTLY { user_reference, role }.
 // Staff permissions are used internally for authorisation but NOT sent to Linux.
@@ -79,7 +92,7 @@ export async function memberRequest(base44, path, body) {
   try { user = await base44.auth.me(); } catch { user = null; }
   if (!user) return { ok: false, status: 401, code: "unauthorized", error: "Authentication required" };
   const actor = deriveActor(user);
-  return linuxTrustedPost(path, { ...body, trusted_actor: actor });
+  return linuxTrustedPost(path, { ...cleanBody(body), actor });
 }
 
 // Sends an admin request to the Linux perk-sphere API.
@@ -95,7 +108,7 @@ export async function adminRequest(base44, path, body, permission) {
   const verdict = evaluateAccess(user, staff, permission);
   if (!verdict.ok) return { ok: false, status: verdict.status, code: "forbidden", error: verdict.error };
   const actor = deriveActor(user);
-  return linuxTrustedPost(path, { ...body, trusted_actor: actor });
+  return linuxTrustedPost(path, { ...cleanBody(body), actor });
 }
 
 // Wraps a Linux API result into a Response.json call.
