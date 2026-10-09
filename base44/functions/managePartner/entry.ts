@@ -429,7 +429,21 @@ export default async function(req) {
 
       const rotateResult = await linuxTrustedPost(LINUX_PARTNER_ENDPOINTS.ROTATE_CREDENTIAL, { partner_uuid: before.linux_api_partner_id });
       if (!rotateResult.ok) {
-        return Response.json({ error: 'Linux credential rotation failed: ' + (rotateResult.error || rotateResult.code), code: rotateResult.code }, { status: 503 });
+        // Provide useful diagnostics: HTTP status + safe error code from Linux.
+        // Never expose secrets, signatures, or the HMAC secret in the error.
+        const code = rotateResult.code || 'unknown';
+        const status = rotateResult.status || 0;
+        let userMessage;
+        if (code === 'partner_management_unavailable') {
+          userMessage = `Linux partner management is currently unavailable (HTTP ${status}). The rotation endpoint exists but the service is not accepting requests. Try again later or contact the Linux API team to enable credential rotation.`;
+        } else if (code === 'partner_unavailable') {
+          userMessage = `Partner is not available on Linux (HTTP ${status}). The partner may have been revoked or disabled. Contact the Linux API team to restore the partner before rotating credentials.`;
+        } else if (code === 'invalid_signature' || code === 'unknown_key_id') {
+          userMessage = `Linux authentication failed (HTTP ${status}, code: ${code}). The Base44 service HMAC credentials may be misconfigured.`;
+        } else {
+          userMessage = `Linux credential rotation failed (HTTP ${status}, code: ${code}). ${rotateResult.error || ''}`.trim();
+        }
+        return Response.json({ error: userMessage, code, linux_status: status }, { status: 503 });
       }
 
       const linuxData = rotateResult.data || {};
