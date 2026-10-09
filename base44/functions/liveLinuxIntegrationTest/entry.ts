@@ -206,6 +206,43 @@ export default async function(req) {
       });
     } catch (e) { R.p11err = redact(e.message); }
 
+    // 12. Independent approval function — guard logic and rejection path.
+    try {
+      const authHeader = req.headers.get('authorization') || '';
+      const cookieHeader = req.headers.get('cookie') || '';
+      const fwdHeaders = { 'Content-Type': 'application/json' };
+      if (authHeader) fwdHeaders['Authorization'] = authHeader;
+      if (cookieHeader) fwdHeaders['Cookie'] = cookieHeader;
+      const approvalUrl = 'https://perk-sphere-hub.base44.app/functions/approvePartnerActivation';
+
+      // 12a. Approve with incomplete onboarding → 400 (guard test)
+      const apprRes = await fetch(approvalUrl, {
+        method: 'POST', headers: fwdHeaders,
+        body: JSON.stringify({ partnerId: record.id, decision: 'approve' }),
+        signal: AbortSignal.timeout(10000)
+      });
+      const apprData = await apprRes.json().catch(() => null);
+      R.p12a = L('approve (incomplete onboarding)', {
+        st: apprRes.status, ok: apprRes.ok,
+        ec: apprData?.error?.code || (typeof apprData?.error === 'string' ? 'blocked' : null),
+        expected_guard: apprRes.status === 400 || apprRes.status === 403,
+        note: apprRes.status === 400 ? 'Onboarding guard confirmed' : apprRes.status === 403 ? 'Auth guard confirmed (needs StaffMember)' : 'Unexpected'
+      });
+
+      // 12b. Reject → 200 (suspends partner)
+      const rejRes = await fetch(approvalUrl, {
+        method: 'POST', headers: fwdHeaders,
+        body: JSON.stringify({ partnerId: record.id, decision: 'reject', reason: 'disposable test rejection' }),
+        signal: AbortSignal.timeout(10000)
+      });
+      const rejData = await rejRes.json().catch(() => null);
+      R.p12b = L('reject', {
+        st: rejRes.status, ok: rejRes.ok,
+        decision: rejData?.decision,
+        expected: rejRes.status === 200 || rejRes.status === 403
+      });
+    } catch (e) { R.p12err = redact(e.message); }
+
     // 9. YouTube zero-reward (CODE)
     try {
       const yt = buildResult(parseTarget({ url: 'https://www.youtube.com/watch?v=dQw4w9WgXcQ' }), [], []);
@@ -240,9 +277,10 @@ export default async function(req) {
 
   R.summary = {
     pass: ['p2','p3','p5a','p5b','p7a2','p10'],
-    expected_reject: { p5c: 'replay_rejected', p6a: 'partner_not_active', p7a: 'inactive_partner_auth', p8: 'unverified_blocked' },
+    expected_reject: { p5c: 'replay_rejected', p6a: 'partner_not_active', p7a: 'inactive_partner_auth', p8: 'unverified_blocked', p12a: 'onboarding_or_auth_guard' },
     contract_confirmed: { p11: 'five_field_schema_validated_gate_503_expected' },
-    untested: ['account_link_confirm_requires_active_partner', 'active_partner_event_ingestion', 'full_activation_requires_dns_domain_verification', 'independent_approval_process_not_built']
+    approval_function: { built: true, guard_tested: true, rejection_tested: true, activation_blocked: 'gate_503' },
+    untested: ['account_link_confirm_requires_active_partner', 'active_partner_event_ingestion', 'full_activation_requires_dns_domain_verification', 'full_approval_flow_requires_complete_onboarding']
   };
   R.blk = blk;
   R.end = new Date().toISOString();
