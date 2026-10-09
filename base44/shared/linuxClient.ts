@@ -105,8 +105,9 @@ export const LINUX_PARTNER_ENDPOINTS = {
   REVOKE: "/partners/revoke",
   ACTIVATE: "/partners/activate",
   VERIFY_DOMAIN: "/partners/verify-domain",
-  VERIFY_PROOF: "/partners/verify-proof",
-  ACCOUNT_LINK_CREATE: "/partners/account-link/create-challenge",
-  ACCOUNT_LINK_VERIFY: "/partners/account-link/verify",
+  PROOF_CHALLENGE: "/v1/partner-credentials/challenge",
+  PROOF_CONFIRM: "/v1/partner-credentials/confirm",
+  ACCOUNT_LINK_CREATE: "/v1/partner-links/create-challenge",
+  ACCOUNT_LINK_CONFIRM: "/v1/partner-links/confirm",
   ACCOUNT_LINK_UNLINK: "/partners/account-link/unlink"
 };

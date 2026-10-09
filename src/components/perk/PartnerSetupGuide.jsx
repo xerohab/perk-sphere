@@ -78,9 +78,11 @@ Partner Website  -->  Linux API (${LINUX_API_BASE})  -->  Perk Sphere (reward au
 1. Partner registered in Perk Sphere (auto-completed)
 2. Secure credentials generated (auto-completed)
 3. Domain ownership verified
-   - Publish this token in a DNS TXT record or at /.well-known/perksphere-verify.txt:
-     ${partner.domain_verification_token || "(not generated)"}
+   - Add a DNS TXT record:
+     Host: _perksphere.${(partner.verified_domains || [])[0] || "your-domain.com"}
+     Value: ${partner.domain_verification_token || "(not generated)"}
    - An administrator verifies it in Admin > Partners > Setup
+   - Verification is confirmed by the Linux API
 4. Administrator review approved
 5. Credentials configured on Linux API
    - Partner Key ID: ${partner.partner_key_id || "(not generated)"}
@@ -240,7 +242,12 @@ export default function PartnerSetupGuide({ partner, onUpdateChecklist }) {
         <div className="rounded-lg border border-amber-300 bg-amber-50 p-3 dark:border-amber-700 dark:bg-amber-950/30">
           <p className="flex items-center gap-1.5 text-xs font-medium text-amber-800 dark:text-amber-300"><Globe className="h-3.5 w-3.5" /> Domain verification token</p>
           <p className="mt-1 break-all font-mono text-xs text-amber-700 dark:text-amber-400">{partner.domain_verification_token}</p>
-          <p className="mt-1 text-xs text-amber-700 dark:text-amber-400">Publish this in a DNS TXT record for {(partner.verified_domains || [])[0] || "your domain"} or at /.well-known/perksphere-verify.txt, then ask an admin to verify.</p>
+          <div className="mt-2 space-y-1 text-xs text-amber-700 dark:text-amber-400">
+            <p className="font-medium">Add a DNS TXT record:</p>
+            <p>Host: <code className="font-mono">_perksphere.{(partner.verified_domains || [])[0] || "your-domain.com"}</code></p>
+            <p>Value: <code className="font-mono break-all">{partner.domain_verification_token}</code></p>
+            <p className="mt-1">Once the DNS record is published, ask an administrator to verify domain ownership. Verification is confirmed by the Linux API.</p>
+          </div>
         </div>
       )}
 

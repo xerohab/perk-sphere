@@ -5,7 +5,7 @@ import { authorize, writeAudit } from '../../shared/permissions.ts';
 import { encryptToken, sha256Hex } from '../../shared/oauth.ts';
 import { linuxTrustedPost, LINUX_PARTNER_ENDPOINTS } from '../../shared/linuxClient.ts';
 import {
-  verifyProofOfPossession, ONBOARDING_STEPS,
+  ONBOARDING_STEPS,
   sanitizePartnerRecord
 } from '../../shared/partners.ts';
 
@@ -34,6 +34,7 @@ const ACTION_PERMS = {
   setStatus: 'partners.manage',
   updateSetup: 'partners.manage',
   verifyDomain: 'partners.manage',
+  createProofChallenge: 'partners.manage',
   verifyProofOfPossession: 'partners.manage',
   verifyTestEvent: 'partners.manage',
   updateRewardPolicy: 'partners.manage',
@@ -246,16 +247,29 @@ export default async function(req) {
       if (!validStatuses.includes(status)) return Response.json({ error: 'Invalid status' }, { status: 400 });
 
       if (status === 'active') {
+        // Do not activate without a Linux partner ID.
+        if (!before.linux_api_partner_id) {
+          return Response.json({ error: 'Cannot activate: partner has not been provisioned by Linux (no Linux partner ID).' }, { status: 400 });
+        }
         const cl = before.setup_checklist || {};
         if (!onboardingComplete(cl)) {
           return Response.json({ error: 'Cannot activate: onboarding is not complete. All verification steps must pass first.' }, { status: 400 });
         }
-        // Call Linux to activate before setting active locally.
-        if (before.linux_api_partner_id) {
-          const activateResult = await linuxTrustedPost(LINUX_PARTNER_ENDPOINTS.ACTIVATE, { partner_uuid: before.linux_api_partner_id });
-          if (!activateResult.ok) {
-            return Response.json({ error: 'Linux activation failed: ' + (activateResult.error || activateResult.code), code: activateResult.code }, { status: 503 });
-          }
+        if (!before.domain_verified_at) {
+          return Response.json({ error: 'Cannot activate: domain ownership has not been verified.' }, { status: 400 });
+        }
+        if (!before.proof_of_possession_verified) {
+          return Response.json({ error: 'Cannot activate: credential proof-of-possession has not been verified.' }, { status: 400 });
+        }
+        if (!cl.admin_reviewed) {
+          return Response.json({ error: 'Cannot activate: administrator review has not been approved.' }, { status: 400 });
+        }
+        // Call Linux to activate. Linux activation is deliberately disabled
+        // pending final integration testing — do not bypass this or mark the
+        // partner active locally. If Linux rejects, the partner stays inactive.
+        const activateResult = await linuxTrustedPost(LINUX_PARTNER_ENDPOINTS.ACTIVATE, { partner_uuid: before.linux_api_partner_id });
+        if (!activateResult.ok) {
+          return Response.json({ error: 'Linux activation failed: ' + (activateResult.error || activateResult.code), code: activateResult.code }, { status: 503 });
         }
         cl.activated = true;
         await admin.entities.PartnerIntegration.update(partnerId, { setup_checklist: cl });
@@ -304,31 +318,51 @@ export default async function(req) {
       return Response.json({ ok: true, record: sanitizePartnerRecord(record) });
     }
 
-    // ── Verify Proof of Possession (delegated to Linux) ──────────────────
+    // ── Create Proof Challenge (via Linux) ───────────────────────────────
+    if (action === 'createProofChallenge') {
+      const before = await admin.entities.PartnerIntegration.get(partnerId);
+      if (!before.linux_api_partner_id) {
+        return Response.json({ error: 'Cannot create proof challenge: partner has not been provisioned by Linux.' }, { status: 400 });
+      }
+      const challengeResult = await linuxTrustedPost(LINUX_PARTNER_ENDPOINTS.PROOF_CHALLENGE, {
+        partner_uuid: before.linux_api_partner_id
+      });
+      if (!challengeResult.ok) {
+        return Response.json({ error: challengeResult.error || 'Proof challenge creation failed', code: challengeResult.code }, { status: challengeResult.status || 503 });
+      }
+      const challengeData = challengeResult.data || {};
+      return Response.json({
+        ok: true,
+        challenge_id: challengeData.challenge_id,
+        challenge: challengeData.challenge,
+        expires_at: challengeData.expires_at
+      });
+    }
+
+    // ── Verify Proof of Possession (via Linux confirm endpoint) ─────────
     if (action === 'verifyProofOfPossession') {
       const before = await admin.entities.PartnerIntegration.get(partnerId);
-      const { challenge, timestamp, nonce, signature } = data || {};
-      if (!challenge || !timestamp || !nonce || !signature) {
-        return Response.json({ error: 'challenge, timestamp, nonce, and signature are required' }, { status: 400 });
+      const { challenge_id, timestamp, nonce, signature } = data || {};
+      if (!challenge_id || !timestamp || !nonce || !signature) {
+        return Response.json({ error: 'challenge_id, timestamp, nonce, and signature are required' }, { status: 400 });
+      }
+      if (!before.linux_api_partner_id) {
+        return Response.json({ error: 'Cannot verify proof: partner has not been provisioned by Linux.' }, { status: 400 });
       }
 
-      // Delegate to Linux for authoritative verification.
-      if (before.linux_api_partner_id) {
-        const proofResult = await linuxTrustedPost(LINUX_PARTNER_ENDPOINTS.VERIFY_PROOF, {
-          partner_uuid: before.linux_api_partner_id,
-          challenge, timestamp, nonce, signature
-        });
-        if (!proofResult.ok) {
-          await writeAudit(admin, { adminId: user.id, action: 'partner_proof_failed', entityType: 'PartnerIntegration', entityId: partnerId, next: { code: proofResult.code } });
-          return Response.json({ error: proofResult.error || 'Proof verification failed', code: proofResult.code }, { status: 400 });
-        }
-      } else {
-        // Fallback to local verification for migration (if no Linux partner ID yet).
-        const result = await verifyProofOfPossession(before, admin, challenge, timestamp, nonce, signature);
-        if (!result.ok) {
-          await writeAudit(admin, { adminId: user.id, action: 'partner_proof_failed', entityType: 'PartnerIntegration', entityId: partnerId, next: { code: result.code } });
-          return Response.json({ error: result.error, code: result.code }, { status: 400 });
-        }
+      // Submit the partner's signed response to Linux for confirmation.
+      // Base44 never verifies the signature locally — credentials are only
+      // marked verified after Linux confirms proof-of-possession.
+      const proofResult = await linuxTrustedPost(LINUX_PARTNER_ENDPOINTS.PROOF_CONFIRM, {
+        partner_uuid: before.linux_api_partner_id,
+        challenge_id,
+        timestamp,
+        nonce,
+        signature
+      });
+      if (!proofResult.ok) {
+        await writeAudit(admin, { adminId: user.id, action: 'partner_proof_failed', entityType: 'PartnerIntegration', entityId: partnerId, next: { code: proofResult.code } });
+        return Response.json({ error: proofResult.error || 'Proof verification failed', code: proofResult.code }, { status: proofResult.status || 400 });
       }
 
       const now = new Date().toISOString();

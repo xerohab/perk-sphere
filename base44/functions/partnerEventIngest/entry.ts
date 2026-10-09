@@ -202,51 +202,12 @@ export default async function(req) {
       }
     }
 
-    // 7c. Account linking — if this is an ACCOUNT_LINKED event, verify the challenge
-    //     token against pending PartnerAccountLink records. This proves the user
-    //     controls the partner account (the partner echoes back the challenge).
-    if (event_type === 'ACCOUNT_LINKED' && user_reference) {
-      const challengeToken = body.challenge_token;
-      if (challengeToken) {
-        const challengeHash = await sha256Hex(challengeToken);
-        const links = await admin.entities.PartnerAccountLink.filter({
-          partner_integration_id: partner.id,
-          status: 'pending',
-          challenge_hash: challengeHash
-        });
-        const link = (links || [])[0];
-        if (link && link.user_id) {
-          // Check expiry
-          const isExpired = link.expires_at && new Date(link.expires_at) < now;
-          if (!isExpired) {
-            // Link the accounts — store the partner account reference on ConnectedService.
-            resolvedUserId = link.user_id;
-            await admin.entities.PartnerAccountLink.update(link.id, {
-              status: 'linked',
-              linked_at: now.toISOString(),
-              used_at: now.toISOString(),
-              partner_account_reference: user_reference
-            });
-            // Create or update a ConnectedService record for the partner.
-            const existing = await admin.entities.ConnectedService.filter({
-              user_id: link.user_id,
-              service: 'partner_' + partner.id
-            });
-            if ((existing || []).length === 0) {
-              await admin.entities.ConnectedService.create({
-                user_id: link.user_id,
-                service: 'partner_' + partner.id,
-                account_handle: user_reference,
-                status: 'connected',
-                connected_at: now.toISOString(),
-                external_account_id: user_reference
-              });
-            }
-            taskValid = true; // account link succeeded
-          }
-        }
-      }
-    }
+    // 7c. Account linking is NOT handled here. Partners must confirm links through
+    //     the Linux API's /v1/partner-links/confirm endpoint (partner-authenticated).
+    //     Linux verifies the challenge and notifies Base44 via the trusted bridge
+    //     (PARTNER_LINK_CONFIRMED event). This endpoint does not accept an arbitrary
+    //     account reference supplied by a partner event — only Linux's trusted
+    //     confirmation creates a ConnectedService record.
 
     // 8. Mark event processed.
     await admin.entities.PartnerEvent.update(eventRecord.id, {

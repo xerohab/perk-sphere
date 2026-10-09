@@ -201,56 +201,13 @@ export async function verifyPartnerRequest(req, admin, partnerKeyId) {
 }
 
 // ─── Proof-of-Possession ───────────────────────────────────────────────────
-// A partner proves they hold the HMAC secret by signing a server-generated
-// challenge. This is used during onboarding (before activation) to verify the
-// partner has correctly stored their secret. It does NOT authenticate ordinary
-// events — it's a one-time onboarding step.
-
-export function generateProofChallenge() {
-  return "pop_" + [...crypto.getRandomValues(new Uint8Array(32))].map((b) => b.toString(16).padStart(2, "0")).join("");
-}
-
-// Verify a proof-of-possession signature. The partner signs the challenge
-// using the same canonical format as event submission, but with the challenge
-// as the body and a fixed path of /proof-of-possession.
-export async function verifyProofOfPossession(partner, admin, challenge, timestamp, nonce, signature) {
-  const creds = await admin.entities.PartnerCredential.filter({ partner_integration_id: partner.id });
-  const cred = (creds || []).find((c) => !c.revoked_at);
-  if (!cred || !cred.encrypted_hmac_secret) {
-    return { ok: false, code: "partner_not_configured", error: "Partner credentials are not configured." };
-  }
-  const encKey = secrets.get("OAUTH_TOKEN_ENCRYPTION_KEY");
-  if (!encKey) {
-    return { ok: false, code: "server_misconfigured", error: "Encryption key not configured." };
-  }
-  const hmacSecret = await decryptToken(cred.encrypted_hmac_secret, cred.hmac_secret_iv, encKey);
-  if (!hmacSecret) {
-    return { ok: false, code: "partner_not_configured", error: "Partner secret could not be decrypted." };
-  }
-
-  // Timestamp skew
-  const ts = Number(timestamp);
-  if (!Number.isFinite(ts)) return { ok: false, code: "invalid_timestamp", error: "Invalid timestamp." };
-  const nowSec = Math.floor(Date.now() / 1000);
-  if (Math.abs(nowSec - ts) > CLOCK_SKEW_SECONDS) {
-    return { ok: false, code: "stale_timestamp", error: "Timestamp outside allowed clock skew." };
-  }
-
-  // Nonce format
-  if (typeof nonce !== "string" || nonce.length < 8 || nonce.length > 128 || !/^[A-Za-z0-9._-]+$/.test(nonce)) {
-    return { ok: false, code: "invalid_nonce", error: "Invalid nonce." };
-  }
-
-  // Canonical: POST\n/proof-of-possession\nTIMESTAMP\nNONCE\nSHA256(challenge)
-  const bodyHash = await bodyHashHex(challenge || "");
-  const canonical = ["POST", "/proof-of-possession", timestamp, nonce, bodyHash].join("\n");
-  const expectedSig = await hmacSha256Hex(hmacSecret, canonical);
-  if (!timingSafeEqual(String(signature || "").toLowerCase(), expectedSig)) {
-    return { ok: false, code: "invalid_signature", error: "Proof-of-possession signature does not match." };
-  }
-
-  return { ok: true };
-}
+// Proof-of-possession is handled exclusively by the Linux API via its
+// /v1/partner-credentials/challenge and /v1/partner-credentials/confirm
+// endpoints. Base44 requests a challenge from Linux, delivers it to the
+// admin (who passes it to the partner), and submits the partner's signed
+// response to Linux for confirmation. Base44 never verifies the signature
+// locally and never marks credentials verified without a Linux confirmation.
+// The legacy local proof format and insecure fallback have been removed.
 
 // ─── Domain Verification ───────────────────────────────────────────────────
 // The partner publishes a random token in a DNS TXT record or a well-known

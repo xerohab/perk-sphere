@@ -24,8 +24,10 @@ export default function PartnerDetail({ partner, events, onClose, onRefresh }) {
   });
   const [savingPolicy, setSavingPolicy] = useState(false);
   const [proofChallenge, setProofChallenge] = useState(null);
+  const [proofChallengeId, setProofChallengeId] = useState(null);
   const [proofForm, setProofForm] = useState({ timestamp: "", nonce: "", signature: "" });
   const [verifyingProof, setVerifyingProof] = useState(false);
+  const [creatingProof, setCreatingProof] = useState(false);
 
   const partnerEvents = (events || []).filter((e) => e.partner_integration_id === partner.id);
   const processed = partnerEvents.filter((e) => e.processing_status === "processed");
@@ -40,10 +42,26 @@ export default function PartnerDetail({ partner, events, onClose, onRefresh }) {
     { key: "test_event_verified", label: "Test event", done: !!partner.test_event_verified }
   ];
 
-  const generateProofChallenge = () => {
-    const challenge = "pop_" + [...crypto.getRandomValues(new Uint8Array(32))].map((b) => b.toString(16).padStart(2, "0")).join("");
-    setProofChallenge(challenge);
-    setProofForm({ timestamp: "", nonce: "", signature: "" });
+  const createProofChallenge = async () => {
+    setCreatingProof(true);
+    try {
+      const res = await base44.functions.invoke("managePartner", {
+        action: "createProofChallenge",
+        partnerId: partner.id
+      });
+      const data = res?.data || res;
+      if (data?.challenge) {
+        setProofChallenge(data.challenge);
+        setProofChallengeId(data.challenge_id);
+        setProofForm({ timestamp: "", nonce: "", signature: "" });
+      } else {
+        toast({ title: "Failed", description: data?.error || "No challenge returned", variant: "destructive" });
+      }
+    } catch (e) {
+      toast({ title: "Failed", description: e?.response?.data?.error || e.message, variant: "destructive" });
+    } finally {
+      setCreatingProof(false);
+    }
   };
 
   const verifyProof = async () => {
@@ -52,10 +70,11 @@ export default function PartnerDetail({ partner, events, onClose, onRefresh }) {
       await base44.functions.invoke("managePartner", {
         action: "verifyProofOfPossession",
         partnerId: partner.id,
-        data: { challenge: proofChallenge, ...proofForm }
+        data: { challenge_id: proofChallengeId, ...proofForm }
       });
       toast({ title: "Proof of possession verified" });
       setProofChallenge(null);
+      setProofChallengeId(null);
       onRefresh();
     } catch (e) {
       toast({ title: "Verification failed", description: e?.response?.data?.error || e.message, variant: "destructive" });
@@ -143,7 +162,7 @@ export default function PartnerDetail({ partner, events, onClose, onRefresh }) {
                 <Button size="sm" variant="outline" onClick={verifyDomain}>Verify domain</Button>
               )}
               {!step.done && step.key === "proof_of_possession" && (
-                <Button size="sm" variant="outline" onClick={generateProofChallenge}>Start proof</Button>
+                <Button size="sm" variant="outline" onClick={createProofChallenge} disabled={creatingProof}>{creatingProof ? "Creating..." : "Start proof"}</Button>
               )}
               {!step.done && step.key === "test_event_verified" && (
                 <Button size="sm" variant="outline" onClick={verifyTestEvent}>Mark verified</Button>
@@ -153,9 +172,12 @@ export default function PartnerDetail({ partner, events, onClose, onRefresh }) {
         </div>
         {partner.domain_verification_token && !partner.domain_verified_at && (
           <div className="mt-3 rounded-lg bg-secondary p-3">
-            <p className="text-xs font-medium">Domain verification token</p>
-            <p className="mt-1 break-all font-mono text-xs text-muted-foreground">{partner.domain_verification_token}</p>
-            <p className="mt-1 text-xs text-muted-foreground">Publish this in a DNS TXT record for {partner.verified_domains?.[0] || "your domain"} or at /.well-known/perksphere-verify.txt</p>
+            <p className="text-xs font-medium">Domain verification — DNS TXT record</p>
+            <div className="mt-2 space-y-1 text-xs text-muted-foreground">
+              <p>Host: <code className="font-mono">_perksphere.{partner.verified_domains?.[0] || "your-domain.com"}</code></p>
+              <p>Value: <code className="font-mono break-all">{partner.domain_verification_token}</code></p>
+              <p className="mt-1">Once published, click "Verify domain" — verification is confirmed by the Linux API.</p>
+            </div>
           </div>
         )}
       </div>
@@ -173,10 +195,11 @@ export default function PartnerDetail({ partner, events, onClose, onRefresh }) {
             <div><Label className="text-xs">Nonce</Label><Input value={proofForm.nonce} onChange={(e) => setProofForm({ ...proofForm, nonce: e.target.value })} className="mt-1 font-mono text-xs" placeholder="unique-nonce-string" /></div>
             <div><Label className="text-xs">Signature (HMAC-SHA256 hex)</Label><Input value={proofForm.signature} onChange={(e) => setProofForm({ ...proofForm, signature: e.target.value })} className="mt-1 font-mono text-xs" placeholder="abcdef..." /></div>
           </div>
-          <p className="mt-2 text-xs text-muted-foreground">Canonical: POST\n/proof-of-possession\n{`{timestamp}`}\n{`{nonce}`}\nSHA256(challenge)</p>
+          <p className="mt-2 text-xs text-muted-foreground">Challenge ID: <code className="font-mono">{proofChallengeId}</code></p>
+          <p className="mt-1 text-xs text-muted-foreground">The partner signs the challenge with their HMAC secret and submits the signature. Verification is confirmed by the Linux API.</p>
           <div className="mt-3 flex gap-2">
             <Button size="sm" onClick={verifyProof} disabled={verifyingProof || !proofForm.timestamp || !proofForm.nonce || !proofForm.signature}>{verifyingProof ? "Verifying..." : "Verify"}</Button>
-            <Button size="sm" variant="outline" onClick={() => setProofChallenge(null)}>Cancel</Button>
+            <Button size="sm" variant="outline" onClick={() => { setProofChallenge(null); setProofChallengeId(null); }}>Cancel</Button>
           </div>
         </div>
       )}

@@ -34,7 +34,8 @@ const ALLOWED_EVENTS = [
   "SESSION_ENDED",
   "PAGE_PROGRESS",
   "TASK_PROGRESS_VERIFIED",
-  "SESSION_INVALIDATED"
+  "SESSION_INVALIDATED",
+  "PARTNER_LINK_CONFIRMED"
 ];
 
 const BLOCKED_EVENTS = [
@@ -53,6 +54,12 @@ const SESSION_EVENTS = new Set(["SESSION_STARTED", "SESSION_PROGRESS", "SESSION_
 
 function err(code, message, status = 400) {
   return Response.json({ ok: false, error: { code, message } }, { status });
+}
+
+async function sha256HexBridge(text) {
+  const data = new TextEncoder().encode(text);
+  const hash = await crypto.subtle.digest("SHA-256", data);
+  return [...new Uint8Array(hash)].map((b) => b.toString(16).padStart(2, "0")).join("");
 }
 
 export default async function (req) {
@@ -98,7 +105,7 @@ export default async function (req) {
     if (BLOCKED_EVENTS.includes(event_type)) return err("blocked_event_type", "This event type is not accepted.", 400);
     if (!ALLOWED_EVENTS.includes(event_type)) return err("unknown_event_type", "Unknown event type.", 400);
     if (!user_reference) return err("missing_user_reference", "user_reference is required.", 400);
-    if (!task_id) return err("missing_task_id", "task_id is required.", 400);
+    if (event_type !== "PARTNER_LINK_CONFIRMED" && !task_id) return err("missing_task_id", "task_id is required.", 400);
     if (SESSION_EVENTS.has(event_type) && !session_uuid) return err("missing_session_uuid", "session_uuid is required for this event type.", 400);
 
     const incomingEligible = Math.max(0, Number(eligible_seconds) || 0);
@@ -138,6 +145,52 @@ export default async function (req) {
       processing_status: "pending",
       request_id: requestId
     });
+
+    // 2b. Partner link confirmation — Linux confirms a partner-account link via
+    //     its /v1/partner-links/confirm endpoint (partner-authenticated), then
+    //     notifies Base44 through this trusted bridge. Base44 only creates the
+    //     ConnectedService record when it receives this trusted notification —
+    //     never from an unauthenticated browser or a self-reported partner event.
+    //     The partner_account_reference comes from Linux (verified), not the partner.
+    if (event_type === "PARTNER_LINK_CONFIRMED") {
+      const partner_uuid = body.partner_uuid;
+      const partner_account_reference = body.partner_account_reference;
+      const challenge_token = body.challenge_token;
+      if (!partner_uuid || !partner_account_reference || !challenge_token) {
+        await admin.entities.TrustedActivityEvent.update(eventRecord.id, { processing_status: "rejected", error_code: "missing_link_data", error_message: "partner_uuid, partner_account_reference, and challenge_token are required.", processed_at: new Date().toISOString() });
+        return err("missing_link_data", "partner_uuid, partner_account_reference, and challenge_token are required.", 400);
+      }
+      // Find the partner by Linux partner UUID.
+      const partners = await admin.entities.PartnerIntegration.filter({ linux_api_partner_id: partner_uuid });
+      const partner = (partners || [])[0];
+      if (!partner) {
+        await admin.entities.TrustedActivityEvent.update(eventRecord.id, { processing_status: "rejected", error_code: "unknown_partner", error_message: "Partner not found for Linux partner UUID.", processed_at: new Date().toISOString() });
+        return err("unknown_partner", "Partner not found for Linux partner UUID.", 404);
+      }
+      // Hash the challenge token and find the pending link.
+      const challengeHash = await sha256HexBridge(challenge_token);
+      const links = await admin.entities.PartnerAccountLink.filter({ partner_integration_id: partner.id, status: "pending", challenge_hash: challengeHash });
+      const link = (links || [])[0];
+      if (!link) {
+        await admin.entities.TrustedActivityEvent.update(eventRecord.id, { processing_status: "rejected", error_code: "link_challenge_not_found", error_message: "No pending link found for this challenge.", processed_at: new Date().toISOString() });
+        return err("link_challenge_not_found", "No pending link found for this challenge.", 404);
+      }
+      if (link.expires_at && new Date(link.expires_at) < new Date()) {
+        await admin.entities.TrustedActivityEvent.update(eventRecord.id, { processing_status: "rejected", error_code: "link_challenge_expired", error_message: "Link challenge has expired.", processed_at: new Date().toISOString() });
+        return err("link_challenge_expired", "Link challenge has expired.", 400);
+      }
+      const linkNow = new Date();
+      await admin.entities.PartnerAccountLink.update(link.id, { status: "linked", linked_at: linkNow.toISOString(), used_at: linkNow.toISOString(), partner_account_reference });
+      const existing = await admin.entities.ConnectedService.filter({ user_id: link.user_id, service: "partner_" + partner.id });
+      if ((existing || []).length === 0) {
+        await admin.entities.ConnectedService.create({ user_id: link.user_id, service: "partner_" + partner.id, account_handle: partner_account_reference, status: "connected", connected_at: linkNow.toISOString(), external_account_id: partner_account_reference });
+      } else {
+        await admin.entities.ConnectedService.update(existing[0].id, { status: "connected", account_handle: partner_account_reference, external_account_id: partner_account_reference, revoked_at: null });
+      }
+      await admin.entities.TrustedActivityEvent.update(eventRecord.id, { processing_status: "processed", user_id: link.user_id, processed_at: linkNow.toISOString(), completion_triggered: false });
+      waitUntil(writeAudit(admin, { adminId: "trusted_bridge", action: "partner_link_confirmed", entityType: "PartnerAccountLink", entityId: link.id, next: { partner_id: partner.id, user_id: link.user_id } }).catch(() => {}));
+      return Response.json({ ok: true, data: { external_event_id, accepted: true, duplicate: false, link_confirmed: true, user_id: link.user_id }, request_id: requestId });
+    }
 
     // 3. User mapping — must resolve to an existing Base44 user.
     let user = null;

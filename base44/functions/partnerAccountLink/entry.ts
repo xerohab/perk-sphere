@@ -147,7 +147,7 @@ export default async function(req) {
       return Response.json({ ok: true, links: sanitizedLinks, connected: sanitizedConnected });
     }
 
-    // ── Unlink (via Linux) ───────────────────────────────────────────────
+    // ── Unlink (via Linux — awaited, not fire-and-forget) ────────────────
     if (action === 'unlink') {
       const { connectedServiceId } = body;
       if (!connectedServiceId) return Response.json({ error: 'Missing connectedServiceId' }, { status: 400 });
@@ -157,15 +157,24 @@ export default async function(req) {
         return Response.json({ error: 'Not found' }, { status: 404 });
       }
 
-      // Notify Linux of the unlink (best-effort).
+      // Await the signed Linux unlink response before marking disconnected.
+      // If Linux is unavailable or rejects the request, the connection stays
+      // connected and the user receives a retry option.
       if (conn.service?.startsWith('partner_')) {
         const pid = conn.service.replace('partner_', '');
         const partner = await admin.entities.PartnerIntegration.get(pid).catch(() => null);
         if (partner?.linux_api_partner_id) {
-          waitUntil(linuxTrustedPost(LINUX_PARTNER_ENDPOINTS.ACCOUNT_LINK_UNLINK, {
+          const unlinkResult = await linuxTrustedPost(LINUX_PARTNER_ENDPOINTS.ACCOUNT_LINK_UNLINK, {
             partner_uuid: partner.linux_api_partner_id,
             user_reference: user.id
-          }).catch(() => {}));
+          });
+          if (!unlinkResult.ok) {
+            return Response.json({
+              error: 'Unlinking is temporarily unavailable. Please try again later.',
+              code: unlinkResult.code || 'linux_unavailable',
+              retry: true
+            }, { status: 503 });
+          }
         }
       }
 

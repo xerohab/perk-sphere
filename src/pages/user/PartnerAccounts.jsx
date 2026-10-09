@@ -64,7 +64,14 @@ export default function PartnerAccounts() {
       toast({ title: "Account unlinked" });
       load();
     } catch (e) {
-      toast({ title: "Failed", description: e.message, variant: "destructive" });
+      const errData = e?.response?.data || {};
+      const isRetry = errData.retry || errData.code === "linux_unavailable";
+      toast({
+        title: isRetry ? "Unlinking temporarily unavailable" : "Failed",
+        description: errData.error || e.message,
+        variant: "destructive",
+        action: isRetry ? { label: "Retry", onClick: () => unlink(connId) } : undefined
+      });
     }
   };
 
