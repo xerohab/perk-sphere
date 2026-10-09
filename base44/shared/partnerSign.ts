@@ -50,11 +50,13 @@ export async function partnerSignedPost(path, body, partnerKeyId, partnerSecret)
   }
 
   const data = await res.json().catch(() => null);
+  const errObj = data && data.error;
   return {
     ok: res.ok,
     status: res.status,
     data: (data && (data.data || data)) || null,
-    error: (data && data.error) || null
+    code: errObj?.code || null,
+    error: errObj?.message || (typeof errObj === 'string' ? errObj : null) || null
   };
 }
 
