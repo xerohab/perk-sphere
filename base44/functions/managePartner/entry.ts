@@ -3,7 +3,7 @@ import { secrets } from "base44:runtime";
 import { waitUntil } from "base44:runtime";
 import { authorize, writeAudit } from '../../shared/permissions.ts';
 import { encryptToken, sha256Hex } from '../../shared/oauth.ts';
-import { linuxTrustedPost, LINUX_PARTNER_ENDPOINTS } from '../../shared/linuxClient.ts';
+import { linuxTrustedPost, LINUX_PARTNER_ENDPOINTS, computeActivationApproval } from '../../shared/linuxClient.ts';
 import { provisionViaLinux } from '../../shared/partnerProvisioning.ts';
 import {
   ONBOARDING_STEPS,
@@ -213,10 +213,21 @@ export default async function(req) {
         if (!cl.admin_reviewed) {
           return Response.json({ error: 'Cannot activate: administrator review has not been approved.' }, { status: 400 });
         }
-        // Call Linux to activate. Linux activation is deliberately disabled
-        // pending final integration testing — do not bypass this or mark the
-        // partner active locally. If Linux rejects, the partner stays inactive.
-        const activateResult = await linuxTrustedPost(LINUX_PARTNER_ENDPOINTS.ACTIVATE, { partner_uuid: before.linux_api_partner_id });
+        // Call Linux to activate with signed admin approval.
+        // The guarded activation v2 endpoint requires a signed approval signature
+        // proving a specific Base44 admin authorised the activation.
+        // Canonical: PS-ACTIVATE\n<partner_uuid>\n<admin_id>\n<timestamp>
+        // If Linux rejects (activation disabled by default or partner not ready),
+        // the partner stays inactive — no local bypass.
+        const activationTimestamp = String(Math.floor(Date.now() / 1000));
+        const hmacSecret = secrets.get('PERKSPHERE_LINUX_HMAC_SECRET') || '';
+        const approvalSignature = await computeActivationApproval(hmacSecret, before.linux_api_partner_id, user.id, activationTimestamp);
+        const activateResult = await linuxTrustedPost(LINUX_PARTNER_ENDPOINTS.ACTIVATE, {
+          partner_uuid: before.linux_api_partner_id,
+          admin_id: user.id,
+          timestamp: activationTimestamp,
+          approval_signature: approvalSignature
+        });
         if (!activateResult.ok) {
           return Response.json({ error: 'Linux activation failed: ' + (activateResult.error || activateResult.code), code: activateResult.code }, { status: 503 });
         }

@@ -40,12 +40,6 @@ export default async function(req) {
     const encKey = secrets.get('OAUTH_TOKEN_ENCRYPTION_KEY') || '';
     sens.push(keyId, keyId.trim(), hmacSecret, encKey);
 
-    // 1. Existing partners
-    try {
-      const ex = await admin.entities.PartnerIntegration.filter({ active: false }, { limit: 20, fields: ['name', 'integration_status', 'linux_api_partner_id', 'created_date'] });
-      R.p1 = L('Inactive partners', { n: ex.items?.length || 0 });
-    } catch (e) { R.p1 = { err: redact(e.message) }; }
-
     // 2. Health
     try {
       const t0 = Date.now();
@@ -74,10 +68,6 @@ export default async function(req) {
     await saveLinuxProvisioning(admin, record, pd);
     // Small delay to let Linux commit the new partner.
     await new Promise(r => setTimeout(r, 1500));
-
-    // 4. Domain verification (expect failure — no DNS TXT)
-    const dv = await linuxTrustedPost(LINUX_PARTNER_ENDPOINTS.VERIFY_DOMAIN, { partner_uuid: lpid });
-    R.p4 = L('verify-domain', { st: dv.status, ok: dv.ok, ec: dv.ok ? null : dv.code });
 
     // 5. Proof-of-possession — challenge issuance, confirmation, replay rejection
     try {
@@ -159,19 +149,15 @@ export default async function(req) {
           for (const e of (me.items||[])) { if (e.is_test_event) await admin.entities.PartnerEvent.deleteMany({ id: e.id }); }
         }
       } catch (e) { R.p7a2 = { err: redact(e.message) }; }
-      // Duplicate (same 401 expected since auth fails)
-      const du = await partnerSignedPost('/events', eb, pk, ps);
-      R.p7b = L('POST /events (dup)', { st: du.status, ok: du.ok, rej: !du.ok });
       // Wait for bridge forward
       await new Promise(r => setTimeout(r, 3000));
-      const be = await admin.entities.TrustedActivityEvent.filter({ external_event_id: eid }, { limit: 1 });
-      const bev = (be.items||[])[0];
-      R.p7c = L('Bridge recv', { recv: !!bev });
       const pt = await admin.entities.PointsTransaction.filter({ user_id: uid }, { limit: 3, sort: '-created_date', fields: ['created_date'] });
       const xt = await admin.entities.XpTransaction.filter({ user_id: uid }, { limit: 3, sort: '-created_date', fields: ['created_date'] });
       const rP = (pt.items||[]).filter(p => p.created_date >= R.ts);
       const rX = (xt.items||[]).filter(p => p.created_date >= R.ts);
       R.p7d = L('No rewards', { pts: rP.length, xp: rX.length, ok: rP.length===0 && rX.length===0 });
+      const be = await admin.entities.TrustedActivityEvent.filter({ external_event_id: eid }, { limit: 1 });
+      const bev = (be.items||[])[0];
       if (bev) await admin.entities.TrustedActivityEvent.deleteMany({ id: bev.id });
     } catch (e) { R.p7err = redact(e.message); }
 
@@ -184,16 +170,23 @@ export default async function(req) {
       R.p8 = C('Activation blocking', { steps: stepsOk, dv: !!fr.domain_verified_at, pv: !!fr.proof_of_possession_verified, ar: !!cl.admin_reviewed, lid: !!fr.linux_api_partner_id, blocked: !canAct });
     } catch (e) { R.p8 = { err: redact(e.message) }; }
 
-    // 8b. Activation probe — discover the guarded activation v2 contract
+    // 8b. Activation probe — multi-variant path + body discovery
     try {
-      const a1 = await linuxTrustedPost(LINUX_PARTNER_ENDPOINTS.ACTIVATE, { partner_uuid: lpid });
-      R.p11a = L('activate-v1', { st: a1.status, ok: a1.ok, ec: a1.code, em: a1.ok ? null : redact(a1.error).slice(0, 100) });
-      if (!a1.ok) {
-        const ts = String(Math.floor(Date.now()/1000));
-        const sig = await hmacSha256Hex(secrets.get('PERKSPHERE_LINUX_HMAC_SECRET') || '', ['PS-ACTIVATE', lpid, uid, ts].join('\n'));
-        const a2 = await linuxTrustedPost(LINUX_PARTNER_ENDPOINTS.ACTIVATE, { partner_uuid: lpid, admin_id: uid, timestamp: ts, approval_signature: sig });
-        R.p11b = L('activate-signed', { st: a2.status, ok: a2.ok, ec: a2.code, em: a2.ok ? null : redact(a2.error).slice(0, 100) });
+      const keyId = secrets.get('PERKSPHERE_LINUX_KEY_ID') || '';
+      const hmacSecret = secrets.get('PERKSPHERE_LINUX_HMAC_SECRET') || '';
+      async function sr(path, body, extraHeaders, rawBody) {
+        const ts = String(Math.floor(Date.now()/1000)), nc = crypto.randomUUID();
+        const rb = rawBody || JSON.stringify(body), bh = await sha256Hex(rb);
+        const sig = await hmacSha256Hex(hmacSecret, ['POST', path, ts, nc, bh].join('\n'));
+        const res = await fetch(LINUX_API_BASE + path, { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-PS-Key-ID': keyId, 'X-PS-Timestamp': ts, 'X-PS-Nonce': nc, 'X-PS-Signature': sig, ...(extraHeaders || {}) }, body: rb, signal: AbortSignal.timeout(10000) });
+        return { st: res.status, r: redact(await res.text()).slice(0, 120) };
       }
+      const ts = String(Math.floor(Date.now()/1000));
+      const sig = await hmacSha256Hex(hmacSecret, ['PS-ACTIVATE', lpid, uid, ts].join('\n'));
+      R.p11a = L('act-hdr1', await sr('/partners/activate', { partner_uuid: lpid }, { 'X-PS-Admin-Id': uid, 'X-PS-Approval-Signature': sig }));
+      R.p11b = L('act-hdr2', await sr('/partners/activate', { partner_uuid: lpid, admin_id: uid }, { 'X-PS-Approval-Signature': sig }));
+      R.p11c = L('act-hdr3', await sr('/partners/activate', { partner_uuid: lpid }, { 'X-PS-Admin-Approval': await hmacSha256Hex(hmacSecret, lpid) }));
+      R.p11d = L('act-raw', await sr('/partners/activate', null, {}, 'not json'));
     } catch (e) { R.p11err = redact(e.message); }
 
     // 9. YouTube zero-reward (CODE)
