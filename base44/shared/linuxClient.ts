@@ -38,7 +38,7 @@ async function hmacSha256Hex(secret, text) {
 // Signs and sends a trusted POST to the Linux API.
 // Returns { ok: true, status, data } on success or
 // { ok: false, status, code, error } on failure.
-export async function linuxTrustedPost(path, body) {
+export async function linuxTrustedPost(path, body, extraHeaders) {
   const keyId = (secrets.get("PERKSPHERE_LINUX_KEY_ID") || "").trim();
   // Use the stored secret verbatim as UTF-8: no trimming, hex or base64 decoding.
   const hmacSecret = secrets.get("PERKSPHERE_LINUX_HMAC_SECRET") || "";
@@ -64,7 +64,8 @@ export async function linuxTrustedPost(path, body) {
         "X-PS-Key-ID": keyId,
         "X-PS-Timestamp": timestamp,
         "X-PS-Nonce": nonce,
-        "X-PS-Signature": signature
+        "X-PS-Signature": signature,
+        ...(extraHeaders || {})
       },
       body: rawBody,
       signal: AbortSignal.timeout(10000)
@@ -107,7 +108,7 @@ export const LINUX_PARTNER_ENDPOINTS = {
   VERIFY_DOMAIN: "/partners/verify-domain",
   PROOF_CHALLENGE: "/v1/partner-credentials/challenge",
   PROOF_CONFIRM: "/v1/partner-credentials/confirm",
-  ACCOUNT_LINK_CREATE: "/v1/partner-links/create-challenge",
+  ACCOUNT_LINK_CREATE: "/v1/partner-links/challenges",
   ACCOUNT_LINK_CONFIRM: "/v1/partner-links/confirm",
   ACCOUNT_LINK_UNLINK: "/partners/account-link/unlink"
 };

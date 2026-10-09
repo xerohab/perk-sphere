@@ -2,7 +2,7 @@ import { createClientFromRequest } from 'npm:@base44/sdk@0.8.52';
 import { secrets } from 'base44:runtime';
 import { LINUX_API_BASE, LINUX_PARTNER_ENDPOINTS, linuxTrustedPost } from '../../shared/linuxClient.ts';
 import { partnerProvisionRequest, saveLinuxProvisioning } from '../../shared/partnerProvisioning.ts';
-import { partnerSignedPost, computeProofSignature, computeProofSignatureRaw, sha256Hex, hmacSha256Hex } from '../../shared/partnerSign.ts';
+import { partnerSignedPost, computePossessionSignature, sha256Hex, hmacSha256Hex } from '../../shared/partnerSign.ts';
 import { parseTarget, buildResult } from '../../shared/classify.ts';
 import { ONBOARDING_STEPS } from '../../shared/partners.ts';
 
@@ -79,39 +79,28 @@ export default async function(req) {
     const dv = await linuxTrustedPost(LINUX_PARTNER_ENDPOINTS.VERIFY_DOMAIN, { partner_uuid: lpid });
     R.p4 = L('verify-domain', { st: dv.status, ok: dv.ok, ec: dv.ok ? null : dv.code });
 
-    // 5. Proof-of-possession — capture raw response for debugging
+    // 5. Proof-of-possession — challenge issuance, confirmation, replay rejection
     try {
-      const ch = await linuxTrustedPost(LINUX_PARTNER_ENDPOINTS.PROOF_CHALLENGE, { partner_uuid: lpid });
+      const ch = await linuxTrustedPost(LINUX_PARTNER_ENDPOINTS.PROOF_CHALLENGE, { key_id: pk });
       R.p5a = L('proof-challenge', { st: ch.status, ok: ch.ok, ec: ch.ok ? null : ch.code });
       if (ch.ok) {
         const cd = ch.data || {};
         const cid = cd.challenge_id, chal = cd.challenge;
-        const ts = String(Math.floor(Date.now()/1000)), nc = crypto.randomUUID();
-        const path = LINUX_PARTNER_ENDPOINTS.PROOF_CONFIRM;
-        // Try canonical format
-        const sig1 = await computeProofSignature(ps, path, ts, nc, chal);
-        const cf1 = await linuxTrustedPost(path, { partner_uuid: lpid, challenge_id: cid, timestamp: ts, nonce: nc, signature: sig1 });
-        R.p5b = L('confirm (canonical)', { st: cf1.status, ok: cf1.ok, ec: cf1.ok ? null : cf1.code, em: cf1.ok ? null : redact(cf1.error) });
-        if (!cf1.ok) {
-          // Try raw challenge format with new challenge
-          const ch2 = await linuxTrustedPost(LINUX_PARTNER_ENDPOINTS.PROOF_CHALLENGE, { partner_uuid: lpid });
-          if (ch2.ok) {
-            const cd2 = ch2.data || {};
-            const sig2 = await computeProofSignatureRaw(ps, cd2.challenge);
-            const ts2 = String(Math.floor(Date.now()/1000)), nc2 = crypto.randomUUID();
-            const cf2 = await linuxTrustedPost(path, { partner_uuid: lpid, challenge_id: cd2.challenge_id, timestamp: ts2, nonce: nc2, signature: sig2 });
-            R.p5c = L('confirm (raw challenge)', { st: cf2.status, ok: cf2.ok, ec: cf2.ok ? null : cf2.code, em: cf2.ok ? null : redact(cf2.error) });
-            if (cf2.ok) {
-              // Replay test
-              const cf3 = await linuxTrustedPost(path, { partner_uuid: lpid, challenge_id: cd2.challenge_id, timestamp: ts2, nonce: crypto.randomUUID(), signature: sig2 });
-              R.p5d = L('confirm (replay)', { st: cf3.status, ok: cf3.ok, rejected: !cf3.ok, ec: cf3.ok ? null : cf3.code });
-            }
-          }
-        } else {
-          // Replay test (canonical succeeded)
-          const cf3 = await linuxTrustedPost(path, { partner_uuid: lpid, challenge_id: cid, timestamp: ts, nonce: crypto.randomUUID(), signature: sig1 });
-          R.p5d = L('confirm (replay)', { st: cf3.status, ok: cf3.ok, rejected: !cf3.ok, ec: cf3.ok ? null : cf3.code });
-        }
+        // Confirm with possession signature: HMAC-SHA256(secret, "PS-POSSESSION\n<key_id>\n<challenge_id>\n<challenge>")
+        const sig = await computePossessionSignature(ps, pk, cid, chal);
+        const cf = await linuxTrustedPost(LINUX_PARTNER_ENDPOINTS.PROOF_CONFIRM,
+          { key_id: pk, challenge_id: cid, signature: sig },
+          { 'X-PS-Possession-Challenge': chal }
+        );
+        R.p5b = L('proof-confirm', { st: cf.status, ok: cf.ok, ec: cf.ok ? null : cf.code });
+        if (cf.ok) {
+          // Replay rejection — same challenge_id + signature must be rejected
+          const cf2 = await linuxTrustedPost(LINUX_PARTNER_ENDPOINTS.PROOF_CONFIRM,
+            { key_id: pk, challenge_id: cid, signature: sig },
+            { 'X-PS-Possession-Challenge': chal }
+          );
+          R.p5c = L('proof-replay', { st: cf2.status, ok: cf2.ok, rejected: !cf2.ok, ec: cf2.ok ? null : cf2.code });
+        } else { blk.push('Proof confirm failed: ' + cf.code); }
       } else { blk.push('Proof challenge failed: ' + ch.code); }
     } catch (e) { R.p5err = redact(e.message); }
 
@@ -144,7 +133,7 @@ export default async function(req) {
         // Cleanup
         await admin.entities.PartnerAccountLink.deleteMany({ id: link.id });
         if ((cs.items||[]).length > 0) await admin.entities.ConnectedService.deleteMany({ id: cs.items[0].id });
-      } else { blk.push('Account-link challenge failed: ' + lc.code); }
+      } else if (lc.code !== 'partner_not_active') { blk.push('Account-link challenge failed: ' + lc.code); }
     } catch (e) { R.p6err = redact(e.message); }
 
     // 7. Event ingestion
@@ -152,7 +141,7 @@ export default async function(req) {
       const eid = 'evt_test_' + crypto.randomUUID().slice(0, 12);
       const eb = { external_event_id: eid, event_type: 'ACCOUNT_REGISTERED', user_reference: uid, task_id: 'nonexistent_test_task', is_test: true, source_timestamp: new Date().toISOString(), metadata: { test: true } };
       const ev = await partnerSignedPost('/events', eb, pk, ps);
-      R.p7a = L('Linux /events', { st: ev.status, ok: ev.ok, ec: ev.ok ? null : ev.code });
+      R.p7a = L('Linux /events (inactive partner)', { st: ev.status, ok: ev.ok, ec: ev.ok ? null : ev.code, expected_restriction: !ev.ok && ev.code === 'invalid_partner_auth' });
       // Also test Base44 migration endpoint to verify signing is correct
       try {
         const b44Path = '/functions/partnerEventIngest';

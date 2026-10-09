@@ -273,8 +273,11 @@ export default async function(req) {
       if (!before.linux_api_partner_id) {
         return Response.json({ error: 'Cannot create proof challenge: partner has not been provisioned by Linux.' }, { status: 400 });
       }
+      if (!before.partner_key_id) {
+        return Response.json({ error: 'Cannot create proof challenge: partner has no partner_key_id.' }, { status: 400 });
+      }
       const challengeResult = await linuxTrustedPost(LINUX_PARTNER_ENDPOINTS.PROOF_CHALLENGE, {
-        partner_uuid: before.linux_api_partner_id
+        key_id: before.partner_key_id
       });
       if (!challengeResult.ok) {
         return Response.json({ error: challengeResult.error || 'Proof challenge creation failed', code: challengeResult.code }, { status: challengeResult.status || 503 });
@@ -284,31 +287,32 @@ export default async function(req) {
         ok: true,
         challenge_id: challengeData.challenge_id,
         challenge: challengeData.challenge,
-        expires_at: challengeData.expires_at
+        expires_in: challengeData.expires_in,
+        signing: challengeData.signing
       });
     }
 
     // ── Verify Proof of Possession (via Linux confirm endpoint) ─────────
     if (action === 'verifyProofOfPossession') {
       const before = await admin.entities.PartnerIntegration.get(partnerId);
-      const { challenge_id, timestamp, nonce, signature } = data || {};
-      if (!challenge_id || !timestamp || !nonce || !signature) {
-        return Response.json({ error: 'challenge_id, timestamp, nonce, and signature are required' }, { status: 400 });
+      const { challenge_id, challenge, signature } = data || {};
+      if (!challenge_id || !challenge || !signature) {
+        return Response.json({ error: 'challenge_id, challenge, and signature are required' }, { status: 400 });
       }
-      if (!before.linux_api_partner_id) {
-        return Response.json({ error: 'Cannot verify proof: partner has not been provisioned by Linux.' }, { status: 400 });
+      if (!before.partner_key_id) {
+        return Response.json({ error: 'Cannot verify proof: partner has no partner_key_id.' }, { status: 400 });
       }
 
       // Submit the partner's signed response to Linux for confirmation.
+      // The signature is HMAC-SHA256(partner_secret, "PS-POSSESSION\n<key_id>\n<challenge_id>\n<challenge>").
+      // The original challenge is sent in the X-PS-Possession-Challenge header.
       // Base44 never verifies the signature locally — credentials are only
       // marked verified after Linux confirms proof-of-possession.
-      const proofResult = await linuxTrustedPost(LINUX_PARTNER_ENDPOINTS.PROOF_CONFIRM, {
-        partner_uuid: before.linux_api_partner_id,
-        challenge_id,
-        timestamp,
-        nonce,
-        signature
-      });
+      const proofResult = await linuxTrustedPost(
+        LINUX_PARTNER_ENDPOINTS.PROOF_CONFIRM,
+        { key_id: before.partner_key_id, challenge_id, signature },
+        { 'X-PS-Possession-Challenge': challenge }
+      );
       if (!proofResult.ok) {
         await writeAudit(admin, { adminId: user.id, action: 'partner_proof_failed', entityType: 'PartnerIntegration', entityId: partnerId, next: { code: proofResult.code } });
         return Response.json({ error: proofResult.error || 'Proof verification failed', code: proofResult.code }, { status: proofResult.status || 400 });

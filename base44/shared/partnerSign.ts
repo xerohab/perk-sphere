@@ -69,6 +69,15 @@ export async function computeProofSignature(partnerSecret, path, timestamp, nonc
   return await hmacSha256Hex(partnerSecret, canonical);
 }
 
+// Proof-of-possession signature for the Linux /v1/partner-credentials/confirm endpoint.
+// The partner signs the canonical string to prove they hold the HMAC secret:
+//   PS-POSSESSION\n<key_id>\n<challenge_id>\n<challenge>
+// Returns a 64-character lowercase hexadecimal HMAC-SHA256 signature.
+export async function computePossessionSignature(partnerSecret, keyId, challengeId, challenge) {
+  const canonical = ["PS-POSSESSION", keyId, challengeId, challenge].join("\n");
+  return await hmacSha256Hex(partnerSecret, canonical);
+}
+
 // Alternative proof format: HMAC-SHA256(partner_secret, challenge) — signs the raw challenge.
 export async function computeProofSignatureRaw(partnerSecret, challenge) {
   return await hmacSha256Hex(partnerSecret, challenge);
