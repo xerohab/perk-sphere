@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { base44 } from "@/api/base44Client";
 import { useToast } from "@/components/ui/use-toast";
-import { Plus, Pencil, Trash2, KeyRound, Ban, AlertTriangle, ExternalLink, Activity, Package, Settings2, Eye, FileCheck, XCircle, RefreshCw } from "lucide-react";
+import { Plus, Pencil, Trash2, KeyRound, Ban, AlertTriangle, ExternalLink, Activity, Package, Settings2, Eye, FileCheck, XCircle, RefreshCw, Rocket, Loader2 } from "lucide-react";
 import PageHeader from "@/components/perk/PageHeader";
 import EmptyState from "@/components/perk/EmptyState";
 import ConfirmDialog from "@/components/perk/ConfirmDialog";
@@ -84,6 +84,7 @@ export default function AdminPartners() {
   const [setupGuidePartner, setSetupGuidePartner] = useState(null);
   const [detailPartner, setDetailPartner] = useState(null);
   const [activeTab, setActiveTab] = useState("partners");
+  const [approving, setApproving] = useState(null);
 
   const load = async (silent) => {
     if (!silent) setLoading(true);
@@ -214,6 +215,33 @@ export default function AdminPartners() {
     }
   };
 
+  const approveActivation = async (partner, decision) => {
+    setApproving(partner.id);
+    try {
+      const res = await base44.functions.invoke("approvePartnerActivation", { partnerId: partner.id, decision });
+      const body = res?.data || res;
+      if (body?.ok) {
+        if (decision === "approve") {
+          if (body.activated) {
+            toast({ title: "Partner activated", description: "Linux confirmed activation. The partner is now live." });
+          } else {
+            toast({ title: "Approval recorded", description: "The approval was recorded but Linux did not confirm activation. The partner remains inactive.", variant: "default" });
+          }
+        } else {
+          toast({ title: "Activation rejected", description: "The partner has been suspended." });
+        }
+        load(true);
+      } else {
+        toast({ title: decision === "approve" ? "Activation failed" : "Rejection failed", description: body?.error || "Unexpected response", variant: "destructive" });
+      }
+    } catch (e) {
+      const errData = e?.response?.data || {};
+      toast({ title: decision === "approve" ? "Activation failed" : "Rejection failed", description: errData.error || e.message, variant: "destructive" });
+    } finally {
+      setApproving(null);
+    }
+  };
+
   const toggleEventType = (et) => {
     const current = form.supported_event_types || [];
     setForm({ ...form, supported_event_types: current.includes(et) ? current.filter((x) => x !== et) : [...current, et] });
@@ -284,7 +312,19 @@ export default function AdminPartners() {
                     {p.integration_status === "linux_integration_pending" && <Button variant="outline" size="sm" className="text-orange-600" onClick={() => retryProvisioning(p)} title="Retry Linux provisioning"><RefreshCw className="mr-1 h-3.5 w-3.5" /> Retry Provisioning</Button>}
                     {p.integration_status !== "linux_integration_pending" && <Button variant="outline" size="sm" onClick={() => setSetupGuidePartner(p)}><Settings2 className="mr-1 h-3.5 w-3.5" /> Setup</Button>}
                     {p.integration_status === "setup_required" && !(p.setup_checklist?.admin_reviewed) && <Button variant="outline" size="sm" className="text-emerald-600" onClick={() => reviewPartner(p, true)} title="Approve partner application"><FileCheck className="mr-1 h-3.5 w-3.5" /> Approve</Button>}
-                    {p.integration_status === "setup_required" && <Button size="sm" onClick={() => setStatus(p, "active")} title="Complete the onboarding checklist first">Activate</Button>}
+                    {p.integration_status === "setup_required" && (() => {
+                      const cl = p.setup_checklist || {};
+                      const allOnboarding = ["domain_verified", "admin_reviewed", "linux_api_configured", "partner_implemented", "proof_of_possession", "test_event_verified"].every((s) => cl[s]);
+                      return (
+                        <>
+                          <Button size="sm" className="bg-purple-600 hover:bg-purple-700" disabled={!allOnboarding || approving === p.id} onClick={() => approveActivation(p, "approve")} title={allOnboarding ? "Submit activation approval to Linux" : "Complete all onboarding steps first"}>
+                            {approving === p.id ? <Loader2 className="mr-1 h-3.5 w-3.5 animate-spin" /> : <Rocket className="mr-1 h-3.5 w-3.5" />}
+                            Approve & Activate
+                          </Button>
+                          <Button variant="ghost" size="sm" className="text-red-600" disabled={approving === p.id} onClick={() => approveActivation(p, "reject")} title="Reject activation and suspend"><XCircle className="h-3.5 w-3.5" /></Button>
+                        </>
+                      );
+                    })()}
                     {p.integration_status === "active" && <Button variant="outline" size="sm" onClick={() => setStatus(p, "suspended")}>Suspend</Button>}
                     {p.integration_status === "suspended" && <Button size="sm" onClick={() => setStatus(p, "active")}>Resume</Button>}
                     <Button variant="ghost" size="sm" onClick={() => rotateCredential(p)} title="Rotate credentials"><KeyRound className="h-3.5 w-3.5" /></Button>
@@ -421,7 +461,7 @@ export default function AdminPartners() {
         <DialogContent className="max-h-[90vh] max-w-2xl overflow-y-auto">
           <DialogHeader><DialogTitle>Setup Guide — {setupGuidePartner?.name}</DialogTitle></DialogHeader>
           {setupGuidePartner && (
-            <PartnerSetupGuide partner={setupGuidePartner} onUpdateChecklist={updateSetup} />
+            <PartnerSetupGuide partner={setupGuidePartner} onUpdateChecklist={updateSetup} onRefresh={() => load(true)} />
           )}
           <DialogFooter><DialogClose asChild><Button variant="outline">Close</Button></DialogClose></DialogFooter>
         </DialogContent>

@@ -196,32 +196,18 @@ export default async function(req) {
       if (!validStatuses.includes(status)) return Response.json({ error: 'Invalid status' }, { status: 400 });
 
       if (status === 'active') {
-        // Do not activate without a Linux partner ID.
-        if (!before.linux_api_partner_id) {
-          return Response.json({ error: 'Cannot activate: partner has not been provisioned by Linux (no Linux partner ID).' }, { status: 400 });
-        }
         const cl = before.setup_checklist || {};
-        if (!onboardingComplete(cl)) {
-          return Response.json({ error: 'Cannot activate: onboarding is not complete. All verification steps must pass first.' }, { status: 400 });
+        // Resume from suspension: partner was already activated before, just flip the status.
+        if (before.integration_status === 'suspended' && cl.activated) {
+          const record = await admin.entities.PartnerIntegration.update(partnerId, { integration_status: 'active', active: true });
+          await writeAudit(admin, { adminId: user.id, action: 'partner_resumed', entityType: 'PartnerIntegration', entityId: partnerId, previous: { integration_status: before.integration_status }, next: { integration_status: 'active' } });
+          return Response.json({ ok: true, record: sanitizePartnerRecord(record) });
         }
-        if (!before.domain_verified_at) {
-          return Response.json({ error: 'Cannot activate: domain ownership has not been verified.' }, { status: 400 });
-        }
-        if (!before.proof_of_possession_verified) {
-          return Response.json({ error: 'Cannot activate: credential proof-of-possession has not been verified.' }, { status: 400 });
-        }
-        if (!cl.admin_reviewed) {
-          return Response.json({ error: 'Cannot activate: administrator review has not been approved.' }, { status: 400 });
-        }
-        // Activation v2 contract confirmed: POST /partners/activate requires exactly
-        // partner_uuid, partner_key_id, approval_reference, approval_timestamp,
-        // approval_signature. The approval signature is signed with the independent
-        // PERKSPHERE_PARTNER_APPROVAL_SECRET (NOT the normal Linux HMAC secret).
-        // The approval signature must come from an independently authorised approval
-        // process, not from this admin function or a browser-controlled request.
-        // The independent approval process is NOT yet built — activation is blocked
-        // until it is. Do not generate the approval signature inline or fabricate one.
-        return Response.json({ error: 'Partner activation requires an independently authorised approval signature. The independent approval process is not yet configured.' }, { status: 503 });
+        // First-time activation requires the independent approval workflow
+        // (approvePartnerActivation function), which generates the PS-PARTNER-ACTIVATE
+        // signature using PERKSPHERE_PARTNER_APPROVAL_SECRET. This function does NOT
+        // generate the approval signature — it must come from the independent process.
+        return Response.json({ error: 'First-time partner activation requires independent administrator approval. Use the approvePartnerActivation function, not setStatus.' }, { status: 503 });
       }
 
       const isActive = status === 'active';
