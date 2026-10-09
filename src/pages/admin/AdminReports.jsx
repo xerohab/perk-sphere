@@ -28,9 +28,12 @@ export default function AdminReports() {
   const [loadingDetail, setLoadingDetail] = useState(false);
   const [archiving, setArchiving] = useState(false);
 
+  const [stage2Disabled, setStage2Disabled] = useState(false);
+
   const load = async () => {
     setLoading(true);
     setError(null);
+    setStage2Disabled(false);
     try {
       const res = await base44.functions.invoke("perkSphereReports", { action: "adminArchives", filters: {} });
       const data = res?.data || res;
@@ -38,7 +41,12 @@ export default function AdminReports() {
       setArchives(getArray(data, "archives"));
     } catch (e) {
       const errData = e?.response?.data || {};
-      setError(errData.error || e.message || "Failed to load reports");
+      const errCode = errData.code || errData.error || e.message || "";
+      if (errCode === "stage2_identity_not_enabled") {
+        setStage2Disabled(true);
+      } else {
+        setError(errData.error || e.message || "Failed to load reports");
+      }
     } finally {
       setLoading(false);
     }
@@ -72,7 +80,12 @@ export default function AdminReports() {
       load();
     } catch (e) {
       const errData = e?.response?.data || {};
-      toast({ title: "Archive failed", description: errData.error || e.message, variant: "destructive" });
+      const errCode = errData.code || errData.error || e.message || "";
+      if (errCode === "stage2_identity_not_enabled") {
+        toast({ title: "Awaiting activation", description: "Administrator report archives are awaiting final activation.", variant: "default" });
+      } else {
+        toast({ title: "Archive failed", description: errData.error || e.message, variant: "destructive" });
+      }
     } finally {
       setArchiving(false);
     }
@@ -94,12 +107,26 @@ export default function AdminReports() {
       </div>
 
       <div className="mt-4 flex justify-end">
-        <Button onClick={createArchive} disabled={archiving}>
+        <Button onClick={createArchive} disabled={archiving || stage2Disabled}>
           {archiving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Archive className="mr-2 h-4 w-4" />} Create Weekly Archive
         </Button>
       </div>
 
-      {error && (
+      {stage2Disabled && (
+        <div className="mt-4 rounded-xl border border-blue-200 bg-blue-50 p-4 dark:border-blue-800 dark:bg-blue-950/30">
+          <div className="flex items-start gap-3">
+            <AlertCircle className="mt-0.5 h-4 w-4 flex-shrink-0 text-blue-600 dark:text-blue-400" />
+            <div>
+              <p className="text-sm font-medium text-blue-800 dark:text-blue-300">Administrator report archives are awaiting final activation.</p>
+              <p className="mt-1 text-xs text-blue-700 dark:text-blue-400">
+                Historical report archives require an additional identity-verification step on the Linux API that is not yet enabled. Ordinary weekly report previews remain available to members independently.
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {error && !stage2Disabled && (
         <div className="mt-4 rounded-xl border border-amber-300 bg-amber-50 p-4 dark:border-amber-700 dark:bg-amber-950/30">
           <p className="text-sm font-medium text-amber-800 dark:text-amber-300">Reports temporarily unavailable</p>
           <p className="mt-1 text-xs text-amber-700 dark:text-amber-400">{error}</p>
@@ -107,7 +134,7 @@ export default function AdminReports() {
         </div>
       )}
 
-      {!error && (
+      {!error && !stage2Disabled && (
         <div className="mt-6">
           {loadingDetail ? (
             <div className="flex h-20 items-center justify-center"><Loader2 className="h-6 w-6 animate-spin text-muted-foreground" /></div>

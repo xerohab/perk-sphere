@@ -22,12 +22,14 @@ export default function AdminRewardReview() {
   const [requests, setRequests] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [stage2Disabled, setStage2Disabled] = useState(false);
   const [reviewDialog, setReviewDialog] = useState(null);
   const [submitting, setSubmitting] = useState(false);
 
   const load = async () => {
     setLoading(true);
     setError(null);
+    setStage2Disabled(false);
     try {
       const res = await base44.functions.invoke("perkSphereRewardReview", { action: "reviewQueue", filters: {} });
       const data = res?.data || res;
@@ -35,7 +37,12 @@ export default function AdminRewardReview() {
       setRequests(extractList(data));
     } catch (e) {
       const errData = e?.response?.data || {};
-      setError(errData.error || e.message || "Failed to load reward queue");
+      const errCode = errData.code || errData.error || e.message || "";
+      if (errCode === "stage2_identity_not_enabled") {
+        setStage2Disabled(true);
+      } else {
+        setError(errData.error || e.message || "Failed to load reward queue");
+      }
     } finally {
       setLoading(false);
     }
@@ -90,7 +97,21 @@ export default function AdminRewardReview() {
         </div>
       </div>
 
-      {error && (
+      {stage2Disabled && (
+        <div className="mt-4 rounded-xl border border-blue-200 bg-blue-50 p-4 dark:border-blue-800 dark:bg-blue-950/30">
+          <div className="flex items-start gap-3">
+            <AlertCircle className="mt-0.5 h-4 w-4 flex-shrink-0 text-blue-600 dark:text-blue-400" />
+            <div>
+              <p className="text-sm font-medium text-blue-800 dark:text-blue-300">Reward review is awaiting final activation.</p>
+              <p className="mt-1 text-xs text-blue-700 dark:text-blue-400">
+                The reward review queue requires an additional identity-verification step on the Linux API that is not yet enabled. Member reward request status remains available independently.
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {error && !stage2Disabled && (
         <div className="mt-4 rounded-xl border border-amber-300 bg-amber-50 p-4 dark:border-amber-700 dark:bg-amber-950/30">
           <p className="text-sm font-medium text-amber-800 dark:text-amber-300">Reward queue temporarily unavailable</p>
           <p className="mt-1 text-xs text-amber-700 dark:text-amber-400">{error}</p>
@@ -98,7 +119,7 @@ export default function AdminRewardReview() {
         </div>
       )}
 
-      {!error && (
+      {!error && !stage2Disabled && (
         <div className="mt-6">
           {requests.length === 0 ? (
             <EmptyState title="No pending requests" description="The reward review queue is empty." />
