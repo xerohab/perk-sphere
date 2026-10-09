@@ -271,27 +271,49 @@ Verifies domain ownership by checking the DNS TXT record or well-known file.
 
 **Expected status codes:** 200, 422 (verification failed), 503, 500.
 
-### 4.6 POST /partners/verify-proof
+### 4.6 POST /v1/partner-credentials/challenge
 
-Verifies proof-of-possession: the partner signs a challenge with their HMAC secret to prove they hold it.
+Creates a proof-of-possession challenge. Base44 requests a challenge from Linux; the admin passes it to the partner, who signs it with their HMAC secret. The signed response is submitted to `/v1/partner-credentials/confirm` (section 4.6b).
+
+**Request:**
+
+```json
+{
+  "partner_uuid": "f3a2b1c4-5d6e-7f8a-9b0c-1d2e3f4a5b6c"
+}
+```
+
+**Response (200):**
+
+```json
+{
+  "data": {
+    "challenge_id": "pc_a1b2c3d4e5f6",
+    "challenge": "pop_a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0c1d2e3f4a5b6c7d8e9f0a1b2",
+    "expires_at": "2026-10-09T18:10:00.000Z"
+  }
+}
+```
+
+**Expected status codes:** 200, 503, 500.
+
+### 4.6b POST /v1/partner-credentials/confirm
+
+Confirms proof-of-possession. Base44 submits the partner's signed response to Linux. Linux verifies the signature and confirms. Base44 never verifies the signature locally — credentials are only marked verified after Linux confirms.
 
 **Request:**
 
 ```json
 {
   "partner_uuid": "f3a2b1c4-5d6e-7f8a-9b0c-1d2e3f4a5b6c",
-  "challenge": "pop_a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0c1d2e3f4a5b6c7d8e9f0a1b2",
+  "challenge_id": "pc_a1b2c3d4e5f6",
   "timestamp": "1728499200",
   "nonce": "proof-nonce-12345678",
   "signature": "a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6"
 }
 ```
 
-**Canonical format for proof signature:**
-
-```
-POST\n/proof-of-possession\n<timestamp>\n<nonce>\n<sha256_hex(challenge)>
-```
+The challenge is single-use — once confirmed, the `challenge_id` cannot be reused.
 
 **Response (200):**
 
@@ -309,9 +331,9 @@ POST\n/proof-of-possession\n<timestamp>\n<nonce>\n<sha256_hex(challenge)>
 }
 ```
 
-**Expected status codes:** 200, 400 (proof failed), 503, 500.
+**Expected status codes:** 200, 400 (proof failed / challenge expired / challenge already used), 503, 500.
 
-### 4.7 POST /partners/account-link/create-challenge
+### 4.7 POST /v1/partner-links/create-challenge
 
 Creates a single-use, signed challenge for linking a partner account to a Perk Sphere user.
 
@@ -339,17 +361,17 @@ Creates a single-use, signed challenge for linking a partner account to a Perk S
 
 **Base44 stores:** SHA-256 hash of the challenge token in `PartnerAccountLink.challenge_hash`. The token itself is returned to the user once and never stored in plaintext.
 
-### 4.8 POST /partners/account-link/verify
+### 4.8 POST /v1/partner-links/confirm
 
-Verifies an account-link challenge. Called by Linux internally when an `ACCOUNT_LINKED` event is received from the partner.
+Partner-authenticated confirmation of an account link. The partner calls this endpoint (not Base44) with the challenge token and the partner account reference. Linux verifies the challenge, links the accounts on its side, and notifies Base44 via the trusted bridge with a `PARTNER_LINK_CONFIRMED` event (see section 5.10).
 
-**Request:**
+Base44 does NOT call this endpoint. Base44 does NOT accept an arbitrary account reference from an unauthenticated browser or a self-reported partner event. The `ConnectedService` record is only created when Base44 receives the `PARTNER_LINK_CONFIRMED` event from Linux's trusted bridge.
+
+**Request (partner-authenticated — partner HMAC headers):**
 
 ```json
 {
-  "partner_uuid": "f3a2b1c4-5d6e-7f8a-9b0c-1d2e3f4a5b6c",
   "challenge_token": "al_a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0c1d2e3f4a5b6c7d8e9f0a1b2",
-  "user_reference": "user_abc123_def456",
   "partner_account_reference": "user123_on_partner_site"
 }
 ```
@@ -359,6 +381,19 @@ Verifies an account-link challenge. Called by Linux internally when an `ACCOUNT_
 ```json
 {
   "data": { "ok": true, "linked": true }
+}
+```
+
+**After confirmation, Linux sends to Base44 trusted bridge:**
+
+```json
+{
+  "external_event_id": "link_<unique-id>",
+  "event_type": "PARTNER_LINK_CONFIRMED",
+  "partner_uuid": "f3a2b1c4-5d6e-7f8a-9b0c-1d2e3f4a5b6c",
+  "user_reference": "user_abc123_def456",
+  "partner_account_reference": "user123_on_partner_site",
+  "challenge_token": "al_a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0c1d2e3f4a5b6c7d8e9f0a1b2"
 }
 ```
 
@@ -644,9 +679,10 @@ The following endpoints are referenced by Base44 but may currently return HTTP 5
 | `POST /partners/revoke` | **Required** | Must revoke all credentials |
 | `POST /partners/activate` | **Required** | Must enable production event acceptance |
 | `POST /partners/verify-domain` | **Required** | Must check DNS TXT or well-known file |
-| `POST /partners/verify-proof` | **Required** | Must verify HMAC-signed challenge |
-| `POST /partners/account-link/create-challenge` | **Required** | Must generate single-use signed challenge |
-| `POST /partners/account-link/verify` | **Required** | Must verify challenge and link accounts |
+| `POST /v1/partner-credentials/challenge` | **Required** | Must generate proof-of-possession challenge with challenge_id |
+| `POST /v1/partner-credentials/confirm` | **Required** | Must verify HMAC-signed proof response (single-use challenge_id) |
+| `POST /v1/partner-links/create-challenge` | **Required** | Must generate single-use signed challenge |
+| `POST /v1/partner-links/confirm` | **Required** | Partner-authenticated: verify challenge, link accounts, notify Base44 via PARTNER_LINK_CONFIRMED |
 | `POST /partners/account-link/unlink` | **Required** | Must unlink accounts |
 | `POST /events` | **Required** | Must verify partner HMAC, translate events, forward to bridge |
 
