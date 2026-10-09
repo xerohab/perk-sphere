@@ -113,6 +113,12 @@ export function findMatch(target, websites, accounts) {
 
 export function buildResult(target, websites, accounts) {
   const base = { target: { platform: target.platform, kind: target.kind, hostname: target.hostname } };
+  // YouTube zero-reward hard enforcement — YouTube is never points- or XP-eligible,
+  // regardless of how destinations are configured. The extension sees this and knows
+  // not to expect rewards for YouTube activity.
+  if (target.platform === "YouTube") {
+    return { ...base, matched: false, classification: "disallowed", match_level: null, destination: null, tracking_enabled: false, points_eligible: false, xp_eligible: false };
+  }
   const m = findMatch(target, websites, accounts);
   if (!m) {
     return { ...base, matched: false, classification: 'unknown', match_level: null, destination: null, tracking_enabled: false, points_eligible: false, xp_eligible: false };

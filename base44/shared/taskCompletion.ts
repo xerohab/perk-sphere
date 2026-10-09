@@ -10,6 +10,7 @@
 
 import { adjustPoints, adjustXp } from "./rewards.ts";
 import { deriveRewardType, periodStart } from "./tasks.ts";
+import { normalizePlatform } from "./destinations.ts";
 
 export async function finalizeCompletion(admin, { userId, task, progress, completedCount, now, source, verificationStatus, actorId }) {
   // Idempotency re-check — narrows the race window for concurrent completion attempts.
@@ -47,8 +48,11 @@ export async function finalizeCompletion(admin, { userId, task, progress, comple
   }
 
   const rewardType = deriveRewardType(task);
-  const pointsToIssue = (rewardType === "points" || rewardType === "points_xp") ? (task.points_reward || 0) : 0;
-  const xpToIssue = (rewardType === "xp" || rewardType === "points_xp") ? (task.xp_reward || 0) : 0;
+  // YouTube zero-reward hard enforcement — even if an admin mistakenly configures a
+  // YouTube task with points_reward > 0, the reward is forced to 0 at the ledger.
+  const isYouTubeTask = task.destination_platform && normalizePlatform(task.destination_platform) === "YouTube";
+  const pointsToIssue = isYouTubeTask ? 0 : ((rewardType === "points" || rewardType === "points_xp") ? (task.points_reward || 0) : 0);
+  const xpToIssue = isYouTubeTask ? 0 : ((rewardType === "xp" || rewardType === "points_xp") ? (task.xp_reward || 0) : 0);
 
   let pointsResult = null;
   let xpResult = null;

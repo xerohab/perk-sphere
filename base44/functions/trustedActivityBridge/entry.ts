@@ -14,7 +14,7 @@ import {
   effectiveRequiredSeconds,
   isLiveStreamCompletionReady
 } from "../../shared/tasks.ts";
-import { validateBrowserUrl, domainsFor } from "../../shared/destinations.ts";
+import { validateBrowserUrl, domainsFor, normalizePlatform } from "../../shared/destinations.ts";
 
 // redeploy: refresh bundled shared hmac.ts (inbound secrets).
 
@@ -218,6 +218,37 @@ export default async function (req) {
     if ((_destination.eligibility || "neutral") !== "allowed") {
       await admin.entities.TrustedActivityEvent.update(eventRecord.id, { processing_status: "rejected", error_code: "destination_not_allowed", error_message: "Destination is not classified as allowed.", user_id: user.id, processed_at: now.toISOString() });
       return err("destination_not_allowed", "Destination is not classified as allowed.", 400);
+    }
+
+    // YouTube zero-reward hard enforcement — YouTube activity NEVER earns Points or XP,
+    // regardless of admin configuration. The event is stored and processed (tracking
+    // continues) but completion/reward issuance is skipped entirely.
+    const _destPlatform = normalizePlatform(
+      task.destination_type === "tracked_account"
+        ? (_destination.platform || "")
+        : (_destination.platform || "Website")
+    );
+    if (_destPlatform === "YouTube") {
+      await admin.entities.TrustedActivityEvent.update(eventRecord.id, {
+        processing_status: "processed",
+        user_id: user.id,
+        processed_at: now.toISOString(),
+        completion_triggered: false,
+        error_code: "youtube_zero_reward"
+      });
+      return Response.json({
+        ok: true,
+        data: {
+          external_event_id,
+          accepted: true,
+          duplicate: false,
+          progress: { eligible_seconds: 0, required_seconds: 0 },
+          task_completed: false,
+          completion_id: null,
+          note: "YouTube activity is tracked but never earns Points or XP."
+        },
+        request_id: requestId
+      });
     }
 
     // Hostname integrity — task content_url hostname must match the configured destination.
