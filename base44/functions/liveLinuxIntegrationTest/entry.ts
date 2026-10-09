@@ -177,13 +177,12 @@ export default async function(req) {
       await new Promise(r => setTimeout(r, 3000));
       const be = await admin.entities.TrustedActivityEvent.filter({ external_event_id: eid }, { limit: 1 });
       const bev = (be.items||[])[0];
-      R.p7c = L('Bridge recv', { recv: !!bev, ps: bev?.processing_status || 'none' });
-      // No rewards check
+      R.p7c = L('Bridge recv', { recv: !!bev });
       const pt = await admin.entities.PointsTransaction.filter({ user_id: uid }, { limit: 3, sort: '-created_date', fields: ['created_date'] });
       const xt = await admin.entities.XpTransaction.filter({ user_id: uid }, { limit: 3, sort: '-created_date', fields: ['created_date'] });
-      const recentPts = (pt.items||[]).filter(p => p.created_date >= R.ts);
-      const recentXp = (xt.items||[]).filter(p => p.created_date >= R.ts);
-      R.p7d = L('No direct rewards', { pts: recentPts.length, xp: recentXp.length, ok: recentPts.length === 0 && recentXp.length === 0 });
+      const rP = (pt.items||[]).filter(p => p.created_date >= R.ts);
+      const rX = (xt.items||[]).filter(p => p.created_date >= R.ts);
+      R.p7d = L('No rewards', { pts: rP.length, xp: rX.length, ok: rP.length===0 && rX.length===0 });
       if (bev) await admin.entities.TrustedActivityEvent.deleteMany({ id: bev.id });
     } catch (e) { R.p7err = redact(e.message); }
 
