@@ -14,8 +14,8 @@ export default async function(req) {
   const sens = [];
   const blk = [];
   const redact = (v) => { let t = String(v||''); for (const s of sens) if (s) t = t.split(s).join('*'); return t.slice(0, 300); };
-  const L = (l, d) => ({ t: 'LIVE', l, ...d });
-  const C = (l, d) => ({ t: 'CODE', l, ...d });
+  const L = (l, d) => ({ l, ...d });
+  const C = (l, d) => ({ l, ...d, c: 1 });
 
   // Raw fetch with full response capture for debugging.
   async function rawPost(path, body, authHeaders) {
@@ -183,6 +183,18 @@ export default async function(req) {
       const canAct = stepsOk && !!fr.domain_verified_at && !!fr.proof_of_possession_verified && !!cl.admin_reviewed && !!fr.linux_api_partner_id;
       R.p8 = C('Activation blocking', { steps: stepsOk, dv: !!fr.domain_verified_at, pv: !!fr.proof_of_possession_verified, ar: !!cl.admin_reviewed, lid: !!fr.linux_api_partner_id, blocked: !canAct });
     } catch (e) { R.p8 = { err: redact(e.message) }; }
+
+    // 8b. Activation probe — discover the guarded activation v2 contract
+    try {
+      const a1 = await linuxTrustedPost(LINUX_PARTNER_ENDPOINTS.ACTIVATE, { partner_uuid: lpid });
+      R.p11a = L('activate-v1', { st: a1.status, ok: a1.ok, ec: a1.code, em: a1.ok ? null : redact(a1.error).slice(0, 100) });
+      if (!a1.ok) {
+        const ts = String(Math.floor(Date.now()/1000));
+        const sig = await hmacSha256Hex(secrets.get('PERKSPHERE_LINUX_HMAC_SECRET') || '', ['PS-ACTIVATE', lpid, uid, ts].join('\n'));
+        const a2 = await linuxTrustedPost(LINUX_PARTNER_ENDPOINTS.ACTIVATE, { partner_uuid: lpid, admin_id: uid, timestamp: ts, approval_signature: sig });
+        R.p11b = L('activate-signed', { st: a2.status, ok: a2.ok, ec: a2.code, em: a2.ok ? null : redact(a2.error).slice(0, 100) });
+      }
+    } catch (e) { R.p11err = redact(e.message); }
 
     // 9. YouTube zero-reward (CODE)
     try {

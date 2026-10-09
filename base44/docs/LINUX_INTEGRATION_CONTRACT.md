@@ -273,47 +273,48 @@ Verifies domain ownership by checking the DNS TXT record or well-known file.
 
 ### 4.6 POST /v1/partner-credentials/challenge
 
-Creates a proof-of-possession challenge. Base44 requests a challenge from Linux; the admin passes it to the partner, who signs it with their HMAC secret. The signed response is submitted to `/v1/partner-credentials/confirm` (section 4.6b).
+Creates a proof-of-possession challenge. Base44 requests a challenge from Linux using the partner's `key_id`; the admin passes the challenge to the partner, who signs it with their HMAC secret. The signed response is submitted to `/v1/partner-credentials/confirm` (section 4.6b).
 
 **Request:**
 
 ```json
 {
-  "partner_uuid": "f3a2b1c4-5d6e-7f8a-9b0c-1d2e3f4a5b6c"
+  "key_id": "pk_a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6"
 }
 ```
 
-**Response (200):**
+**Response (201):**
 
 ```json
 {
   "data": {
     "challenge_id": "pc_a1b2c3d4e5f6",
     "challenge": "pop_a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0c1d2e3f4a5b6c7d8e9f0a1b2",
-    "expires_at": "2026-10-09T18:10:00.000Z"
+    "expires_in": 600,
+    "signing": "PS-POSSESSION"
   }
 }
 ```
 
-**Expected status codes:** 200, 503, 500.
+**Expected status codes:** 201, 400, 503, 500.
 
 ### 4.6b POST /v1/partner-credentials/confirm
 
-Confirms proof-of-possession. Base44 submits the partner's signed response to Linux. Linux verifies the signature and confirms. Base44 never verifies the signature locally — credentials are only marked verified after Linux confirms.
+Confirms proof-of-possession. Base44 submits the partner's signed response to Linux. The signature is `HMAC-SHA256(partner_secret, "PS-POSSESSION\n<key_id>\n<challenge_id>\n<challenge>")`. The original challenge is sent in the `X-PS-Possession-Challenge` header. Linux verifies the signature and confirms. Base44 never verifies the signature locally — credentials are only marked verified after Linux confirms.
 
 **Request:**
 
 ```json
 {
-  "partner_uuid": "f3a2b1c4-5d6e-7f8a-9b0c-1d2e3f4a5b6c",
+  "key_id": "pk_a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6",
   "challenge_id": "pc_a1b2c3d4e5f6",
-  "timestamp": "1728499200",
-  "nonce": "proof-nonce-12345678",
   "signature": "a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6"
 }
 ```
 
-The challenge is single-use — once confirmed, the `challenge_id` cannot be reused.
+**Header:** `X-PS-Possession-Challenge: <original challenge string>`
+
+The challenge is single-use — once confirmed, the `challenge_id` cannot be reused. Replay attempts return 403 `invalid_proof`.
 
 **Response (200):**
 
@@ -323,17 +324,9 @@ The challenge is single-use — once confirmed, the `challenge_id` cannot be reu
 }
 ```
 
-**Response (400) — proof failed:**
+**Expected status codes:** 200, 400 (proof failed / challenge expired), 403 (replay / invalid proof), 503, 500.
 
-```json
-{
-  "error": { "code": "invalid_signature", "message": "Proof-of-possession signature does not match." }
-}
-```
-
-**Expected status codes:** 200, 400 (proof failed / challenge expired / challenge already used), 503, 500.
-
-### 4.7 POST /v1/partner-links/create-challenge
+### 4.7 POST /v1/partner-links/challenges
 
 Creates a single-use, signed challenge for linking a partner account to a Perk Sphere user.
 
