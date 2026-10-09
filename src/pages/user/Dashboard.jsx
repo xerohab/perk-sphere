@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import { Coins, TrendingUp, Flame, Gift, Award, ArrowRight, Shield } from "lucide-react";
+import { Coins, TrendingUp, Flame, Gift, Award, ArrowRight, Shield, BookOpen, HelpCircle, BarChart3, ClipboardCheck } from "lucide-react";
 import { base44 } from "@/api/base44Client";
 import { useAuth } from "@/lib/AuthContext";
 import { usePublicDestinations } from "@/hooks/usePublicDestinations";
@@ -145,6 +145,46 @@ export default function Dashboard() {
           <StatCard label="Today's Points" value={`+${todayPoints}`} icon={Coins} />
           <StatCard label="Current Streak" value={`${user?.streak_current || 0} days`} icon={Flame} accent="text-orange-600" />
           <StatCard label="Longest Streak" value={`${user?.streak_longest || 0} days`} icon={Flame} />
+        </div>
+
+        {/* Quick links to new features */}
+        <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+          <Link to="/directory" className="flex items-center gap-3 rounded-2xl border border-border bg-card p-4 shadow-sm transition-shadow hover:shadow-md">
+            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-indigo-100 text-indigo-600 dark:bg-indigo-500/15 dark:text-indigo-400">
+              <BookOpen className="h-5 w-5" />
+            </div>
+            <div>
+              <p className="text-sm font-semibold">Directory</p>
+              <p className="text-xs text-muted-foreground">Websites, X & YouTube</p>
+            </div>
+          </Link>
+          <Link to="/quizzes" className="flex items-center gap-3 rounded-2xl border border-border bg-card p-4 shadow-sm transition-shadow hover:shadow-md">
+            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-violet-100 text-violet-600 dark:bg-violet-500/15 dark:text-violet-400">
+              <HelpCircle className="h-5 w-5" />
+            </div>
+            <div>
+              <p className="text-sm font-semibold">Video Quizzes</p>
+              <p className="text-xs text-muted-foreground">Watch and earn</p>
+            </div>
+          </Link>
+          <Link to="/weekly-reports" className="flex items-center gap-3 rounded-2xl border border-border bg-card p-4 shadow-sm transition-shadow hover:shadow-md">
+            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-amber-100 text-amber-600 dark:bg-amber-500/15 dark:text-amber-400">
+              <BarChart3 className="h-5 w-5" />
+            </div>
+            <div>
+              <p className="text-sm font-semibold">Weekly Reports</p>
+              <p className="text-xs text-muted-foreground">Activity summaries</p>
+            </div>
+          </Link>
+          <Link to="/reward-review" className="flex items-center gap-3 rounded-2xl border border-border bg-card p-4 shadow-sm transition-shadow hover:shadow-md">
+            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-100 text-emerald-600 dark:bg-emerald-500/15 dark:text-emerald-400">
+              <ClipboardCheck className="h-5 w-5" />
+            </div>
+            <div>
+              <p className="text-sm font-semibold">Reward Requests</p>
+              <p className="text-xs text-muted-foreground">Track your status</p>
+            </div>
+          </Link>
         </div>
 
         <div className="mt-6 grid gap-4 lg:grid-cols-2">

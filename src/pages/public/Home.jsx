@@ -1,15 +1,12 @@
 import React, { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import {
-  UserPlus, ArrowRight, Coins, TrendingUp, Gift, Award,
+  UserPlus, Coins, TrendingUp, Gift, Award,
   Globe, ShieldCheck, Sparkles
 } from "lucide-react";
 import { base44 } from "@/api/base44Client";
 import { useAuth } from "@/lib/AuthContext";
-import { usePublicDestinations } from "@/hooks/usePublicDestinations";
 import { Button } from "@/components/ui/button";
-import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
-import DestinationCard from "@/components/public/DestinationCard";
 import TaskCard from "@/components/perk/TaskCard";
 import EmptyState from "@/components/perk/EmptyState";
 
@@ -27,7 +24,6 @@ export default function Home() {
   const [levels, setLevels] = useState([]);
   const [featuredTasks, setFeaturedTasks] = useState([]);
   const [loading, setLoading] = useState(true);
-  const { destinations } = usePublicDestinations();
 
   useEffect(() => {
     (async () => {
@@ -45,9 +41,6 @@ export default function Home() {
       }
     })();
   }, []);
-
-  const allowed = destinations.filter((d) => d.eligibility === "allowed").slice(0, 6);
-  const disallowed = destinations.filter((d) => d.eligibility === "disallowed").slice(0, 6);
 
   return (
     <div>
@@ -73,11 +66,7 @@ export default function Home() {
                 Sign In
               </Button>
             </div>
-            <div className="mt-4">
-              <Link to="/destinations" className="inline-flex items-center gap-1 text-sm font-medium text-indigo-600 hover:underline dark:text-indigo-400">
-                Explore Participating Sites <ArrowRight className="h-4 w-4" />
-              </Link>
-            </div>
+
           </div>
         </div>
       </section>
@@ -215,50 +204,6 @@ export default function Home() {
               </div>
             )}
           </div>
-        </div>
-      </section>
-
-      {/* Destinations preview */}
-      <section className="mx-auto max-w-6xl px-4 py-16 sm:px-6 sm:py-20">
-        <div className="flex items-end justify-between">
-          <div>
-            <h2 className="text-3xl font-bold tracking-tight">Participating Destinations</h2>
-            <p className="mt-2 text-muted-foreground">A preview of destinations classified across Perk Sphere.</p>
-          </div>
-          <Link to="/destinations" className="hidden text-sm font-medium text-indigo-600 hover:underline dark:text-indigo-400 sm:inline">View All</Link>
-        </div>
-        <div className="mt-8">
-          {destinations.length === 0 ? (
-            <EmptyState title="No destinations yet" description="Destinations will appear here once administrators add them." />
-          ) : (
-            <Tabs defaultValue="allowed">
-              <TabsList>
-                <TabsTrigger value="allowed">Allowed</TabsTrigger>
-                <TabsTrigger value="disallowed">Disallowed</TabsTrigger>
-              </TabsList>
-              <TabsContent value="allowed" className="mt-6">
-                {allowed.length === 0 ? (
-                  <EmptyState title="No allowed destinations" description="Allowed destinations will appear here once added." />
-                ) : (
-                  <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                    {allowed.map((d) => <DestinationCard key={d.id} destination={d} />)}
-                  </div>
-                )}
-              </TabsContent>
-              <TabsContent value="disallowed" className="mt-6">
-                {disallowed.length === 0 ? (
-                  <EmptyState title="No disallowed destinations" description="There are no disallowed destinations configured." />
-                ) : (
-                  <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                    {disallowed.map((d) => <DestinationCard key={d.id} destination={d} />)}
-                  </div>
-                )}
-              </TabsContent>
-            </Tabs>
-          )}
-        </div>
-        <div className="mt-6 text-center sm:hidden">
-          <Link to="/destinations"><Button variant="outline" size="sm">View All Destinations</Button></Link>
         </div>
       </section>
 

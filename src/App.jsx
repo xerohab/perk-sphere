@@ -43,6 +43,11 @@ const BrowserExtension = lazy(() => import('@/pages/user/BrowserExtension'));
 const Profile = lazy(() => import('@/pages/user/Profile'));
 const Privacy = lazy(() => import('@/pages/user/Privacy'));
 const Tasks = lazy(() => import('@/pages/user/Tasks'));
+const Directory = lazy(() => import('@/pages/user/Directory'));
+const DirectoryRequests = lazy(() => import('@/pages/user/DirectoryRequests'));
+const Quizzes = lazy(() => import('@/pages/user/Quizzes'));
+const WeeklyReports = lazy(() => import('@/pages/user/WeeklyReports'));
+const RewardReview = lazy(() => import('@/pages/user/RewardReview'));
 
 // Admin panel - lazy loaded
 const AdminLayout = lazy(() => import('@/components/admin/AdminLayout'));
@@ -70,6 +75,11 @@ const AdminSettings = lazy(() => import('@/pages/admin/AdminSettings'));
 const AdminDestinations = lazy(() => import('@/pages/admin/AdminDestinations'));
 const AdminTasks = lazy(() => import('@/pages/admin/AdminTasks'));
 const AdminPartners = lazy(() => import('@/pages/admin/AdminPartners'));
+const AdminDirectory = lazy(() => import('@/pages/admin/AdminDirectory'));
+const AdminDirectoryRequests = lazy(() => import('@/pages/admin/AdminDirectoryRequests'));
+const AdminQuizzes = lazy(() => import('@/pages/admin/AdminQuizzes'));
+const AdminReports = lazy(() => import('@/pages/admin/AdminReports'));
+const AdminRewardReview = lazy(() => import('@/pages/admin/AdminRewardReview'));
 
 const PageSpinner = () => (
   <div className="fixed inset-0 flex items-center justify-center">
@@ -102,6 +112,11 @@ const AppRoutes = () => (
           <Route path="/dashboard" element={<Dashboard />} />
           <Route path="/earn" element={<Earn />} />
           <Route path="/tasks" element={<Tasks />} />
+          <Route path="/directory" element={<Directory />} />
+          <Route path="/directory-requests" element={<DirectoryRequests />} />
+          <Route path="/quizzes" element={<Quizzes />} />
+          <Route path="/weekly-reports" element={<WeeklyReports />} />
+          <Route path="/reward-review" element={<RewardReview />} />
           <Route path="/rewards" element={<Rewards />} />
           <Route path="/activity" element={<Activity />} />
           <Route path="/achievements" element={<Achievements />} />
@@ -121,6 +136,11 @@ const AppRoutes = () => (
           <Route path="/admin/destinations" element={<AdminDestinations />} />
           <Route path="/admin/tasks" element={<AdminTasks />} />
           <Route path="/admin/partners" element={<AdminPartners />} />
+          <Route path="/admin/directory" element={<AdminDirectory />} />
+          <Route path="/admin/directory-requests" element={<AdminDirectoryRequests />} />
+          <Route path="/admin/quizzes" element={<AdminQuizzes />} />
+          <Route path="/admin/reports" element={<AdminReports />} />
+          <Route path="/admin/reward-review" element={<AdminRewardReview />} />
           <Route path="/admin/points" element={<AdminPoints />} />
           <Route path="/admin/loyalty" element={<AdminLoyaltyXP />} />
           <Route path="/admin/rewards" element={<AdminRewards />} />
