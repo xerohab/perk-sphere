@@ -81,7 +81,7 @@
     },
     "partner_key_id": {
       "type": "string",
-      "description": "Public identifier for HMAC authentication (sent in X-PS-Partner-Key header). Provisioned by Linux."
+      "description": "Linux-issued partner key ID (psp_ prefix). Used in X-PS-Partner-Key header for partner HMAC auth. Provisioned by Linux."
     },
     "partner_secret_hash": {
       "type": "string",
@@ -89,7 +89,7 @@
     },
     "linux_api_partner_id": {
       "type": "string",
-      "description": "Linux partner_uuid \u2014 immutable after confirmation unless audited admin correction. Set by Linux during provisioning."
+      "description": "Linux partner_uuid \u2014 immutable after confirmation unless audited admin correction. Set by Linux during provisioning. Required for credential rotation and revocation."
     },
     "domain_verification_token": {
       "type": "string",
@@ -172,6 +172,15 @@
     },
     "setup_instructions": {
       "type": "string"
+    },
+    "credential_handoff_token_hash": {
+      "type": "string",
+      "description": "SHA-256 hash of the one-time credential handoff token. Cleared after use. Never returned in responses."
+    },
+    "credential_handoff_expires_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "When the credential handoff token expires (5-minute TTL)."
     },
     "active": {
       "type": "boolean",
