@@ -420,6 +420,16 @@ export default async function(req) {
       if (!before.linux_api_partner_id) {
         return Response.json({ error: 'Cannot sync proof status: partner has no Linux API Partner ID.', code: 'missing_linux_partner_id' }, { status: 400 });
       }
+      if (!LINUX_ENDPOINT_CONTRACT_CONFIRMED.PROOF_STATUS) {
+        await writeAudit(admin, { adminId: user.id, action: 'partner_proof_sync_blocked_contract_pending', entityType: 'PartnerIntegration', entityId: partnerId });
+        return Response.json({
+          ok: false,
+          code: 'linux_contract_pending',
+          error: 'The Linux proof-status query endpoint has not been confirmed yet (POST /partners/proof-status returned 404 on live testing). No live request was made. Until the Linux API team provides a confirmed proof-status endpoint, use the challenge/confirm flow (createProofChallenge + verifyProofOfPossession) to verify proof of possession for any partner.',
+          partner_uuid: before.linux_api_partner_id,
+          current_proof_verified: before.proof_of_possession_verified
+        }, { status: 503 });
+      }
       const result = await linuxTrustedPost(LINUX_PARTNER_ENDPOINTS.PROOF_STATUS, { partner_uuid: before.linux_api_partner_id });
       if (!result.ok) {
         return Response.json({ error: result.error || 'Proof status query failed', code: result.code, linux_status: result.status }, { status: 503 });

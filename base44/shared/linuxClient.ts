@@ -152,7 +152,12 @@ export const LINUX_ENDPOINT_CONTRACT_CONFIRMED = {
   REVOKE: true,
   ACTIVATE: true,
   VERIFY_DOMAIN: true,
-  PROOF_STATUS: true,
+  // PROOF_STATUS is NOT yet confirmed by the Linux API team. The endpoint
+  // POST /partners/proof-status returned 404 on live testing. Until the Linux
+  // API team confirms the endpoint path and response schema, syncProofStatus
+  // returns a clear "contract pending" message and makes NO live request.
+  // Future partners use the confirmed challenge/confirm flow instead.
+  PROOF_STATUS: false,
   PROOF_CHALLENGE: true,
   PROOF_CONFIRM: true,
   ACCOUNT_LINK_CREATE: true,
