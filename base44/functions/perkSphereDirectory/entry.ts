@@ -12,10 +12,16 @@ export default async function(req) {
   try {
     const base44 = createClientFromRequest(req);
     const body = await req.json().catch(() => ({}));
-    const { action, filters, entry, entryId } = body;
+    const { action, filters, entry, entryId, scope } = body;
 
-    // ── List directory entries (member) ────────────────────────────────
+    // ── List directory entries ─────────────────────────────────────────
+    // Admin Directory Management (scope: "all") uses adminRequest() with
+    // destinations.view. Member directory uses memberRequest().
     if (action === "list") {
+      if (scope === "all") {
+        const result = await adminRequest(base44, PERK_SPHERE_ENDPOINTS.DIRECTORY_LIST, { filters: filters || {} }, "destinations.view");
+        return linuxResponse(result);
+      }
       const result = await memberRequest(base44, PERK_SPHERE_ENDPOINTS.DIRECTORY_LIST, { filters: filters || {} });
       return linuxResponse(result);
     }

@@ -36,7 +36,7 @@ export default function AdminDirectory() {
     setLoading(true);
     setError(null);
     try {
-      const res = await base44.functions.invoke("perkSphereDirectory", { action: "list", filters: {} });
+      const res = await base44.functions.invoke("perkSphereDirectory", { action: "list", filters: {}, scope: "all" });
       const data = res?.data || res;
       if (data?.ok === false) throw new Error(data.error);
       setEntries(extractList(data));

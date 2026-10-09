@@ -16,7 +16,15 @@ export default async function(req) {
   try {
     const base44 = createClientFromRequest(req);
     const body = await req.json().catch(() => ({}));
-    const { action, quiz, quizId, answers, filters } = body;
+    const { action, quiz, quizId, answers, filters, scope } = body;
+
+    // ── Debug: return the derived actor without calling Linux ─────────
+    if (action === "debug") {
+      let user = null;
+      try { user = await base44.auth.me(); } catch { user = null; }
+      const actor = user ? { user_reference: String(user.id), role: user.role === "admin" ? "admin" : "member" } : null;
+      return Response.json({ user: user ? { id: user.id, role: user.role, idType: typeof user.id } : null, actor });
+    }
 
     // ── Create quiz (admin) ────────────────────────────────────────────
     if (action === "create") {
@@ -38,8 +46,15 @@ export default async function(req) {
       return linuxResponse(result);
     }
 
-    // ── List quizzes (member sees published; admin sees all) ──────────
+    // ── List quizzes ──────────────────────────────────────────────────
+    // Admin Quiz Manager (scope: "all") uses adminRequest() with tasks.view
+    // to list all quizzes including drafts. Member quiz page uses
+    // memberRequest() to list published quizzes only.
     if (action === "list") {
+      if (scope === "all") {
+        const result = await adminRequest(base44, PERK_SPHERE_ENDPOINTS.QUIZZES_LIST, { filters: filters || {} }, "tasks.view");
+        return linuxResponse(result);
+      }
       const result = await memberRequest(base44, PERK_SPHERE_ENDPOINTS.QUIZZES_LIST, { filters: filters || {} });
       return linuxResponse(result);
     }

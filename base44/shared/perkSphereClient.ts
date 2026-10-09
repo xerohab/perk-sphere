@@ -79,7 +79,7 @@ export async function memberRequest(base44, path, body) {
   try { user = await base44.auth.me(); } catch { user = null; }
   if (!user) return { ok: false, status: 401, code: "unauthorized", error: "Authentication required" };
   const actor = deriveActor(user);
-  return linuxTrustedPost(path, { ...body, actor });
+  return linuxTrustedPost(path, { ...body, trusted_actor: actor });
 }
 
 // Sends an admin request to the Linux perk-sphere API.
@@ -95,7 +95,7 @@ export async function adminRequest(base44, path, body, permission) {
   const verdict = evaluateAccess(user, staff, permission);
   if (!verdict.ok) return { ok: false, status: verdict.status, code: "forbidden", error: verdict.error };
   const actor = deriveActor(user);
-  return linuxTrustedPost(path, { ...body, actor });
+  return linuxTrustedPost(path, { ...body, trusted_actor: actor });
 }
 
 // Wraps a Linux API result into a Response.json call.
