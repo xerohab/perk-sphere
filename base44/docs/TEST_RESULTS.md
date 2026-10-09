@@ -8,13 +8,14 @@
 
 | Category | Total | Passed | Failed |
 |----------|-------|--------|--------|
-| **Mocked** (Base44 logic in isolation) | 9 | 9 | 0 |
-| **Real** (contacted api.perksphere.org) | 3 | 3 | 0 |
-| **Total** | 12 | 12 | 0 |
+| **Live** (contacted api.perksphere.org) | 6 | 6 | 0 |
+| **Expected rejections** (security guards) | 6 | 6 | 0 |
+| **Untested** (requires active/verified partner) | 3 | — | — |
+| **Total** | 15 | 12 | 0 |
 
 ### Real test disclaimer
 
-The 3 real tests contacted `api.perksphere.org`. The Linux API is **not yet deployed**. These tests verified the Base44-side logic and confirmed that Base44 fails gracefully (503 `linux_unreachable`) when the Linux API is unavailable. No real test claimed a Linux response was received — they verified that the Base44-side prerequisites and state are correct for the Linux call to proceed once the API is deployed.
+The Linux API is deployed at `api.perksphere.org`. 6 live tests contacted the API and received real responses. 6 expected security rejections confirm the guards are working correctly. 3 areas remain untested because they require an active, fully verified partner (with DNS domain verification), which cannot be created for disposable test partners. No production partners were activated, no database flags were changed, no secrets were exposed, and no real rewards were issued.
 
 ---
 
@@ -122,12 +123,12 @@ The 3 real tests contacted `api.perksphere.org`. The Linux API is **not yet depl
 
 ## Outstanding Blockers
 
-1. **Linux API not deployed** — All Linux endpoints return 503 `linux_unreachable`. The Base44 side is complete and fails gracefully. Real end-to-end testing requires the Linux API to be deployed.
+1. **Activation contract live verification** — The guarded activation v2 endpoint returns 400 `invalid_request` (activation disabled by default). The signed admin approval contract (`PS-ACTIVATE` canonical) is implemented but cannot be verified live until activation is enabled on the Linux side and a fully verified partner (with DNS domain verification) is available.
 
-2. **Linux activation deliberately disabled** — The `/partners/activate` endpoint is expected to return 501 until final integration testing. Base44 does not bypass this — partners cannot be activated locally.
+2. **Domain verification** — Requires DNS TXT record publication at `_perksphere.<partner-domain>`, which cannot be done for disposable test partners. Real partners must publish the token before domain verification can proceed.
 
-3. **Partner credentials on Linux** — Partner credentials must be configured on the Linux API and mapped to `PartnerIntegration.linux_api_partner_id`.
+3. **Account-link confirmation end-to-end** — Cannot be tested because it requires an active partner. The `PARTNER_LINK_CONFIRMED` bridge flow is implemented and verified at the code level, but the full end-to-end flow requires an active, verified partner.
 
-4. **Domain verification tokens** — Partners must publish DNS TXT records at `_perksphere.<partner-domain>` with the issued token before domain verification can proceed.
+4. **Active partner event ingestion** — Cannot be tested because the disposable test partner is inactive. Linux correctly rejects events from inactive partners (401 `invalid_partner_auth`).
 
-5. **No production partners or live rewards** — No production partners are enabled and no live reward issuance occurs. This is by design for the controlled web launch.
+5. **No production partners or live rewards** — No production partners are activated and no live reward issuance occurs. This is by design for the controlled web launch.

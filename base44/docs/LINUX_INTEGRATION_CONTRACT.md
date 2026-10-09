@@ -217,17 +217,24 @@ Revokes all credentials for a partner. The partner is disabled.
 
 **Expected status codes:** 200, 503, 500.
 
-### 4.4 POST /partners/activate
+### 4.4 POST /partners/activate (Guarded Activation v2)
 
-Activates a partner for production event submission. Called only after all onboarding steps are complete.
+Activates a partner for production event submission. Called only after all onboarding steps are complete and the admin has approved. The guarded activation v2 endpoint requires a signed admin approval signature — the standard HMAC service-to-service authentication is not sufficient by itself.
+
+**Activation is disabled by default.** The endpoint returns 400 `invalid_request` until all verification requirements are met and activation is enabled on the Linux side. Base44 does not bypass this — partners cannot be activated locally.
 
 **Request:**
 
 ```json
 {
-  "partner_uuid": "f3a2b1c4-5d6e-7f8a-9b0c-1d2e3f4a5b6c"
+  "partner_uuid": "f3a2b1c4-5d6e-7f8a-9b0c-1d2e3f4a5b6c",
+  "admin_id": "user_abc123_def456",
+  "timestamp": "1728499200",
+  "approval_signature": "a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6"
 }
 ```
+
+**Approval signature:** `HMAC-SHA256(PERKSPHERE_LINUX_HMAC_SECRET, "PS-ACTIVATE\n<partner_uuid>\n<admin_id>\n<timestamp>")` — lowercase hexadecimal. This proves a specific Base44 admin authorised the activation.
 
 **Response (200):**
 
@@ -237,9 +244,18 @@ Activates a partner for production event submission. Called only after all onboa
 }
 ```
 
-**Expected status codes:** 200, 503, 500.
+**Response (400) — activation disabled / partner not ready:**
 
-**Base44 behaviour:** This is called only after `onboardingComplete()` returns true (all 8 checklist steps pass). If Linux activation fails, the partner stays in `setup_required` and the admin sees the error.
+```json
+{
+  "ok": false,
+  "error": { "code": "invalid_request" }
+}
+```
+
+**Expected status codes:** 200 (activated), 400 (activation disabled / invalid request), 503, 500.
+
+**Base44 behaviour:** This is called only after `onboardingComplete()` returns true (all 8 checklist steps pass), domain verification is confirmed, proof-of-possession is verified, and admin review is approved. If Linux activation fails, the partner stays in `setup_required` and the admin sees the error. No local bypass exists.
 
 ### 4.5 POST /partners/verify-domain
 
