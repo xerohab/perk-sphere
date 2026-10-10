@@ -1,40 +1,125 @@
+
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.52';
-import { waitUntil } from "base44:runtime";
 import { sha256Hex } from '../../shared/oauth.ts';
 import { sanitizePartnerForUser } from '../../shared/partners.ts';
-import { linuxTrustedPost, LINUX_PARTNER_ENDPOINTS } from '../../shared/linuxClient.ts';
-
-// Partner account linking — lets a Perk Sphere user connect a partner account
-// to their profile using a signed, single-use challenge.
-//
-// Linux is the authority for the single-use signed challenge process. Base44
-// provides the user interface and authenticated user identity, and delegates
-// challenge creation/verification to the Linux API.
-//
-// Flow:
-//   1. User requests a link → Base44 calls Linux to create a challenge.
-//   2. Linux returns the challenge token (single-use, expiring).
-//   3. The user provides the challenge token to the partner.
-//   4. The partner sends an ACCOUNT_LINKED event to Linux with the challenge.
-//   5. Linux verifies the challenge and links the accounts.
-//   6. Linux notifies Base44 (via trustedActivityBridge or a dedicated endpoint).
-//
-// Security:
-//   - Challenge is single-use (status flips to 'linked' on first use).
-//   - Challenge expires after 10 minutes.
-//   - Challenge hash is stored, not the token itself (token is returned once).
-//   - The partner must be active or setup_required and the user must be authenticated.
-//   - Prevents linking someone else's partner account (challenge is user-specific).
-//   - Prevents challenge replay (single-use).
-//   - Prevents expired challenge reuse (expiry checked).
-//   - Prevents cross-partner confusion (challenge is partner-specific).
-//   - Prevents duplicate ownership (existing link check).
-//
-// Response sanitisation:
-//   - listPartners and listLinks expose only public or user-authorised information.
-//   - No secrets, hashes, or encryption metadata are ever returned.
+import {
+  linuxTrustedPost,
+  LINUX_PARTNER_ENDPOINTS
+} from '../../shared/linuxClient.ts';
 
 const CHALLENGE_TTL_MINUTES = 10;
+const LINK_STATUS_PATH = '/v1/partner-links/status';
+
+function serviceKey(partnerId) {
+  return `partner_${partnerId}`;
+}
+
+function validVerifiedLink(data) {
+  return data?.ok === true &&
+    data?.linked === true &&
+    data?.status === 'verified' &&
+    typeof data?.link_uuid === 'string' &&
+    data.link_uuid.length > 0 &&
+    typeof data?.partner_account_reference === 'string' &&
+    data.partner_account_reference.length > 0;
+}
+
+async function getLinuxStatus(partner, userId) {
+  if (!partner?.linux_api_partner_id) {
+    return { ok: false, code: 'partner_not_provisioned' };
+  }
+
+  return linuxTrustedPost(LINK_STATUS_PATH, {
+    partner_uuid: partner.linux_api_partner_id,
+    user_reference: userId
+  });
+}
+
+async function syncVerifiedPartner(admin, userId, partner, links, connected) {
+  const result = await getLinuxStatus(partner, userId);
+
+  // Never infer a connection when Linux is unavailable.
+  if (!result.ok) {
+    return { synced: false, unavailable: true };
+  }
+
+  const data = result.data || {};
+
+  if (!validVerifiedLink(data)) {
+    return { synced: false, unavailable: false };
+  }
+
+  const now = new Date().toISOString();
+  const linkedAt = data.verified_at
+    ? new Date(data.verified_at).toISOString()
+    : now;
+
+  const accountReference = data.partner_account_reference;
+  const key = serviceKey(partner.id);
+
+  const existingConnection = connected.find(
+    c => c.service === key
+  );
+
+  const connectionData = {
+    user_id: userId,
+    service: key,
+    status: 'connected',
+    account_handle: accountReference,
+    external_account_id: data.link_uuid,
+    provider_user_id: accountReference,
+    connected_at: linkedAt
+  };
+
+  if (existingConnection) {
+    await admin.entities.ConnectedService.update(
+      existingConnection.id,
+      connectionData
+    );
+    Object.assign(existingConnection, connectionData);
+  } else {
+    const created = await admin.entities.ConnectedService.create(
+      connectionData
+    );
+    connected.push(created);
+  }
+
+  // Reconcile the latest pending record for this partner.
+  // Linux confirms ownership by partner UUID + authenticated user ID.
+  const pending = links
+    .filter(l =>
+      l.partner_integration_id === partner.id &&
+      l.status === 'pending'
+    )
+    .sort((a, b) =>
+      new Date(b.created_date || 0).getTime() -
+      new Date(a.created_date || 0).getTime()
+    );
+
+  const alreadyLinked = links.some(l =>
+    l.partner_integration_id === partner.id &&
+    l.status === 'linked'
+  );
+
+  if (!alreadyLinked && pending.length > 0) {
+    const selected = pending[0];
+
+    const updateData = {
+      status: 'linked',
+      linked_at: linkedAt,
+      partner_account_reference: accountReference
+    };
+
+    await admin.entities.PartnerAccountLink.update(
+      selected.id,
+      updateData
+    );
+
+    Object.assign(selected, updateData);
+  }
+
+  return { synced: true, unavailable: false };
+}
 
 export default async function(req) {
   try {
@@ -43,84 +128,158 @@ export default async function(req) {
     const { action, partnerId } = body;
     const admin = base44.asServiceRole;
 
-    // All actions require an authenticated user.
-    let user = null;
+    let user;
+
     try {
       user = await base44.auth.me();
-    } catch (_e) {
-      return Response.json({ error: 'Unauthorized' }, { status: 401 });
+    } catch {
+      return Response.json(
+        { error: 'Unauthorized' },
+        { status: 401 }
+      );
     }
-    if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401 });
 
-    // ── Create Challenge (via Linux) ─────────────────────────────────────
+    if (!user?.id) {
+      return Response.json(
+        { error: 'Unauthorized' },
+        { status: 401 }
+      );
+    }
+
     if (action === 'createChallenge') {
-      if (!partnerId) return Response.json({ error: 'Missing partnerId' }, { status: 400 });
-
-      const partner = await admin.entities.PartnerIntegration.get(partnerId).catch(() => null);
-      if (!partner) return Response.json({ error: 'Partner not found' }, { status: 404 });
-      if (partner.integration_status === 'disabled' || partner.integration_status === 'archived') {
-        return Response.json({ error: 'Partner is not available for linking' }, { status: 400 });
-      }
-      if (partner.integration_status === 'linux_integration_pending') {
-        return Response.json({ error: 'Partner provisioning is not yet complete. Please try again later.' }, { status: 400 });
+      if (!partnerId) {
+        return Response.json(
+          { error: 'Missing partnerId' },
+          { status: 400 }
+        );
       }
 
-      // Check for an existing active link — prevent duplicate ownership.
+      const partner = await admin.entities.PartnerIntegration
+        .get(partnerId)
+        .catch(() => null);
+
+      if (!partner) {
+        return Response.json(
+          { error: 'Partner not found' },
+          { status: 404 }
+        );
+      }
+
+      if (partner.integration_status !== 'active') {
+        return Response.json(
+          { error: 'Partner is not active for account linking' },
+          { status: 400 }
+        );
+      }
+
+      if (!partner.linux_api_partner_id) {
+        return Response.json(
+          { error: 'Partner is not provisioned for account linking' },
+          { status: 400 }
+        );
+      }
+
       const existing = await admin.entities.ConnectedService.filter({
         user_id: user.id,
-        service: 'partner_' + partner.id
+        service: serviceKey(partner.id)
       });
-      if ((existing || []).some((c) => c.status === 'connected')) {
-        return Response.json({ error: 'You already have a linked account with this partner' }, { status: 400 });
-      }
 
-      // Auto-expire any previous pending challenges for this partner+user so the
-      // user can always request a fresh challenge without waiting for the old
-      // one to expire. The old challenge token becomes invalid on Linux too.
-      const oldPending = await admin.entities.PartnerAccountLink.filter({
+      const existingLinks = await admin.entities.PartnerAccountLink.filter({
         user_id: user.id,
-        partner_integration_id: partnerId,
-        status: 'pending'
+        partner_integration_id: partner.id
       });
-      for (const l of (oldPending || [])) {
-        await admin.entities.PartnerAccountLink.update(l.id, { status: 'expired' });
+
+      // Check Linux before allowing a new challenge. This also
+      // repairs connections confirmed before this function was updated.
+      const statusResult = await getLinuxStatus(partner, user.id);
+
+      if (!statusResult.ok) {
+        return Response.json({
+          error: 'Unable to verify existing account links. Please try again.',
+          retry: true
+        }, { status: 503 });
       }
 
-      // Delegate challenge creation to Linux (the authority).
-      if (!partner.linux_api_partner_id) {
-        return Response.json({ error: 'Partner is not provisioned for account linking' }, { status: 400 });
+      if (validVerifiedLink(statusResult.data)) {
+        await syncVerifiedPartner(
+          admin,
+          user.id,
+          partner,
+          existingLinks || [],
+          existing || []
+        );
+
+        return Response.json({
+          error: 'You already have a linked account with this partner',
+          already_linked: true
+        }, { status: 409 });
       }
 
-      const challengeResult = await linuxTrustedPost(LINUX_PARTNER_ENDPOINTS.ACCOUNT_LINK_CREATE, {
-        partner_uuid: partner.linux_api_partner_id,
-        user_reference: user.id
-      });
+      // Never create a new challenge if a connected Base44
+      // record exists but Linux does not confirm its state.
+      if ((existing || []).some(c => c.status === 'connected')) {
+        return Response.json({
+          error: 'An existing connection requires verification before reconnecting.',
+          retry: true
+        }, { status: 409 });
+      }
+
+      const challengeResult = await linuxTrustedPost(
+        LINUX_PARTNER_ENDPOINTS.ACCOUNT_LINK_CREATE,
+        {
+          partner_uuid: partner.linux_api_partner_id,
+          user_reference: user.id
+        }
+      );
 
       if (!challengeResult.ok) {
         return Response.json({
-          error: 'Account linking is temporarily unavailable. Please try again later.',
+          error: 'Account linking is temporarily unavailable.',
           code: challengeResult.code || 'linux_unavailable'
         }, { status: 503 });
       }
 
       const challengeData = challengeResult.data || {};
-      const challenge = challengeData.challenge ?? challengeData.challenge_token;
-      const expiresAt = challengeData.expires_at;
+      const challenge =
+        challengeData.challenge ?? challengeData.challenge_token;
 
-      if (!challenge) {
-        return Response.json({ error: 'Failed to create challenge' }, { status: 500 });
+      if (
+        typeof challenge !== 'string' ||
+        !/^[A-Za-z0-9_-]{43}$/.test(challenge)
+      ) {
+        return Response.json(
+          { error: 'Failed to create challenge' },
+          { status: 502 }
+        );
       }
 
-      // Store the challenge hash locally for reference (not the token itself).
+      const expiresAt = challengeData.expires_at ||
+        new Date(
+          Date.now() + CHALLENGE_TTL_MINUTES * 60000
+        ).toISOString();
+
       const challengeHash = await sha256Hex(challenge);
+
       const link = await admin.entities.PartnerAccountLink.create({
         user_id: user.id,
         partner_integration_id: partner.id,
         partner_name: partner.name,
         challenge_hash: challengeHash,
         status: 'pending',
-        expires_at: expiresAt || new Date(Date.now() + CHALLENGE_TTL_MINUTES * 60 * 1000).toISOString()
+        expires_at: expiresAt
       });
+
+      // Expire earlier Base44 pending entries only after the
+      // new challenge has been successfully created.
+      // Linux remains authoritative for their validity.
+      for (const old of existingLinks || []) {
+        if (old.status === 'pending') {
+          await admin.entities.PartnerAccountLink.update(
+            old.id,
+            { status: 'expired' }
+          );
+        }
+      }
 
       return Response.json({
         ok: true,
@@ -128,18 +287,53 @@ export default async function(req) {
         link_id: link.id,
         partner_name: partner.name,
         expires_at: expiresAt,
-        instructions: `Send an ACCOUNT_LINKED event to the Linux API with this challenge_token and your account reference. The challenge expires in ${CHALLENGE_TTL_MINUTES} minutes.`
+        instructions:
+          'Enter this challenge in your partner account. ' +
+          'It expires after 10 minutes.'
       });
     }
 
-    // ── List Links (sanitized) ───────────────────────────────────────────
     if (action === 'listLinks') {
-      const links = await admin.entities.PartnerAccountLink.filter({ user_id: user.id });
-      const connected = await admin.entities.ConnectedService.filter({ user_id: user.id });
-      const partnerLinks = (connected || []).filter((c) => c.service?.startsWith('partner_'));
+      const links = await admin.entities.PartnerAccountLink.filter({
+        user_id: user.id
+      });
 
-      // Sanitize: only return user-authorised information — no challenge hashes or tokens.
-      const sanitizedLinks = (links || []).map((l) => ({
+      const connected = await admin.entities.ConnectedService.filter({
+        user_id: user.id
+      });
+
+      const localLinks = links || [];
+      const localConnected = connected || [];
+
+      const partners = await admin.entities.PartnerIntegration.list(
+        '-created_date',
+        200
+      );
+
+      const eligiblePartners = (partners || []).filter(p =>
+        p.integration_status === 'active' &&
+        !!p.linux_api_partner_id
+      );
+
+      let syncUnavailable = false;
+
+      // Check every active partner for an existing Linux-verified
+      // account. This recovers links that Base44 missed previously.
+      for (const partner of eligiblePartners) {
+        const result = await syncVerifiedPartner(
+          admin,
+          user.id,
+          partner,
+          localLinks,
+          localConnected
+        );
+
+        if (result.unavailable) {
+          syncUnavailable = true;
+        }
+      }
+
+      const sanitizedLinks = localLinks.map(l => ({
         id: l.id,
         partner_name: l.partner_name,
         partner_integration_id: l.partner_integration_id,
@@ -149,85 +343,135 @@ export default async function(req) {
         expires_at: l.expires_at
       }));
 
-      const sanitizedConnected = partnerLinks.map((c) => ({
-        id: c.id,
-        service: c.service,
-        account_handle: c.account_handle,
-        status: c.status,
-        connected_at: c.connected_at
-      }));
+      const sanitizedConnected = localConnected
+        .filter(c => c.service?.startsWith('partner_'))
+        .map(c => ({
+          id: c.id,
+          service: c.service,
+          account_handle: c.account_handle,
+          status: c.status,
+          connected_at: c.connected_at
+        }));
 
-      return Response.json({ ok: true, links: sanitizedLinks, connected: sanitizedConnected });
+      return Response.json({
+        ok: true,
+        links: sanitizedLinks,
+        connected: sanitizedConnected,
+        sync_unavailable: syncUnavailable
+      });
     }
 
-    // ── Unlink (via Linux — awaited, not fire-and-forget) ────────────────
     if (action === 'unlink') {
       const { connectedServiceId } = body;
-      if (!connectedServiceId) return Response.json({ error: 'Missing connectedServiceId' }, { status: 400 });
 
-      const conn = await admin.entities.ConnectedService.get(connectedServiceId).catch(() => null);
-      if (!conn || conn.user_id !== user.id) {
-        return Response.json({ error: 'Not found' }, { status: 404 });
+      if (!connectedServiceId) {
+        return Response.json(
+          { error: 'Missing connectedServiceId' },
+          { status: 400 }
+        );
       }
 
-      // Await the signed Linux unlink response before marking disconnected.
-      // If Linux is unavailable or rejects the request, the connection stays
-      // connected and the user receives a retry option.
+      const conn = await admin.entities.ConnectedService
+        .get(connectedServiceId)
+        .catch(() => null);
+
+      if (!conn || conn.user_id !== user.id) {
+        return Response.json(
+          { error: 'Not found' },
+          { status: 404 }
+        );
+      }
+
       if (conn.service?.startsWith('partner_')) {
-        const pid = conn.service.replace('partner_', '');
-        const partner = await admin.entities.PartnerIntegration.get(pid).catch(() => null);
-        if (partner?.linux_api_partner_id) {
-          const unlinkResult = await linuxTrustedPost(LINUX_PARTNER_ENDPOINTS.ACCOUNT_LINK_UNLINK, {
+        const pid = conn.service.slice('partner_'.length);
+        const partner = await admin.entities.PartnerIntegration
+          .get(pid)
+          .catch(() => null);
+
+        if (!partner?.linux_api_partner_id) {
+          return Response.json({
+            error: 'Partner configuration unavailable. Cannot safely unlink.'
+          }, { status: 503 });
+        }
+
+        const unlinkResult = await linuxTrustedPost(
+          LINUX_PARTNER_ENDPOINTS.ACCOUNT_LINK_UNLINK,
+          {
             partner_uuid: partner.linux_api_partner_id,
             user_reference: user.id
-          });
-          if (!unlinkResult.ok) {
-            return Response.json({
-              error: 'Unlinking is temporarily unavailable. Please try again later.',
-              code: unlinkResult.code || 'linux_unavailable',
-              retry: true
-            }, { status: 503 });
           }
+        );
+
+        if (!unlinkResult.ok) {
+          return Response.json({
+            error: 'Unlinking is temporarily unavailable.',
+            code: unlinkResult.code || 'linux_unavailable',
+            retry: true
+          }, { status: 503 });
         }
       }
 
-      await admin.entities.ConnectedService.update(connectedServiceId, {
-        status: 'disconnected',
-        revoked_at: new Date().toISOString()
-      });
+      await admin.entities.ConnectedService.update(
+        connectedServiceId,
+        {
+          status: 'disconnected',
+          revoked_at: new Date().toISOString()
+        }
+      );
 
-      // Mark any linked challenges as unlinked.
       if (conn.service?.startsWith('partner_')) {
-        const pid = conn.service.replace('partner_', '');
-        const pendingLinks = await admin.entities.PartnerAccountLink.filter({
+        const pid = conn.service.slice('partner_'.length);
+
+        const linkedRecords = await admin.entities.PartnerAccountLink.filter({
           user_id: user.id,
           partner_integration_id: pid,
           status: 'linked'
         });
-        for (const l of (pendingLinks || [])) {
-          await admin.entities.PartnerAccountLink.update(l.id, {
-            status: 'unlinked',
-            unlinked_at: new Date().toISOString()
-          });
+
+        for (const record of linkedRecords || []) {
+          await admin.entities.PartnerAccountLink.update(
+            record.id,
+            {
+              status: 'unlinked',
+              unlinked_at: new Date().toISOString()
+            }
+          );
         }
       }
+
       return Response.json({ ok: true });
     }
 
-    // ── List Partners (sanitized — public info only) ─────────────────────
     if (action === 'listPartners') {
-      const partners = await admin.entities.PartnerIntegration.list('-created_date', 200);
-      const available = (partners || []).filter((p) =>
+      const partners = await admin.entities.PartnerIntegration.list(
+        '-created_date',
+        200
+      );
+
+      const available = (partners || []).filter(p =>
         p.integration_status === 'active' ||
         p.integration_status === 'setup_required' ||
         p.integration_status === 'linux_integration_pending'
       );
-      // Sanitize: only return public fields — no secrets, hashes, or internal info.
-      return Response.json({ ok: true, partners: available.map(sanitizePartnerForUser) });
+
+      return Response.json({
+        ok: true,
+        partners: available.map(sanitizePartnerForUser)
+      });
     }
 
-    return Response.json({ error: 'Unknown action' }, { status: 400 });
+    return Response.json(
+      { error: 'Unknown action' },
+      { status: 400 }
+    );
   } catch (error) {
-    return Response.json({ error: error.message }, { status: 500 });
+    console.error('partnerAccountLink failed', {
+      code: error?.code || 'unexpected_error'
+    });
+
+    return Response.json({
+      error: 'Unable to process partner account linking.',
+      retry: true
+    }, { status: 500 });
   }
 }
