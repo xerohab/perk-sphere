@@ -1,3 +1,13 @@
+import { secrets } from "base44:runtime";
+
+// Cutover kill switch: once Linux is authoritative, legacy Base44 balance
+// mutations must stop. Do not enable before task and redemption cutover.
+function requireLegacyWritesAllowed() {
+  if (secrets.get("PERKSPHERE_LINUX_LEDGER_AUTHORITATIVE") === "true") {
+    throw new Error("legacy_base44_ledger_writes_disabled");
+  }
+}
+
 // Core server-side ledger logic for Perk Sphere.
 // All points/XP balance changes flow through here so balances are authoritative
 // server-side and every change produces a ledger transaction.
@@ -16,6 +26,7 @@ export async function recalcRank(base44, userId) {
 }
 
 export async function adjustPoints(base44, { userId, amount, type, reason, source, adminId, adminNote, relatedActivityId, relatedRedemptionId }) {
+  requireLegacyWritesAllowed();
   const user = await base44.entities.User.get(userId);
   const before = user.points_balance || 0;
   const after = before + amount;
@@ -38,6 +49,7 @@ export async function adjustPoints(base44, { userId, amount, type, reason, sourc
 }
 
 export async function adjustXp(base44, { userId, amount, reason, source, adminId, adminNote, relatedActivityId }) {
+  requireLegacyWritesAllowed();
   const user = await base44.entities.User.get(userId);
   const before = user.loyalty_xp || 0;
   const after = Math.max(0, before + amount);
@@ -58,6 +70,7 @@ export async function adjustXp(base44, { userId, amount, reason, source, adminId
 }
 
 export async function redeemReward(base44, { userId, rewardId }) {
+  requireLegacyWritesAllowed();
   const user = await base44.entities.User.get(userId);
   const reward = await base44.entities.Reward.get(rewardId);
 
