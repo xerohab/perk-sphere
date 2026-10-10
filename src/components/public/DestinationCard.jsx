@@ -9,7 +9,7 @@ const PLATFORM_ICON = {
   X: Twitter
 };
 
-export default function DestinationCard({ destination, to }) {
+export default function DestinationCard({ destination, to = "" }) {
   const d = destination;
   const Icon = PLATFORM_ICON[d.platform] || Globe;
   const linkTo = to || `/destinations/${d.id}`;

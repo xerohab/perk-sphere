@@ -45,7 +45,7 @@ export default function AdminUserDetail() {
         base44.entities.AuditLog.filter({ entity_id: id })
       ]);
       setUser(u);
-      const byDate = (x, y) => new Date(y.created_date) - new Date(x.created_date);
+      const byDate = (x, y) => new Date(y.created_date).getTime() - new Date(x.created_date).getTime();
       setPointsTxns((pt || []).sort(byDate));
       setXpTxns((xt || []).sort(byDate));
       setActivities((a || []).sort(byDate));

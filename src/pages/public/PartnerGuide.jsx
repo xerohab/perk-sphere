@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { Globe, KeyRound, Link2, Send, RefreshCw, Shield, AlertTriangle, Code2, Copy, Check, ChevronDown, ChevronUp } from "lucide-react";
+import { Globe, KeyRound, Link2, Send, RefreshCw, Shield, AlertTriangle, Copy, Check } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 const LINUX_API_BASE = "https://api.perksphere.org";

@@ -20,7 +20,7 @@ import {
 // Generic CRUD page for admin configuration entities. All writes go through the
 // permission-checked adminWrite backend function; the entities themselves are
 // write-locked for app users via RLS, so this can't be bypassed from the browser.
-export default function CrudPage({ title, description, entity, columns, fields, sortBy = "-created_date", limit = 200 }) {
+export default function CrudPage({ title, description = "", entity, columns, fields, sortBy = "-created_date", limit = 200 }) {
   const { toast } = useToast();
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);

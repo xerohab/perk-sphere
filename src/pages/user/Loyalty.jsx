@@ -19,7 +19,7 @@ export default function Loyalty() {
           base44.entities.XpTransaction.filter({ user_id: user?.id })
         ]);
         setLevels((l || []).filter((x) => x.active !== false).sort((a, b) => (a.minimum_xp || 0) - (b.minimum_xp || 0)));
-        setXpTxns((x || []).sort((a, b) => new Date(b.created_date) - new Date(a.created_date)));
+        setXpTxns((x || []).sort((a, b) => new Date(b.created_date).getTime() - new Date(a.created_date).getTime()));
       } finally {
         setLoading(false);
       }

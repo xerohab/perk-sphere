@@ -53,7 +53,7 @@ BreadcrumbPage.displayName = "BreadcrumbPage"
 
 const BreadcrumbSeparator = ({
   children,
-  className,
+  className = "",
   ...props
 }) => (
   <li
@@ -67,7 +67,7 @@ const BreadcrumbSeparator = ({
 BreadcrumbSeparator.displayName = "BreadcrumbSeparator"
 
 const BreadcrumbEllipsis = ({
-  className,
+  className = "",
   ...props
 }) => (
   <span

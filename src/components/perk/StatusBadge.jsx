@@ -22,7 +22,7 @@ const STATUS_STYLES = {
   admin: "bg-indigo-100 text-indigo-700 dark:bg-indigo-500/15 dark:text-indigo-400"
 };
 
-export default function StatusBadge({ status, className }) {
+export default function StatusBadge({ status, className = "" }) {
   const style = STATUS_STYLES[status] || "bg-secondary text-secondary-foreground";
   return (
     <span className={cn("inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium capitalize", style, className)}>

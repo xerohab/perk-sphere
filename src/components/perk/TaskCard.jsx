@@ -17,7 +17,7 @@ const TYPE_LABEL = {
   complete_activity: "Complete Activity", campaign_task: "Campaign Task", custom: "Custom Task"
 };
 
-export default function TaskCard({ task, progress, onStart, onComplete, starting, completing, isAuthed, onSignIn }) {
+export default function TaskCard({ task, progress = null, onStart = null, onComplete = null, starting = false, completing = false, isAuthed = false, onSignIn = () => {} }) {
   const Icon = TYPE_ICON[task.task_type] || Sparkles;
   const status = progress?.status || "not_started";
   const eligible = progress?.eligible_seconds || 0;
@@ -35,8 +35,8 @@ export default function TaskCard({ task, progress, onStart, onComplete, starting
   // Time remaining
   const now = new Date();
   let remaining = null;
-  if (task.available_until) remaining = new Date(task.available_until) - now;
-  else if (task.task_type === "live_stream" && task.event_end) remaining = new Date(task.event_end) - now;
+  if (task.available_until) remaining = new Date(task.available_until).getTime() - now.getTime();
+  else if (task.task_type === "live_stream" && task.event_end) remaining = new Date(task.event_end).getTime() - now.getTime();
   const isExpired = remaining !== null && remaining <= 0;
 
   const handleStart = () => (isAuthed ? onStart() : onSignIn?.());
@@ -141,7 +141,7 @@ export default function TaskCard({ task, progress, onStart, onComplete, starting
           ) : !isAuthed ? (
             <Button className="w-full" onClick={handleStart}>Sign in to start</Button>
           ) : !isInProgress ? (
-            <Button className="w-full" onClick={handleStart} disabled={starting}>
+            <Button className="w-full" onClick={handleStart} disabled={starting || !onStart}>
               {starting ? "Starting..." : "Start Task"}
             </Button>
           ) : isViewing && !viewingReady ? (
@@ -149,7 +149,7 @@ export default function TaskCard({ task, progress, onStart, onComplete, starting
               <Lock className="mr-1 h-3.5 w-3.5" /> Tracking in progress
             </Button>
           ) : (
-            <Button className="w-full" onClick={onComplete} disabled={completing}>
+            <Button className="w-full" onClick={onComplete} disabled={completing || !onComplete}>
               {completing ? "Completing..." : "Complete Task"}
             </Button>
           )}

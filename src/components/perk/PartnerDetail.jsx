@@ -1,11 +1,10 @@
 import React, { useState } from "react";
-import { Shield, KeyRound, Activity, AlertTriangle, CheckCircle2, XCircle, Clock, TrendingUp, FileCheck, DollarSign } from "lucide-react";
+import { Shield, KeyRound, Activity, AlertTriangle, CheckCircle2, Clock, DollarSign } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/components/ui/use-toast";
 import { base44 } from "@/api/base44Client";
-import ConfirmDialog from "@/components/perk/ConfirmDialog";
 
 const VERIFICATION_STYLES = {
   unverified: "bg-red-100 text-red-700 dark:bg-red-500/15 dark:text-red-400",
@@ -14,7 +13,7 @@ const VERIFICATION_STYLES = {
   fully_verified: "bg-emerald-100 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-400"
 };
 
-export default function PartnerDetail({ partner, events, onClose, onRefresh }) {
+export default function PartnerDetail({ partner, events, onClose = null, onRefresh }) {
   const { toast } = useToast();
   const [rewardPolicy, setRewardPolicy] = useState({
     daily_points_limit: partner.daily_points_limit || 0,

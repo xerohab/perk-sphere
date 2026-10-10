@@ -2,7 +2,7 @@ import React, { createContext, useState, useContext, useEffect, useCallback, use
 import { useAuth } from "@/lib/AuthContext";
 import { base44 } from "@/api/base44Client";
 
-const ThemeContext = createContext();
+const ThemeContext = createContext(null);
 const STORAGE_KEY = "perk-theme";
 
 function getSystemPreference() {

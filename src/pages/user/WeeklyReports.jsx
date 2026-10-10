@@ -178,8 +178,8 @@ export default function WeeklyReports() {
               <div className="mt-3 space-y-2">
                 {activitiesByClass.map((c, i) => (
                   <div key={i} className="flex items-center justify-between text-sm">
-                    <span className="capitalize">{c.classification || c.type || "Unknown"}</span>
-                    <span className="font-medium">{c.count ?? c.value ?? 0}</span>
+                    <span className="capitalize">{c.classification || "Unknown"}</span>
+                    <span className="font-medium">{c.count ?? 0}</span>
                   </div>
                 ))}
               </div>
@@ -193,8 +193,8 @@ export default function WeeklyReports() {
               <div className="mt-3 space-y-2">
                 {activitiesByType.map((t, i) => (
                   <div key={i} className="flex items-center justify-between text-sm">
-                    <span className="capitalize">{t.type || t.activity_type || "Unknown"}</span>
-                    <span className="font-medium">{t.count ?? t.value ?? 0}</span>
+                    <span className="capitalize">{t.type || "Unknown"}</span>
+                    <span className="font-medium">{t.count ?? 0}</span>
                   </div>
                 ))}
               </div>

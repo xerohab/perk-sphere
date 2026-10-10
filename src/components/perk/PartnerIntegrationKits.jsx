@@ -1,6 +1,5 @@
 import React, { useState } from "react";
 import { Code2, ShoppingBag, Radio, FileText, CheckCircle2, Clock, ArrowRight, ChevronDown, ChevronUp, AlertCircle } from "lucide-react";
-import { Button } from "@/components/ui/button";
 
 // Catalog of integration kits. The Universal API Kit is available now — its
 // backend route (partnerEventIngest) exists and is deployed. WordPress and
@@ -108,7 +107,7 @@ function DocumentationSection({ title, children }) {
   );
 }
 
-export default function PartnerIntegrationKits({ onSelectKit }) {
+export default function PartnerIntegrationKits({ onSelectKit = null }) {
   return (
     <div className="space-y-4">
       <div className="rounded-xl border border-border bg-card p-4">

@@ -5,7 +5,7 @@ import { cn } from "@/lib/utils"
 import { buttonVariants } from "@/components/ui/button";
 
 const Pagination = ({
-  className,
+  className = "",
   ...props
 }) => (
   <nav
@@ -30,7 +30,7 @@ const PaginationItem = React.forwardRef(({ className, ...props }, ref) => (
 PaginationItem.displayName = "PaginationItem"
 
 const PaginationLink = ({
-  className,
+  className = "",
   isActive,
   size = "icon",
   ...props
@@ -46,7 +46,7 @@ const PaginationLink = ({
 PaginationLink.displayName = "PaginationLink"
 
 const PaginationPrevious = ({
-  className,
+  className = "",
   ...props
 }) => (
   <PaginationLink
@@ -61,7 +61,7 @@ const PaginationPrevious = ({
 PaginationPrevious.displayName = "PaginationPrevious"
 
 const PaginationNext = ({
-  className,
+  className = "",
   ...props
 }) => (
   <PaginationLink
@@ -76,7 +76,7 @@ const PaginationNext = ({
 PaginationNext.displayName = "PaginationNext"
 
 const PaginationEllipsis = ({
-  className,
+  className = "",
   ...props
 }) => (
   <span

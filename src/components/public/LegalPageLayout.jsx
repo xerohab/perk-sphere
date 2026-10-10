@@ -1,7 +1,7 @@
 import React from "react";
 import { Shield } from "lucide-react";
 
-export default function LegalPageLayout({ title, subtitle, lastUpdated, children }) {
+export default function LegalPageLayout({ title, subtitle = "", lastUpdated, children }) {
   return (
     <div className="mx-auto max-w-3xl px-4 py-16 sm:px-6">
       <div className="mb-10 text-center">

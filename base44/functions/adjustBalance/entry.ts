@@ -14,7 +14,7 @@ export default async function(req) {
     if (auth.error) return auth.error;
     const user = auth.user;
 
-    if (!userId || typeof amount !== 'number' || !isFinite(amount) || amount === 0) {
+    if (!userId || !Number.isSafeInteger(amount) || amount === 0) {
       return Response.json({ error: 'Missing or invalid parameters' }, { status: 400 });
     }
 

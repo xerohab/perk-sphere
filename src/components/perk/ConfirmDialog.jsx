@@ -11,7 +11,7 @@ import {
   AlertDialogTrigger
 } from "@/components/ui/alert-dialog";
 
-export default function ConfirmDialog({ trigger, title, description, confirmLabel = "Confirm", onConfirm, destructive }) {
+export default function ConfirmDialog({ trigger, title, description = "", confirmLabel = "Confirm", onConfirm, destructive = false }) {
   const [open, setOpen] = useState(false);
   return (
     <AlertDialog open={open} onOpenChange={setOpen}>

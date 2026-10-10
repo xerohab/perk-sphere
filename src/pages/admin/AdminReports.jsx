@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { FileText, Loader2, Eye, Archive, AlertCircle } from "lucide-react";
+import { Loader2, Eye, Archive, AlertCircle } from "lucide-react";
 import { base44 } from "@/api/base44Client";
 import PageHeader from "@/components/perk/PageHeader";
 import EmptyState from "@/components/perk/EmptyState";

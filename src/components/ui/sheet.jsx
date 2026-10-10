@@ -60,7 +60,7 @@ const SheetContent = React.forwardRef(({ side = "right", className, children, ..
 SheetContent.displayName = SheetPrimitive.Content.displayName
 
 const SheetHeader = ({
-  className,
+  className = "",
   ...props
 }) => (
   <div
@@ -70,7 +70,7 @@ const SheetHeader = ({
 SheetHeader.displayName = "SheetHeader"
 
 const SheetFooter = ({
-  className,
+  className = "",
   ...props
 }) => (
   <div

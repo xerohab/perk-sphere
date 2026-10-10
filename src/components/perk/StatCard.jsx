@@ -1,7 +1,7 @@
 import React from "react";
 import { cn } from "@/lib/utils";
 
-export default function StatCard({ label, value, sublabel, icon: Icon, accent }) {
+export default function StatCard({ label, value, sublabel = "", icon: Icon, accent = "" }) {
   return (
     <div className="rounded-2xl border border-border bg-card p-5 shadow-sm">
       <div className="flex items-start justify-between">

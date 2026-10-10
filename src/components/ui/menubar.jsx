@@ -169,7 +169,7 @@ const MenubarSeparator = React.forwardRef(({ className, ...props }, ref) => (
 MenubarSeparator.displayName = MenubarPrimitive.Separator.displayName
 
 const MenubarShortcut = ({
-  className,
+  className = "",
   ...props
 }) => {
   return (

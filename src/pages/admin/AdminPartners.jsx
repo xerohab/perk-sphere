@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { base44 } from "@/api/base44Client";
 import { useToast } from "@/components/ui/use-toast";
-import { Plus, Pencil, Trash2, KeyRound, Ban, AlertTriangle, ExternalLink, Activity, Package, Settings2, Eye, FileCheck, XCircle, RefreshCw, Rocket, Loader2, Link2, ShieldCheck, LifeBuoy, Globe, CheckCircle2, ShieldCheck as ShieldCheckIcon } from "lucide-react";
+import { Plus, Pencil, Trash2, KeyRound, Ban, AlertTriangle, ExternalLink, Activity, Package, Settings2, Eye, FileCheck, XCircle, RefreshCw, Rocket, Loader2, Link2, ShieldCheck, LifeBuoy, Globe, CheckCircle2 } from "lucide-react";
 import PageHeader from "@/components/perk/PageHeader";
 import EmptyState from "@/components/perk/EmptyState";
 import ConfirmDialog from "@/components/perk/ConfirmDialog";
@@ -69,7 +69,7 @@ const HEALTH_STYLES = {
 
 const empty = {
   name: "", partner_type: "custom_website", integration_kit_type: "universal_api", website_url: "", description: "", logo: "",
-  verified_domains: [], supported_event_types: [], allowed_task_types: [],
+  verified_domains: "", supported_event_types: [], allowed_task_types: [],
   setup_instructions: ""
 };
 

@@ -92,7 +92,7 @@ const CommandItem = React.forwardRef(({ className, ...props }, ref) => (
 CommandItem.displayName = CommandPrimitive.Item.displayName
 
 const CommandShortcut = ({
-  className,
+  className = "",
   ...props
 }) => {
   return (

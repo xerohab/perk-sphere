@@ -3,7 +3,7 @@ import { useSize } from "../../hooks/use-size"
 import { cn } from "../../lib/utils"
 import { DEFAULT_TRANSFORM_WIDTH, getImagePreviewClassName } from "./image-helpers"
 
-export function useResponsiveImage({ parsed, fittingType, focalPoint, quality, className, onLoad, onSourceChange }, parentRef) {
+export function useResponsiveImage({ parsed, fittingType, focalPoint, quality, className = "", onLoad, onSourceChange }, parentRef) {
   const wrapperRef = React.useRef(null)
   const imgRef = React.useRef(null)
   const size = useSize(wrapperRef)

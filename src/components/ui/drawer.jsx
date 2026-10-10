@@ -45,7 +45,7 @@ const DrawerContent = React.forwardRef(({ className, children, ...props }, ref) 
 DrawerContent.displayName = "DrawerContent"
 
 const DrawerHeader = ({
-  className,
+  className = "",
   ...props
 }) => (
   <div
@@ -55,7 +55,7 @@ const DrawerHeader = ({
 DrawerHeader.displayName = "DrawerHeader"
 
 const DrawerFooter = ({
-  className,
+  className = "",
   ...props
 }) => (
   <div className={cn("mt-auto flex flex-col gap-2 p-4", className)} {...props} />

@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { Clock, CheckCircle2, XCircle, Loader2, Award, AlertCircle } from "lucide-react";
+import { Clock, CheckCircle2, XCircle, Award, AlertCircle } from "lucide-react";
 import { base44 } from "@/api/base44Client";
 import PageHeader from "@/components/perk/PageHeader";
 import EmptyState from "@/components/perk/EmptyState";

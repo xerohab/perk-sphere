@@ -16,6 +16,11 @@ export default async function(req) {
       return Response.json({ error: 'Account is not permitted to redeem rewards' }, { status: 403 });
     }
 
+    const restrictions = await base44.asServiceRole.entities.Restriction.filter({ user_id: user.id, active: true, type: 'redemption_disabled' });
+    const now = Date.now();
+    if (restrictions.some((r) => (!r.start_date || new Date(r.start_date).getTime() <= now) && (!r.end_date || new Date(r.end_date).getTime() > now))) {
+      return Response.json({ error: 'Reward redemption is restricted for this account.' }, { status: 403 });
+    }
     const result = await redeemReward(base44.asServiceRole, { userId: user.id, rewardId });
     return Response.json({ ok: true, redemption: result.redemption, balance_after: result.balance_after });
   } catch (error) {

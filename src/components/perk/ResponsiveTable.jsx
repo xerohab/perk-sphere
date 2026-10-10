@@ -2,7 +2,7 @@ import React from "react";
 import EmptyState from "@/components/perk/EmptyState";
 
 // Table on desktop, stacked cards on mobile. Columns: { key, label, render?, align?, mono? }.
-export default function ResponsiveTable({ columns, rows, emptyTitle, emptyDescription, rowKey = "id" }) {
+export default function ResponsiveTable({ columns, rows, emptyTitle = "No records", emptyDescription = "", rowKey = "id" }) {
   if (!rows || rows.length === 0) {
     return <EmptyState title={emptyTitle || "No records"} description={emptyDescription} />;
   }

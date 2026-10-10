@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { Download, Copy, Check, ExternalLink, AlertTriangle, Shield, Globe, KeyRound, FileCheck, TestTube, Rocket, Loader2, XCircle } from "lucide-react";
+import { Download, Copy, Check, ExternalLink, AlertTriangle, Shield, Globe, KeyRound, FileCheck, TestTube, Rocket, Loader2 } from "lucide-react";
 import { base44 } from "@/api/base44Client";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";

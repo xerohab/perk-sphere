@@ -19,7 +19,7 @@ export default function PointsHistory() {
     (async () => {
       try {
         const t = await base44.entities.PointsTransaction.filter({ user_id: user?.id });
-        setTxns((t || []).sort((a, b) => new Date(b.created_date) - new Date(a.created_date)));
+        setTxns((t || []).sort((a, b) => new Date(b.created_date).getTime() - new Date(a.created_date).getTime()));
       } finally {
         setLoading(false);
       }

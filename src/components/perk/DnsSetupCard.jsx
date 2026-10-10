@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 // Shows the exact DNS record to publish, copy buttons for every field,
 // provider-specific instructions, a Verify Domain button, and
 // pending / verified / failed states.
-export default function DnsSetupCard({ domain, token, verified, verifying, error, onVerify, verifiedAt }) {
+export default function DnsSetupCard({ domain, token, verified, verifying, error, onVerify, verifiedAt = null }) {
   const [copied, setCopied] = useState(null);
   const [showProviderHelp, setShowProviderHelp] = useState(false);
 
