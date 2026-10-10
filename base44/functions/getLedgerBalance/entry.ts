@@ -19,7 +19,7 @@ export default async function (req: Request) {
         { status: result.status >= 400 && result.status <= 599 ? result.status : 503 }
       );
     }
-    return Response.json({ ok: true, data: result.data?.data || null }, {
+    return Response.json({ ok: true, data: result.data || null }, {
       headers: { 'Cache-Control': 'no-store' }
     });
   } catch (_error) {
