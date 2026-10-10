@@ -104,7 +104,7 @@ export default async function(req) {
       }
 
       const challengeData = challengeResult.data || {};
-      const challenge = challengeData.challenge_token;
+      const challenge = challengeData.challenge ?? challengeData.challenge_token;
       const expiresAt = challengeData.expires_at;
 
       if (!challenge) {
