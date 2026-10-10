@@ -25,7 +25,7 @@ export default function PartnerDetail({ partner, events, onClose, onRefresh }) {
   const [savingPolicy, setSavingPolicy] = useState(false);
   const [proofChallenge, setProofChallenge] = useState(null);
   const [proofChallengeId, setProofChallengeId] = useState(null);
-  const [proofForm, setProofForm] = useState({ timestamp: "", nonce: "", signature: "" });
+  const [proofSignature, setProofSignature] = useState("");
   const [verifyingProof, setVerifyingProof] = useState(false);
   const [creatingProof, setCreatingProof] = useState(false);
 
@@ -53,7 +53,7 @@ export default function PartnerDetail({ partner, events, onClose, onRefresh }) {
       if (data?.challenge) {
         setProofChallenge(data.challenge);
         setProofChallengeId(data.challenge_id);
-        setProofForm({ timestamp: "", nonce: "", signature: "" });
+        setProofSignature("");
       } else {
         toast({ title: "Failed", description: data?.error || "No challenge returned", variant: "destructive" });
       }
@@ -65,17 +65,27 @@ export default function PartnerDetail({ partner, events, onClose, onRefresh }) {
   };
 
   const verifyProof = async () => {
+    if (!proofSignature.trim()) {
+      toast({ title: "Signature required", variant: "destructive" });
+      return;
+    }
     setVerifyingProof(true);
     try {
-      await base44.functions.invoke("managePartner", {
+      const res = await base44.functions.invoke("managePartner", {
         action: "verifyProofOfPossession",
         partnerId: partner.id,
-        data: { challenge_id: proofChallengeId, ...proofForm }
+        data: { challenge_id: proofChallengeId, challenge: proofChallenge, signature: proofSignature.trim() }
       });
-      toast({ title: "Proof of possession verified" });
-      setProofChallenge(null);
-      setProofChallengeId(null);
-      onRefresh();
+      const body = res?.data || res;
+      if (body?.ok) {
+        toast({ title: "Proof of possession verified", description: "Credential ownership confirmed by Linux." });
+        setProofChallenge(null);
+        setProofChallengeId(null);
+        setProofSignature("");
+        onRefresh();
+      } else {
+        toast({ title: "Verification failed", description: body?.error || "Linux rejected the signature.", variant: "destructive" });
+      }
     } catch (e) {
       toast({ title: "Verification failed", description: e?.response?.data?.error || e.message, variant: "destructive" });
     } finally {
@@ -186,20 +196,30 @@ export default function PartnerDetail({ partner, events, onClose, onRefresh }) {
       {proofChallenge && (
         <div className="rounded-xl border border-indigo-300 bg-indigo-50 p-4 dark:border-indigo-700 dark:bg-indigo-950/30">
           <h3 className="text-sm font-semibold text-indigo-800 dark:text-indigo-300">Proof of Possession</h3>
-          <p className="mt-1 text-xs text-indigo-700 dark:text-indigo-400">The partner must sign this challenge with their HMAC secret to prove they hold it.</p>
-          <div className="mt-2 rounded-lg bg-white p-2 dark:bg-indigo-950/50">
-            <p className="break-all font-mono text-xs">{proofChallenge}</p>
-          </div>
+          <p className="mt-1 text-xs text-indigo-700 dark:text-indigo-400">The partner must sign the canonical string below with their HMAC secret to prove they hold it.</p>
           <div className="mt-3 space-y-2">
-            <div><Label className="text-xs">Timestamp (Unix seconds)</Label><Input value={proofForm.timestamp} onChange={(e) => setProofForm({ ...proofForm, timestamp: e.target.value })} className="mt-1 font-mono text-xs" placeholder="1696789200" /></div>
-            <div><Label className="text-xs">Nonce</Label><Input value={proofForm.nonce} onChange={(e) => setProofForm({ ...proofForm, nonce: e.target.value })} className="mt-1 font-mono text-xs" placeholder="unique-nonce-string" /></div>
-            <div><Label className="text-xs">Signature (HMAC-SHA256 hex)</Label><Input value={proofForm.signature} onChange={(e) => setProofForm({ ...proofForm, signature: e.target.value })} className="mt-1 font-mono text-xs" placeholder="abcdef..." /></div>
+            <div>
+              <Label className="text-xs">Challenge ID</Label>
+              <Input readOnly value={proofChallengeId || ""} className="mt-1 font-mono text-xs" />
+            </div>
+            <div>
+              <Label className="text-xs">Challenge</Label>
+              <Input readOnly value={proofChallenge} className="mt-1 font-mono text-xs" />
+            </div>
           </div>
-          <p className="mt-2 text-xs text-muted-foreground">Challenge ID: <code className="font-mono">{proofChallengeId}</code></p>
-          <p className="mt-1 text-xs text-muted-foreground">The partner signs the challenge with their HMAC secret and submits the signature. Verification is confirmed by the Linux API.</p>
+          <div className="mt-2 rounded-lg bg-white p-2 text-xs dark:bg-indigo-950/50">
+            <p className="font-medium text-indigo-800 dark:text-indigo-300">Canonical signing string:</p>
+            <p className="mt-1 break-all font-mono text-[11px] text-indigo-700 dark:text-indigo-400">PS-POSSESSION\n&lt;key_id&gt;\n&lt;challenge_id&gt;\n&lt;challenge&gt;</p>
+            <p className="mt-1.5 text-muted-foreground">The partner computes HMAC-SHA256(partner_secret, canonical_string) and returns the 64-char hex signature.</p>
+          </div>
+          <div className="mt-3">
+            <Label className="text-xs">Partner Signature (HMAC-SHA256 hex)</Label>
+            <Input value={proofSignature} onChange={(e) => setProofSignature(e.target.value)} className="mt-1 font-mono text-xs" placeholder="64-char hex signature" />
+          </div>
+          <p className="mt-2 text-xs text-muted-foreground">Verification is confirmed by the Linux API — Base44 never verifies the signature locally.</p>
           <div className="mt-3 flex gap-2">
-            <Button size="sm" onClick={verifyProof} disabled={verifyingProof || !proofForm.timestamp || !proofForm.nonce || !proofForm.signature}>{verifyingProof ? "Verifying..." : "Verify"}</Button>
-            <Button size="sm" variant="outline" onClick={() => { setProofChallenge(null); setProofChallengeId(null); }}>Cancel</Button>
+            <Button size="sm" onClick={verifyProof} disabled={verifyingProof || !proofSignature.trim()}>{verifyingProof ? "Verifying..." : "Submit to Linux"}</Button>
+            <Button size="sm" variant="outline" onClick={() => { setProofChallenge(null); setProofChallengeId(null); setProofSignature(""); }}>Cancel</Button>
           </div>
         </div>
       )}
