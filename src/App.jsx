@@ -76,6 +76,7 @@ const AdminSettings = lazy(() => import('@/pages/admin/AdminSettings'));
 const AdminDestinations = lazy(() => import('@/pages/admin/AdminDestinations'));
 const AdminTasks = lazy(() => import('@/pages/admin/AdminTasks'));
 const AdminPartners = lazy(() => import('@/pages/admin/AdminPartners'));
+const AdminPartnerRewards = lazy(() => import('@/pages/admin/AdminPartnerRewards'));
 const AdminDirectory = lazy(() => import('@/pages/admin/AdminDirectory'));
 const AdminDirectoryRequests = lazy(() => import('@/pages/admin/AdminDirectoryRequests'));
 const AdminQuizzes = lazy(() => import('@/pages/admin/AdminQuizzes'));
@@ -139,6 +140,7 @@ const AppRoutes = () => (
           <Route path="/admin/destinations" element={<AdminDestinations />} />
           <Route path="/admin/tasks" element={<AdminTasks />} />
           <Route path="/admin/partners" element={<AdminPartners />} />
+          <Route path="/admin/partner-rewards" element={<AdminPartnerRewards />} />
           <Route path="/admin/directory" element={<AdminDirectory />} />
           <Route path="/admin/directory-requests" element={<AdminDirectoryRequests />} />
           <Route path="/admin/quizzes" element={<AdminQuizzes />} />

@@ -31,6 +31,7 @@ const navItems = [
   { label: "Quizzes", path: "/admin/quizzes", icon: HelpCircle, permission: "tasks.view" },
   { label: "Game Rewards", path: "/admin/games", icon: HelpCircle, permission: "tasks.edit" },
   { label: "Partners", path: "/admin/partners", icon: Plug, permission: "partners.view" },
+  { label: "Partner Rewards", path: "/admin/partner-rewards", icon: Coins, permission: "partners.view" },
   { label: "Achievements", path: "/admin/achievements", icon: Award, permission: "achievements.view" },
   { label: "Restrictions", path: "/admin/restrictions", icon: Ban, permission: "restrictions.view" },
   { label: "Fraud Review", path: "/admin/fraud", icon: ShieldAlert, permission: "fraud.view" },

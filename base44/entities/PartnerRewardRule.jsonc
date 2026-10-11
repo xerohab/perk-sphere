@@ -1,0 +1,19 @@
+{
+  "name": "PartnerRewardRule",
+  "type": "object",
+  "properties": {
+    "rule_key": {"type": "string", "description": "global:EVENT or partner-id:EVENT"},
+    "partner_id": {"type": "string"},
+    "event_type": {"type": "string"},
+    "enabled": {"type": "boolean", "default": true},
+    "points": {"type": "number", "default": 10},
+    "xp": {"type": "number", "default": 5},
+    "daily_limit": {"type": "number", "default": 1},
+    "cooldown_seconds": {"type": "number", "default": 0},
+    "min_watch_seconds": {"type": "number", "default": 60},
+    "mode": {"type": "string", "enum": ["award", "reverse", "invalidate"], "default": "award"},
+    "updated_by": {"type": "string"},
+    "updated_at": {"type": "string", "format": "date-time"}
+  },
+  "required": ["rule_key", "event_type"]
+}
