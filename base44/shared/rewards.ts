@@ -1,6 +1,8 @@
 import { secrets } from "base44:runtime";
-function requireLegacyWritesAllowed() {
+import { assertLegacyWritesAllowed } from "./launchBalanceReset.ts";
+async function requireLegacyWritesAllowed(base44) {
   if (secrets.get("PERKSPHERE_LINUX_LEDGER_AUTHORITATIVE") === "true") throw new Error("legacy_base44_ledger_writes_disabled");
+  await assertLegacyWritesAllowed(base44);
 }
 import { checkedBalance, rewardEligibility, assertAccountEligible } from './rewardPolicy.ts';
 
@@ -9,7 +11,7 @@ import { checkedBalance, rewardEligibility, assertAccountEligible } from './rewa
 // server-side and every change produces a ledger transaction.
 
 export async function recalcRank(base44, userId) {
-  requireLegacyWritesAllowed();
+  await requireLegacyWritesAllowed(base44);
   const levels = await base44.entities.LoyaltyLevel.list('-minimum_xp', 100);
   const user = await base44.entities.User.get(userId);
   const xp = user.loyalty_xp || 0;
@@ -17,13 +19,15 @@ export async function recalcRank(base44, userId) {
   const achieved = active.find((l) => xp >= (l.minimum_xp || 0));
   const rank = achieved ? achieved.name : (active[active.length - 1] ? active[active.length - 1].name : 'Bronze');
   if (user.loyalty_rank !== rank) {
-    await base44.entities.User.update(userId, { loyalty_rank: rank });
+    await requireLegacyWritesAllowed(base44);
+    await requireLegacyWritesAllowed(base44);
+  await base44.entities.User.update(userId, { loyalty_rank: rank });
   }
   return rank;
 }
 
 export async function adjustPoints(base44, { userId, amount, type, reason, source, adminId, adminNote, relatedActivityId, relatedRedemptionId }) {
-  requireLegacyWritesAllowed();
+  await requireLegacyWritesAllowed(base44);
   const user = await base44.entities.User.get(userId);
   if (amount === 0) throw new Error('Amount must be non-zero.');
   const before = user.points_balance ?? 0;
@@ -41,12 +45,13 @@ export async function adjustPoints(base44, { userId, amount, type, reason, sourc
     admin_id: adminId || null,
     admin_note: adminNote || null
   });
+  await requireLegacyWritesAllowed(base44);
   await base44.entities.User.update(userId, { points_balance: after });
   return { transaction: txn, balance_before: before, balance_after: after };
 }
 
 export async function adjustXp(base44, { userId, amount, reason, source, adminId, adminNote, relatedActivityId }) {
-  requireLegacyWritesAllowed();
+  await requireLegacyWritesAllowed(base44);
   const user = await base44.entities.User.get(userId);
   if (amount === 0) throw new Error('Amount must be non-zero.');
   const before = user.loyalty_xp ?? 0;
@@ -62,13 +67,14 @@ export async function adjustXp(base44, { userId, amount, reason, source, adminId
     admin_id: adminId || null,
     admin_note: adminNote || null
   });
+  await requireLegacyWritesAllowed(base44);
   await base44.entities.User.update(userId, { loyalty_xp: after });
   const rank = await recalcRank(base44, userId);
   return { transaction: txn, xp_before: before, xp_after: after, rank };
 }
 
 export async function redeemReward(base44, { userId, rewardId }) {
-  requireLegacyWritesAllowed();
+  await requireLegacyWritesAllowed(base44);
   const user = await base44.entities.User.get(userId);
   const reward = await base44.entities.Reward.get(rewardId);
 
