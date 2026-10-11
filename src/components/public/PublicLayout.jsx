@@ -41,9 +41,7 @@ export default function PublicLayout() {
       <header className="safe-top sticky top-0 z-40 border-b border-border bg-background/80 pt-[env(safe-area-inset-top)] backdrop-blur">
         <div className="mx-auto flex h-16 max-w-6xl items-center justify-between px-4 sm:px-6">
           <Link to="/" className="flex items-center gap-2.5">
-            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-indigo-500 to-violet-500 text-white shadow-sm">
-              <span className="text-sm font-bold">P</span>
-            </div>
+            <img src="/perk-sphere-logo.png" alt="" className="h-12 w-12 object-contain" />
             <span className="text-base font-semibold tracking-tight">Perk Sphere</span>
           </Link>
 
@@ -108,9 +106,7 @@ export default function PublicLayout() {
           <div className="grid gap-8 md:grid-cols-4">
             <div className="md:col-span-2">
               <div className="flex items-center gap-2.5">
-                <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br from-indigo-500 to-violet-500 text-white">
-                  <span className="text-xs font-bold">P</span>
-                </div>
+                <img src="/perk-sphere-logo.png" alt="" className="h-12 w-12 object-contain" />
                 <span className="text-sm font-semibold">Perk Sphere</span>
               </div>
               <p className="mt-3 max-w-sm text-sm text-muted-foreground">

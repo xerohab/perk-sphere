@@ -96,9 +96,7 @@ export default function SidebarLayout({ brand, navItems, accentFrom, accentTo, c
 
   const BrandHeader = () => (
     <div className="flex items-center gap-3 px-5 py-5">
-      <div className="flex h-9 w-9 items-center justify-center rounded-xl text-white shadow-sm" style={{ background: `linear-gradient(135deg, ${accentFrom}, ${accentTo})` }}>
-        <span className="text-sm font-bold">P</span>
-      </div>
+      <img src="/perk-sphere-logo.png" alt="" className="h-12 w-12 object-contain" />
       <div>
         <p className="text-sm font-semibold leading-tight">{brand}</p>
         <p className="text-xs text-muted-foreground">perksphere.org</p>
@@ -133,9 +131,7 @@ export default function SidebarLayout({ brand, navItems, accentFrom, accentTo, c
         <div className="flex items-center gap-2">
           {isRootRoute ? (
             <>
-              <div className="flex h-8 w-8 items-center justify-center rounded-lg text-white" style={{ background: `linear-gradient(135deg, ${accentFrom}, ${accentTo})` }}>
-                <span className="text-xs font-bold">P</span>
-              </div>
+              <img src="/perk-sphere-logo.png" alt="" className="h-10 w-10 object-contain" />
               <span className="text-sm font-semibold">{brand}</span>
             </>
           ) : (
