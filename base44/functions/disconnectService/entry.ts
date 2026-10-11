@@ -39,7 +39,7 @@ export default async function(req) {
         try {
           const accessToken = await decryptToken(cred.encrypted_access_token, cred.access_token_iv, encKey);
           if (accessToken) {
-            if (provider === 'google') await revokeGoogleToken(accessToken);
+            if (provider !== 'x') await revokeGoogleToken(accessToken);
             else await revokeXToken(accessToken, providerCreds.clientId, providerCreds.clientSecret);
           }
         } catch (_e) { /* revocation failure is non-fatal */ }
