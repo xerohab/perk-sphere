@@ -19,7 +19,7 @@ export default function LaunchBalanceResetPanel() {
       const link=document.createElement('a'); link.href=url; link.download='perksphere-zero-launch-manifest.json'; link.click(); URL.revokeObjectURL(url);
       setMessage('Verified '+members.length+' members at zero Points and XP. The manifest has downloaded. Legacy rewards remain paused until launch setup is complete.');
     } catch(error) {
-      setMessage(error?.response?.data?.error || 'Reset interrupted. Retry to resume from the saved backups.');
+      setMessage(error?.response?.data?.error || 'Verification interrupted. Correct any remaining balance and retry.');
     } finally {setBusy(false);}
   }
   return <section className="mb-6 rounded-xl border p-4 space-y-3">
