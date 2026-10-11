@@ -1,3 +1,4 @@
+import {useMemberWallet,formatWalletInteger,rankXp} from "@/hooks/useMemberWallet";
 import React, { useEffect, useState } from "react";
 import { base44 } from "@/api/base44Client";
 import { useAuth } from "@/lib/AuthContext";
@@ -8,30 +9,30 @@ import ResponsiveTable from "@/components/perk/ResponsiveTable";
 export default function Loyalty() {
   const { user } = useAuth();
   const [levels, setLevels] = useState([]);
-  const [xpTxns, setXpTxns] = useState([]);
+  const {wallet,error,loading:walletLoading,refresh}=useMemberWallet();
+  const xpTxns=wallet?.xp || [];
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     (async () => {
       try {
-        const [l, x] = await Promise.all([
-          base44.entities.LoyaltyLevel.list('-minimum_xp', 50),
-          base44.entities.XpTransaction.filter({ user_id: user?.id })
+        const [l] = await Promise.all([
+          base44.entities.LoyaltyLevel.list('-minimum_xp', 50)
         ]);
         setLevels((l || []).filter((x) => x.active !== false).sort((a, b) => (a.minimum_xp || 0) - (b.minimum_xp || 0)));
-        setXpTxns((x || []).sort((a, b) => new Date(b.created_date).getTime() - new Date(a.created_date).getTime()));
       } finally {
         setLoading(false);
       }
     })();
   }, [user?.id]);
 
-  if (loading) {
+  if (loading || walletLoading) {
     return <div className="flex h-64 items-center justify-center"><div className="h-8 w-8 animate-spin rounded-full border-4 border-secondary border-t-foreground" /></div>;
   }
 
-  const xp = user?.loyalty_xp || 0;
-  const currentIdx = levels.findIndex((l) => l.name === user?.loyalty_rank);
+  const xp = rankXp(wallet?.loyalty_xp);
+  const rank = wallet ? (wallet.source === "legacy" ? user?.loyalty_rank || "Bronze" : [...levels].reverse().find(level=>xp >= (level.minimum_xp || 0))?.name || "Bronze") : "Unavailable";
+  const currentIdx = levels.findIndex((l) => l.name === rank);
   const xpCols = [
     { key: "created_date", label: "Date", render: (t) => new Date(t.created_date).toLocaleString() },
     { key: "reason", label: "Reason", render: (t) => t.reason || "—" },
@@ -41,18 +42,19 @@ export default function Loyalty() {
   return (
     <div>
       <PageHeader title="Loyalty Programme" description="Your Loyalty XP is separate from redeemable points and determines your rank" />
+      {error && <p role="alert">{error} <button type="button" className="underline" onClick={refresh}>Retry</button></p>}
       <div className="rounded-2xl border border-border bg-gradient-to-br from-violet-50 to-white p-6 shadow-sm dark:from-violet-950/20 dark:to-background">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
             <p className="text-xs uppercase tracking-wide text-violet-700 dark:text-violet-400">Current Rank</p>
             <div className="mt-1 flex items-center gap-2">
-              <span className="text-3xl font-bold text-violet-900 dark:text-violet-300">{user?.loyalty_rank || "Bronze"}</span>
-              <RankBadge rank={user?.loyalty_rank || "Bronze"} />
+              <span className="text-3xl font-bold text-violet-900 dark:text-violet-300">{rank}</span>
+              <RankBadge rank={rank} />
             </div>
           </div>
           <div className="text-right">
             <p className="text-xs uppercase tracking-wide text-violet-700 dark:text-violet-400">Total XP</p>
-            <p className="text-3xl font-bold text-violet-900 dark:text-violet-300">{xp.toLocaleString()} XP</p>
+            <p className="text-3xl font-bold text-violet-900 dark:text-violet-300">{formatWalletInteger(wallet?.loyalty_xp)} XP</p>
           </div>
         </div>
       </div>
@@ -60,7 +62,7 @@ export default function Loyalty() {
       <h3 className="mb-3 mt-8 text-sm font-semibold">Loyalty Levels</h3>
       <div className="space-y-3">
         {levels.map((l, i) => {
-          const achieved = xp >= (l.minimum_xp || 0);
+          const achieved = !!wallet && xp >= (l.minimum_xp || 0);
           const isCurrent = i === currentIdx;
           return (
             <div key={l.id} className={`rounded-2xl border p-4 ${isCurrent ? "border-violet-300 bg-violet-50 dark:border-violet-500/40 dark:bg-violet-950/20" : "border-border bg-card"}`}>
@@ -78,8 +80,8 @@ export default function Loyalty() {
         })}
       </div>
 
-      <h3 className="mb-3 mt-8 text-sm font-semibold">Recent XP Transactions</h3>
-      <ResponsiveTable columns={xpCols} rows={xpTxns} emptyTitle="No XP earned yet" />
+      <h3 className="mb-3 mt-8 text-sm font-semibold">Recent XP Operations (up to 100)</h3>
+      {!error && <ResponsiveTable columns={xpCols} rows={xpTxns} emptyTitle="No XP earned yet" />}
     </div>
   );
 }

@@ -1,3 +1,4 @@
+import { useMemberWallet, formatWalletInteger, rankXp } from "@/hooks/useMemberWallet";
 import React, { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { Coins, TrendingUp, Flame, Gift, Award, ArrowRight, Shield, BookOpen, HelpCircle, BarChart3, ClipboardCheck } from "lucide-react";
@@ -24,7 +25,8 @@ function startOfDay(d = new Date()) {
 export default function Dashboard() {
   const { user } = useAuth();
   const [levels, setLevels] = useState([]);
-  const [txns, setTxns] = useState([]);
+  const { wallet, error: walletError, loading: walletLoading, refresh: refreshWallet } = useMemberWallet();
+  const txns = wallet?.points?.slice(0, 6) || [];
   const [activities, setActivities] = useState([]);
   const [rewards, setRewards] = useState([]);
   const [achievements, setAchievements] = useState([]);
@@ -39,9 +41,8 @@ export default function Dashboard() {
   const loadData = async () => {
     setLoading(true);
     try {
-      const [lv, t, a, r, ua, tk, tp] = await Promise.all([
+      const [lv, a, r, ua, tk, tp] = await Promise.all([
         base44.entities.LoyaltyLevel.list('-minimum_xp', 50),
-        base44.entities.PointsTransaction.list('-created_date', 6),
         base44.entities.Activity.list('-created_date', 6),
         base44.entities.Reward.list('-created_date', 4),
         base44.entities.UserAchievement.list('-created_date', 4),
@@ -49,7 +50,6 @@ export default function Dashboard() {
         base44.entities.TaskProgress.filter({ user_id: user?.id })
       ]);
       setLevels(lv || []);
-      setTxns(t || []);
       setActivities(a || []);
       setRewards((r || []).filter((x) => x.active !== false));
       setAchievements(ua || []);
@@ -62,28 +62,29 @@ export default function Dashboard() {
 
   useEffect(() => { loadData(); }, []);
 
-  const xp = user?.loyalty_xp || 0;
-  const points = user?.points_balance || 0;
+  const xp = rankXp(wallet?.loyalty_xp);
+  const points = wallet?.points_balance;
   const activeLevels = levels.filter((l) => l.active !== false).sort((a, b) => (a.minimum_xp || 0) - (b.minimum_xp || 0));
   const currentLevel = [...activeLevels].reverse().find((l) => xp >= (l.minimum_xp || 0));
   const nextLevel = activeLevels.find((l) => (l.minimum_xp || 0) > xp);
-  const rank = user?.loyalty_rank || currentLevel?.name || "Bronze";
+  const rank = wallet ? (wallet.source === "legacy" ? user?.loyalty_rank || currentLevel?.name || "Bronze" : currentLevel?.name || "Bronze") : "Unavailable";
   const progressMax = nextLevel ? nextLevel.minimum_xp : (currentLevel?.minimum_xp || 0);
   const progressBase = currentLevel?.minimum_xp || 0;
   const xpToNext = nextLevel ? nextLevel.minimum_xp - xp : 0;
 
   const today = startOfDay().toISOString();
-  const todayPoints = txns.filter((t) => new Date(t.created_date) >= new Date(today) && t.amount > 0).reduce((s, t) => s + t.amount, 0);
+  const todayPoints = txns.filter((t) => new Date(t.created_date) >= new Date(today) && t.amount > 0).reduce((sum, t) => sum + BigInt(t.amount), 0n).toString();
 
-  if (loading) {
+  if (loading || walletLoading) {
     return <div className="flex h-64 items-center justify-center"><div className="h-8 w-8 animate-spin rounded-full border-4 border-secondary border-t-foreground" /></div>;
   }
 
   return (
-    <PullToRefresh onRefresh={loadData}>
+    <PullToRefresh onRefresh={() => Promise.all([loadData(), refreshWallet()])}>
       <div>
         <PageHeader title={`Welcome back, ${user?.display_name || user?.username || user?.email?.split("@")[0] || "Member"}`} description="Your Perk Sphere rewards overview" />
 
+        {walletError && <div role="alert" className="mb-4 rounded-xl border p-4">{walletError} <button type="button" className="underline" onClick={refreshWallet}>Retry</button></div>}
         {/* Admin access */}
         {user?.role === "admin" && (
           <Link to="/admin" className="mt-4 flex items-center justify-between rounded-2xl border border-indigo-200 bg-gradient-to-r from-indigo-50 to-violet-50 p-4 shadow-sm transition-shadow hover:shadow-md dark:border-indigo-900 dark:from-indigo-950/30 dark:to-violet-950/30">
@@ -106,14 +107,14 @@ export default function Dashboard() {
             <div className="flex items-center gap-2 text-xs font-medium uppercase tracking-wide text-indigo-700 dark:text-indigo-400">
               <Coins className="h-4 w-4" /> Points Balance
             </div>
-            <p className="mt-3 text-4xl font-bold tracking-tight text-indigo-900 dark:text-indigo-300">{points.toLocaleString()}</p>
+            <p className="mt-3 text-4xl font-bold tracking-tight text-indigo-900 dark:text-indigo-300">{formatWalletInteger(points)}</p>
             <p className="mt-1 text-xs text-indigo-600/70">Redeemable for rewards</p>
           </div>
           <div className="rounded-2xl border border-border bg-gradient-to-br from-amber-50 to-white dark:from-amber-950/20 dark:to-background p-6 shadow-sm">
             <div className="flex items-center gap-2 text-xs font-medium uppercase tracking-wide text-amber-700 dark:text-amber-400">
               <TrendingUp className="h-4 w-4" /> Loyalty XP
             </div>
-            <p className="mt-3 text-4xl font-bold tracking-tight text-amber-900 dark:text-amber-300">{xp.toLocaleString()} XP</p>
+            <p className="mt-3 text-4xl font-bold tracking-tight text-amber-900 dark:text-amber-300">{formatWalletInteger(wallet?.loyalty_xp)} XP</p>
             <p className="mt-1 text-xs text-amber-600/70">Not redeemable — builds your rank</p>
           </div>
           <div className="rounded-2xl border border-border bg-gradient-to-br from-violet-50 to-white dark:from-violet-950/20 dark:to-background p-6 shadow-sm">
@@ -125,13 +126,13 @@ export default function Dashboard() {
               <RankBadge rank={rank} />
             </div>
             <p className="mt-1 text-xs text-violet-600/70">
-              {nextLevel ? `${xpToNext.toLocaleString()} XP until ${nextLevel.name}` : "Highest rank achieved"}
+              {wallet ? (nextLevel ? `${xpToNext.toLocaleString()} XP until ${nextLevel.name}` : "Highest rank achieved") : "Balance unavailable"}
             </p>
           </div>
         </div>
 
         {/* Rank progress */}
-        <div className="mt-4 rounded-2xl border border-border bg-card p-6 shadow-sm">
+        {wallet && <div className="mt-4 rounded-2xl border border-border bg-card p-6 shadow-sm">
           <div className="flex items-center justify-between text-sm">
             <span className="font-medium">{rank}</span>
             <span className="text-muted-foreground">{nextLevel ? `${xp.toLocaleString()} / ${progressMax.toLocaleString()} XP` : "Max rank"}</span>
@@ -140,9 +141,10 @@ export default function Dashboard() {
           {nextLevel && <p className="mt-2 text-xs text-muted-foreground">{xpToNext.toLocaleString()} XP until {nextLevel.name}</p>}
         </div>
 
+        }
         {/* Quick stats */}
         <div className="mt-4 grid gap-4 sm:grid-cols-3">
-          <StatCard label="Today's Points" value={`+${todayPoints}`} icon={Coins} />
+          <StatCard label="Recent Points Today" value={wallet ? `+${todayPoints}` : "Unavailable"} icon={Coins} />
           <StatCard label="Current Streak" value={`${user?.streak_current || 0} days`} icon={Flame} accent="text-orange-600" />
           <StatCard label="Longest Streak" value={`${user?.streak_longest || 0} days`} icon={Flame} />
         </div>
@@ -194,7 +196,7 @@ export default function Dashboard() {
               <h3 className="text-sm font-semibold">Recent Points Transactions</h3>
               <Link to="/points-history" className="text-xs text-indigo-600 hover:underline">View all</Link>
             </div>
-            {txns.length === 0 ? (
+            {walletError ? <p role="status">History unavailable</p> : txns.length === 0 ? (
               <EmptyState title="No transactions yet" description="Points you earn or spend will appear here." />
             ) : (
               <ul className="space-y-3">

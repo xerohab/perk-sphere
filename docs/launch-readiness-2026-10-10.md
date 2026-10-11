@@ -21,6 +21,41 @@ The other 13 repositories were not modified: plugins, testplugins, newnew, fixed
 
 Newer commits on the existing launch branches were incorporated before this batch. In particular, the API's existing work/perksphere-ledger-integration implementation, migrations, cutover gates, tests and routes were preserved. No branch was reset or force-pushed.
 
+## Latest verified batch — ledger delivery and wallet reads
+
+Thirteen real isolated MariaDB tests now pass: five ledger/refund, five games,
+and three delivery tests. API main is `4c1ee0aa1130a2a1d9da93b2748ada52c33e1c10`.
+The delivery consumer is implemented but remains disabled and unscheduled.
+It uses leases, attempt generations, bounded backoff and exact acknowledgement
+binding. Base44 receives signed receipts without changing user balances.
+Receipts have at-least-once semantics; duplicate display receipts are possible,
+while financial operations remain idempotent in Linux.
+
+Perk Sphere passes 65 offline tests. Dashboard, points history and loyalty now
+use a server-selected member wallet bridge. The cutover flag selects Linux;
+failed Linux reads cannot fall back to cached Base44 balances. Before cutover,
+existing member-scoped legacy history/balances remain in use. BIGINT balances
+and deltas retain decimal-string precision; the UI formats them without rounding.
+History is bounded to 100 ledger operations and is not a complete historical
+export. Linux balance and history are separate reads, not a single atomic snapshot.
+
+The selected game descriptions are fixed on Perk Sphere main. The same fix
+only changes The Front Row's newly added central reward-games page; its existing
+game descriptions and selection are untouched.
+
+Publication checkpoints: Perk Sphere main may be previewed in its existing app.
+Publish the new member-wallet function alongside the corresponding frontend;
+verify login, dashboard, points history and loyalty in preview first. Keep the
+ledger-authoritative, game and delivery flags disabled until a reviewed cutover.
+The new receipt entity and trustedActivityBridge must be published together
+before enabling delivery. No live service restart, ledger population or schema
+migration has occurred. Do not run the one-shot consumer against production yet.
+
+The remaining blockers are production ledger population/cutover, retirement of
+legacy writers, authenticated runtime verification, coordinated Linux deployment,
+new partner provisioning/verification, general partner reward adapters, and the
+remaining security/build-tool and legacy Front Row typecheck findings.
+
 ## Current status — 11 October 2026 game and partner batch
 
 This section supersedes historical counts and preservation statements below.
