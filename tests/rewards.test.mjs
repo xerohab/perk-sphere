@@ -5,6 +5,7 @@ globalThis.__testSecrets = { get PERKSPHERE_LINUX_LEDGER_AUTHORITATIVE() { retur
 function fixture({ points = 100, xp = 50, reward = {}, rank = 'Bronze' } = {}) {
   const writes = [];
   const api = { entities: {
+    Setting: { filter: async () => [] },
     User: { get: async () => ({ points_balance: points, loyalty_xp: xp, loyalty_rank: rank }), update: async (...args) => { writes.push(args); } },
     PointsTransaction: { create: async (data) => { writes.push(data); return data; } },
     XpTransaction: { create: async (data) => { writes.push(data); return data; } },
