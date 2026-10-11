@@ -2,7 +2,7 @@ import { createClientFromRequest } from 'npm:@base44/sdk@0.8.52';
 import { secrets } from 'base44:runtime';
 import {
   sha256Hex, getProviderSecrets,
-  exchangeGoogleCode, exchangeXCode, getGoogleUserInfo, getXUserInfo,
+  exchangeGoogleCode, exchangeXCode, getGoogleUserInfo, getXUserInfo, getYouTubeUserInfo,
   encryptToken, ALLOWED_PROVIDERS
 } from '../../shared/oauth.ts';
 
@@ -71,7 +71,7 @@ export default async function(req) {
     // Stage 3: Token exchange.
     let tokenData;
     try {
-      if (provider === 'google') {
+      if (provider !== 'x') {
         tokenData = await exchangeGoogleCode(code, creds.redirectUri, stateRec.code_verifier, creds.clientId, creds.clientSecret);
       } else {
         tokenData = await exchangeXCode(code, creds.redirectUri, stateRec.code_verifier, creds.clientId, creds.clientSecret);
@@ -84,7 +84,9 @@ export default async function(req) {
     // Stage 4: Identity lookup.
     let userInfo;
     try {
-      if (provider === 'google') {
+      if (provider === 'youtube') {
+        userInfo = await getYouTubeUserInfo(tokenData.access_token);
+      } else if (provider === 'google') {
         userInfo = await getGoogleUserInfo(tokenData.access_token);
       } else {
         userInfo = await getXUserInfo(tokenData.access_token);
