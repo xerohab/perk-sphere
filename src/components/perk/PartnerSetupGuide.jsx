@@ -275,11 +275,15 @@ export default function PartnerSetupGuide({ partner, onUpdateChecklist, onRefres
       if (body?.ok && body?.test_event_verified === true) {
         toast({ title: "Test event verified", description: "The partner may now proceed to activation approval." });
         if (onRefresh) onRefresh();
+      } else if (body?.ok && body?.test_event_verified === false) {
+        toast({ title: "No verified test event yet", description: body.message || "Linux has not received a signed test event for this credential." });
       } else {
-        toast({ title: "Test event verification failed", description: body?.error || "Test event not found or not processed.", variant: "destructive" });
+        toast({ title: "Linux test status unavailable", description: body?.error || body?.message || `Unexpected verification response${body?.code ? ` (${body.code})` : ""}.`, variant: "destructive" });
       }
     } catch (e) {
-      toast({ title: "Failed", description: e?.response?.data?.error || e.message, variant: "destructive" });
+      const payload = e?.response?.data;
+      const detail = typeof payload?.error === "string" ? payload.error : payload?.error?.message;
+      toast({ title: "Linux test status request failed", description: detail || payload?.message || e.message, variant: "destructive" });
     } finally {
       setVerifyingTest(false);
     }
