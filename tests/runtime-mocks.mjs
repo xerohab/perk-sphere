@@ -9,7 +9,7 @@ registerHooks({
   },
   load(url, context, nextLoad) {
     if (url === 'mock:sdk') return { format: 'module', source: 'export const createClientFromRequest = () => globalThis.__testClient;', shortCircuit: true };
-    if (url === 'mock:runtime') return { format: 'module', source: 'export const secrets = { get: key => globalThis.__testSecrets?.[key] };', shortCircuit: true };
+    if (url === 'mock:runtime') return { format: 'module', source: 'export const secrets = { get: key => globalThis.__testSecrets?.[key] }; export const waitUntil = promise => promise.catch(() => {});', shortCircuit: true };
     return nextLoad(url, context);
   }
 });

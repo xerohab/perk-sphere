@@ -6,18 +6,35 @@ Release decision: **HOLD — not production-ready.** This report records develop
 
 ## Repository scope
 
-All 17 repositories exposed by the connected xerohab account were inventoried. Four were confirmed relevant through their code and integration contracts:
+All 17 repositories exposed by the connected xerohab account were inventoried. Four were initially confirmed relevant through their code and integration contracts. Subsequent owner clarification added The Front Row and DKO Entertainment, bringing the platform scope to six repositories:
 
 | Repository | Platform responsibility | Development branch |
 |---|---|---|
 | xerohab/perk-sphere | Base44 member/admin frontend, authentication, tasks, legacy Points/XP, Linux bridges | launch-readiness-2026-10-10 |
 | xerohab/perk-sphere-api | Linux API, HMAC authentication, events, directory, quizzes, reports, ledger/redemption preparation | launch-readiness-2026-10-10 |
 | xerohab/dko-wrestling | DKO partner account linking and activity submission | launch-readiness-2026-10-10 |
-| xerohab/xero-streams | XeroStreams partner linking, viewing activity, PayPal donations and purchases | launch-readiness-2026-10-10 |
+| xerohab/xero-streams | Partner linking; existing payments excluded from changes in this release | launch-readiness-2026-10-10; selective release branch |
+| xerohab/the-front-row | New partner connection and central reward-game pages | launch-readiness-2026-10-10 |
+| xerohab/dko-entertainment | New partner connection in member profile | launch-readiness-2026-10-10 |
 
 The other 13 repositories were not modified: plugins, testplugins, newnew, fixedplugins, Nitro-V3, Polaris-Emulator, Octane-Renderer, atomcustom, dbbackups, changelogs, gamedata, loungebot, Project-XeroX. Root listings and available documentation identified unrelated hotel/emulator/bot assets. Unrelated backup contents were not opened. This inventory covers the connection's exposed repositories, not undisclosed infrastructure or inaccessible repositories.
 
 Newer commits on the existing launch branches were incorporated before this batch. In particular, the API's existing work/perksphere-ledger-integration implementation, migrations, cutover gates, tests and routes were preserved. No branch was reset or force-pushed.
+
+## Current status — 11 October 2026 game and partner batch
+
+This section supersedes historical counts and preservation statements below.
+
+- Perk Sphere logo/favicon source is on main. Main also has an external Base44 package-lock update; that update is preserved when branching new work.
+- Perk Sphere game frontend and admin policies pass 59 offline tests, lint, typecheck and syntax checks. Three native games use server challenges: Number Memory, Quick Maths and Reverse Code. Admins configure time, points and XP with optimistic version checks and transactional policy audit.
+- API passes 84 offline tests. Five real MariaDB ledger/redemption/refund tests passed on the owner's isolated server database. Five new game database tests remain pending. Game API development commit: `d7417ce39e8f14d2311fd9fa34ace2562859d748`; API main remains the verified refund commit `9b11e237c1f8d5406938f3e1320dffcdd5496684`.
+- The Front Row: 8 scoped tests and lint/build/resource syntax pass. Whole-app typecheck still has 4324 legacy diagnostics. Public creator responses now whitelist public fields; arbitrary iframe URL schemes and same-origin embeds are rejected. Its existing iframe games do not earn Perk Sphere rewards; new central challenge games have a separate page.
+- DKO Entertainment: 4 scoped tests, lint, typecheck, build and syntax pass. Existing payments are unchanged. Its connector is disabled until separately provisioned and verified.
+- The two new partners are not activated or provisioned. Existing partner identities, keys and two verified links remain unchanged. Frontend audits retain seven build-chain findings (five high, two moderate).
+- The 400-point legacy redemption was explicitly cancelled earlier; no refund or account balance reset was performed. Live Linux partner/link checks confirmed the two existing partners and one verified link each. The production backup restored successfully in an isolated non-networked MariaDB instance; all 29 tables passed CHECK TABLE.
+- Game rewards default off. They also require authoritative ledger cutover, trusted account eligibility and a working delivery/read path. The authoritative ledger outbox consumer and general independently verified partner reward processing remain launch blockers. Do not enable features solely because tests pass.
+
+Publishing instructions: preview the existing Base44 app after GitHub sync; do not create a new app. Publish only after checking the complete synced change set and coordinated backend requirements. Local builds are compilation evidence, not a deployed runtime test. Do not upload local dist files or enable partner/reward flags yet. No production service has been restarted, schema migrated or site published by this work.
 
 ## Preservation
 

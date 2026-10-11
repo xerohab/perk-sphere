@@ -46,6 +46,7 @@ const Tasks = lazy(() => import('@/pages/user/Tasks'));
 const Directory = lazy(() => import('@/pages/user/Directory'));
 const DirectoryRequests = lazy(() => import('@/pages/user/DirectoryRequests'));
 const Quizzes = lazy(() => import('@/pages/user/Quizzes'));
+const Games = lazy(() => import('@/pages/user/Games'));
 const WeeklyReports = lazy(() => import('@/pages/user/WeeklyReports'));
 const RewardReview = lazy(() => import('@/pages/user/RewardReview'));
 
@@ -78,6 +79,7 @@ const AdminPartners = lazy(() => import('@/pages/admin/AdminPartners'));
 const AdminDirectory = lazy(() => import('@/pages/admin/AdminDirectory'));
 const AdminDirectoryRequests = lazy(() => import('@/pages/admin/AdminDirectoryRequests'));
 const AdminQuizzes = lazy(() => import('@/pages/admin/AdminQuizzes'));
+const AdminGames = lazy(() => import('@/pages/admin/AdminGames'));
 const AdminReports = lazy(() => import('@/pages/admin/AdminReports'));
 const AdminRewardReview = lazy(() => import('@/pages/admin/AdminRewardReview'));
 
@@ -115,6 +117,7 @@ const AppRoutes = () => (
           <Route path="/directory" element={<Directory />} />
           <Route path="/directory-requests" element={<DirectoryRequests />} />
           <Route path="/quizzes" element={<Quizzes />} />
+          <Route path="/games" element={<Games />} />
           <Route path="/weekly-reports" element={<WeeklyReports />} />
           <Route path="/reward-review" element={<RewardReview />} />
           <Route path="/rewards" element={<Rewards />} />
@@ -139,6 +142,7 @@ const AppRoutes = () => (
           <Route path="/admin/directory" element={<AdminDirectory />} />
           <Route path="/admin/directory-requests" element={<AdminDirectoryRequests />} />
           <Route path="/admin/quizzes" element={<AdminQuizzes />} />
+          <Route path="/admin/games" element={<AdminGames />} />
           <Route path="/admin/reports" element={<AdminReports />} />
           <Route path="/admin/reward-review" element={<AdminRewardReview />} />
           <Route path="/admin/points" element={<AdminPoints />} />

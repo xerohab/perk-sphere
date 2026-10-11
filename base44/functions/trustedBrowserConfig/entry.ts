@@ -1,7 +1,8 @@
 import { createClientFromRequest } from "npm:@base44/sdk@0.8.52";
-import { waitUntil } from "base44:runtime";
+import { waitUntil, secrets } from "base44:runtime";
 import { verifyTrustedRequest, pruneExpiredNonces } from "../../shared/hmac.ts";
 import { writeAudit } from "../../shared/permissions.ts";
+import { assertAccountEligible } from "../../shared/rewardPolicy.ts";
 import {
   isTaskAvailable,
   isEventWindowOpen,
@@ -119,6 +120,24 @@ export default async function (req) {
     // 2. Parse + validate request body.
     const body = JSON.parse(auth.rawBody || "{}");
     const { user_reference, client_type, client_version } = body;
+
+    // Signed Linux-only eligibility query. No game duration or rewards are
+    // accepted here; Linux owns those decisions. Existing config flow is intact.
+    if (body.action === 'game_eligibility') {
+      if (Object.keys(body).sort().join(',') !== 'action,user_reference' ||
+          typeof user_reference !== 'string' || !/^[A-Za-z0-9_:@.-]{1,191}$/.test(user_reference)) {
+        return err('invalid_game_eligibility_request','Invalid member reference.',400);
+      }
+      const gameUser = await admin.entities.User.get(user_reference).catch(() => null);
+      const gameRestrictions = gameUser ? await admin.entities.Restriction.filter({user_id:gameUser.id}) : [];
+      let eligible = false;
+      try {
+        assertAccountEligible(gameUser,gameRestrictions,'earn game rewards');
+        eligible = secrets.get('PERKSPHERE_LINUX_LEDGER_AUTHORITATIVE') === 'true';
+      }
+      catch { eligible = false; }
+      return Response.json({ok:true,data:{user_reference,eligible}}, {headers:{'Cache-Control':'no-store'}});
+    }
 
     if (!user_reference || typeof user_reference !== "string") {
       return err("missing_user_reference", "user_reference is required.", 400);
