@@ -162,6 +162,7 @@ export default function PartnerSetupGuide({ partner, onUpdateChecklist, onRefres
   const [verifyingDomain, setVerifyingDomain] = useState(false);
   const [proofChallenge, setProofChallenge] = useState(null);
   const [proofLoading, setProofLoading] = useState(false);
+  const [syncingProof, setSyncingProof] = useState(false);
   const [proofSignature, setProofSignature] = useState("");
   const [testEventId, setTestEventId] = useState("");
   const [verifyingTest, setVerifyingTest] = useState(false);
@@ -203,6 +204,19 @@ export default function PartnerSetupGuide({ partner, onUpdateChecklist, onRefres
     } finally {
       setVerifyingDomain(false);
     }
+  };
+
+  const syncProofStatus = async () => {
+    setSyncingProof(true);
+    try {
+      const res = await base44.functions.invoke('managePartner', { action: 'syncProofStatus', partnerId: partner.id });
+      const body = res?.data || res;
+      if (!body?.ok || !body?.possession_verified) throw new Error(body?.error || body?.message || 'Linux has not verified this credential.');
+      toast({ title: 'Linux proof synchronised' });
+      if (onRefresh) await onRefresh();
+    } catch (e) {
+      toast({ title: 'Proof sync failed', description: e?.response?.data?.error || e.message, variant: 'destructive' });
+    } finally { setSyncingProof(false); }
   };
 
   const generateProofChallenge = async () => {
@@ -361,10 +375,15 @@ export default function PartnerSetupGuide({ partner, onUpdateChecklist, onRefres
                 {isLinux && step.key === "proof_of_possession" && !done && (
                   <div className="ml-8 mt-1.5 space-y-2">
                     {!proofChallenge ? (
+                      <div className="flex flex-wrap gap-2">
+                      <Button size="sm" variant="outline" onClick={syncProofStatus} disabled={syncingProof}>
+                        Sync verified proof from Linux
+                      </Button>
                       <Button size="sm" variant="outline" onClick={generateProofChallenge} disabled={proofLoading}>
                         {proofLoading ? <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" /> : <KeyRound className="mr-1.5 h-3.5 w-3.5" />}
                         Generate Challenge
                       </Button>
+                      </div>
                     ) : (
                       <div className="space-y-2 rounded-lg border border-border bg-secondary/50 p-3">
                         <div>
@@ -399,7 +418,7 @@ export default function PartnerSetupGuide({ partner, onUpdateChecklist, onRefres
                   <div className="ml-8 mt-1.5">
                     <div className="rounded-lg border border-amber-300 bg-amber-50 p-3 text-xs text-amber-700 dark:border-amber-700 dark:bg-amber-950/30 dark:text-amber-400">
                       <p className="flex items-center gap-1.5 font-medium"><TestTube className="h-3.5 w-3.5" /> Awaiting backend test verification</p>
-                      <p className="mt-1">The Linux event receiver requires an active partner. Pre-activation test events are not supported. Test event verification will be performed in a controlled post-activation environment. Do not activate a partner solely to test events.</p>
+                      <p className="mt-1">Linux supports signed pre-activation validation at POST /partners/test-event without storing events or issuing rewards. PerkSphere's test verification workflow is not connected yet. Do not activate a partner solely to test events.</p>
                     </div>
                   </div>
                 )}
