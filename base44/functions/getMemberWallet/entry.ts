@@ -1,3 +1,4 @@
+import {ensureLinuxWallet} from '../../shared/memberWalletEnrollment.ts';
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.52';
 import { secrets } from 'base44:runtime';
 import { linuxTrustedPost } from '../../shared/linuxClient.ts';
@@ -14,6 +15,7 @@ export default async function(req:Request){
   if(!user?.id)return Response.json({ok:false,error:'unauthorized'},{status:401,headers});
   const body=await req.json();if(!body||typeof body!=='object'||Array.isArray(body)||Object.keys(body).length)return Response.json({ok:false,error:'invalid_request'},{status:400,headers});
   if(secrets.get('PERKSPHERE_LINUX_LEDGER_AUTHORITATIVE')==='true'){
+   await ensureLinuxWallet(String(user.id));
    const actor={role:'member',user_reference:String(user.id)};
    const [balance,history]=await Promise.all([linuxTrustedPost('/v1/perk-sphere/ledger/balance',{actor}),linuxTrustedPost('/v1/perk-sphere/ledger/history',{actor})]);
    if(!balance.ok||!history.ok||!balance.data||!Array.isArray(history.data)||history.data.length>100)throw Error('ledger_unavailable');
