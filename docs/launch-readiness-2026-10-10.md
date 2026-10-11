@@ -2,7 +2,7 @@
 
 Validation finalized 11 October 2026; the existing branch and report identifiers are retained.
 
-Release decision: **HOLD — not production-ready.** This report records development work and offline evidence. It does not authorize deployment, partner activation, migration, account imports, or a merge into main.
+Release decision: **HOLD — not production-ready.** This report records development work and offline evidence. The owner subsequently authorised main updates; selected release changes are now on main. Production publication, partner activation and migration remain unapproved.
 
 ## Repository scope
 
@@ -81,9 +81,9 @@ All tests use mocks or isolated local HTTP servers. No live partner, PayPal, Bas
 | perk-sphere | 53 passing | Pass | Pass | Pass | Pass | 7 findings: 5 high, 2 moderate |
 | perk-sphere-api | 71 passing | No configured lint suite | JavaScript syntax checked | Pass for changed JS | Not applicable | 0 findings |
 | dko-wrestling | 4 passing | Pass | Pass | Pass | Pass | 7 findings: 5 high, 2 moderate |
-| xero-streams | 15 passing | Pass | Pass | Pass | Pass | 7 findings: 5 high, 2 moderate |
+| xero-streams selected main release | 6 partner tests passing | Inherited 54 errors | Inherited frontend errors | Pass | Pass | 7 findings: 5 high, 2 moderate |
 
-143 passing offline tests total, plus four isolated MariaDB checks (see the server verification update). Coverage includes independent HMAC comparison, nonce format, actor/privilege boundaries, restriction/rank/stock validation, sequential idempotency, ledger rollback/outbox failures, BIGINT handling, immutable archives and ownership, payment capability validation, server price selection, fulfillment identity and entity write policy.
+Current selected main releases pass 134 offline tests plus four isolated MariaDB checks. The broader deferred XeroStreams development branch separately passes 15 tests; those payment changes are excluded from this release. Coverage includes independent HMAC comparison, nonce format, actor/privilege boundaries, restriction/rank/stock validation, sequential idempotency, ledger rollback/outbox failures, BIGINT handling, immutable archives and ownership, payment capability validation, server price selection, fulfillment identity and entity write policy.
 
 Remaining audit findings are in the Tailwind 3 build chain (braces, chokidar, fast-glob, micromatch, postcss-nested, postcss-selector-parser, tailwindcss). They need a supported toolchain migration and visual regression checks. No forced major Tailwind migration was performed. A successful build is not a clean security audit.
 
@@ -260,3 +260,18 @@ Both Linux partner integrations are already active with verification enabled, ac
 The owner explicitly cancelled the 400-point Base44 redemption; its status is now cancelled, its history retained and no refund was issued. Existing Base44 Points/XP remain unchanged. Linux ledger tables remain empty, redemption tables absent in production, and rollout flags unset. Fresh-start balance reset and coordinated ledger migration have not been executed.
 
 Current offline suites: Perk Sphere 53, Linux API 71, DKO 4, XeroStreams 15; 143 total, plus four isolated MariaDB checks. Payment changes are excluded from the requested same-day release and remain on the XeroStreams development branch. No Base44 publication or Linux production deployment has been performed. Full rewards issuance, independent verifiers, outbox consumption, migration/cutover and production frontend flows remain release gates.
+
+## Selected main releases and current hold point
+
+All four repositories now have the selected release changes on main, with owner authorisation. No publish/deploy command, production restart, credential rotation, partner activation, balance reset or production schema mutation has been executed. The cancellation of the historical redemption was separately authorised and verified.
+
+| Repository | Tested implementation on main | CI |
+|---|---|---|
+| perk-sphere | 6ae7cfd5777a1d62d72801ca72dd0c688b201bd8 | https://github.com/xerohab/perk-sphere/actions/runs/38127875158 |
+| perk-sphere-api | fc7aa767e48048ff4b23bbfcdf126af75bc05474 | https://github.com/xerohab/perk-sphere-api/actions/runs/38127910485 |
+| dko-wrestling | 06f0ce3160a26c0eeb44526ecdf611b6f824c60c | https://github.com/xerohab/dko-wrestling/actions/runs/38124182198 |
+| xero-streams partner-only | 50feb3b1e455ae72d62072c9af29d4c054397333 | https://github.com/xerohab/xero-streams/actions/runs/38128288737 |
+
+XeroStreams main is based on a separate release/perksphere-partners-2026-10-11 branch. Existing payment functions/pages/purchase schemas and all frontend source files are unchanged from its former main. Dependency patches and partner protections are included; the mixed launch-readiness branch must not be merged wholesale. Six partner tests, syntax and build pass. Its inherited frontend lint/typecheck failures remain outstanding, and are recorded explicitly rather than suppressed.
+
+The running Linux checkout remains 8da11512ca043347f7c13b981870afa3945fda94 with its service active. Creating main commits is not a completed production deployment. Before final deployment approval, check actual bridge configuration, delivery backlog, signed runtime traffic, current unit command and private code/config backup. Linux production ledger is empty and redemption tables absent. Independent reward verification, reward issuing/outbox consumption, UI cutover, financial migration/fresh-start procedure and refund handling remain unfinished. Full rewards/XP launch is still on HOLD.
