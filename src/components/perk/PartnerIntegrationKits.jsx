@@ -291,8 +291,8 @@ BODY_SHA256 = SHA-256 hex of the raw request body`}</pre>
 
         <DocumentationSection title="Request Timestamps & Nonces">
           <div className="space-y-2">
-            <p><strong>Timestamps:</strong> Unix epoch seconds. Requests with timestamps more than ±300 seconds from server time are rejected (<code className="font-mono text-xs">stale_timestamp</code>).</p>
-            <p><strong>Nonces:</strong> Each request must include a unique nonce. Nonces are persisted server-side — a reused nonce is rejected as <code className="font-mono text-xs">replay_detected</code>. Nonces must be 16-128 characters, matching [A-Za-z0-9_-].</p>
+            <p><strong>Timestamps:</strong> Unix epoch seconds. Requests with timestamps more than ±300 seconds from server time are rejected (<code className="font-mono text-xs">invalid_partner_auth</code>).</p>
+            <p><strong>Nonces:</strong> Each request must include a unique nonce. Nonces are persisted server-side — a reused nonce is rejected as <code className="font-mono text-xs">replayed_partner_request</code>. Nonces must be 16-128 characters, matching [A-Za-z0-9_-].</p>
             <p><strong>Replay protection:</strong> Nonces are stored for 600 seconds after first use. Any request reusing a nonce within that window is rejected. This prevents replay attacks even if a request is intercepted.</p>
           </div>
         </DocumentationSection>
