@@ -1,3 +1,4 @@
+import { receiveLedgerDelivery } from "../../shared/ledgerDelivery.ts";
 import { createClientFromRequest } from "npm:@base44/sdk@0.8.52";
 import { waitUntil } from "base44:runtime";
 import { verifyTrustedRequest, pruneExpiredNonces } from "../../shared/hmac.ts";
@@ -87,6 +88,7 @@ export default async function (req) {
     waitUntil(pruneExpiredNonces(admin).catch(() => {}));
 
     const body = JSON.parse(auth.rawBody || "{}");
+    if (body.event_type === "LEDGER_APPLIED") return receiveLedgerDelivery(admin, body);
     const {
       external_event_id,
       user_reference,
