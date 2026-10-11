@@ -123,6 +123,23 @@ export default async function (req) {
 
     // Signed Linux-only eligibility query. No game duration or rewards are
     // accepted here; Linux owns those decisions. Existing config flow is intact.
+    // Authenticated source for zero-wallet enrollment, never a browser claim.
+    if (body.action === 'wallet_enrollment') {
+      if (Object.keys(body).sort().join(',') !== 'action,user_reference' ||
+          typeof user_reference !== 'string' || !/^[A-Za-z0-9_:@.-]{1,191}$/.test(user_reference)) return err('invalid_enrollment_request','Invalid member reference.',400);
+      const member = await admin.entities.User.get(user_reference).catch(() => null);
+      const restrictions = member ? await admin.entities.Restriction.filter({user_id:member.id}) : [];
+      let eligible=false;
+      try {
+        assertAccountEligible(member,restrictions,'earn rewards');
+        eligible=secrets.get('PERKSPHERE_LINUX_LEDGER_AUTHORITATIVE')==='true' && secrets.get('PERKSPHERE_NEW_MEMBER_WALLETS_ENABLED')==='true';
+      } catch {eligible=false;}
+      return Response.json({ok:true,data:{user_reference,eligible,
+        registered_at:member?.created_date || null,
+        zero_balances:!!member && (member.points_balance??0)===0 && (member.loyalty_xp??0)===0
+      }},{headers:{'Cache-Control':'no-store'}});
+    }
+
     if (body.action === 'game_eligibility') {
       if (Object.keys(body).sort().join(',') !== 'action,user_reference' ||
           typeof user_reference !== 'string' || !/^[A-Za-z0-9_:@.-]{1,191}$/.test(user_reference)) {
