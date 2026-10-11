@@ -12,7 +12,7 @@ const KITS = [
     name: "Universal API Kit",
     tagline: "Available now",
     status: "available",
-    backendRoute: "/functions/partnerEventIngest",
+    backendRoute: "/v1/partners/events",
     description: "HTTP + HMAC-SHA256 event submission to the Linux API. Works with any website or backend that can sign requests. This is the primary integration path.",
     delivers: [
       "Integration guide with endpoint and authentication spec",
@@ -20,7 +20,7 @@ const KITS = [
       "HMAC signing reference (signature canonical form, headers, replay protection)",
       "Per-partner credentials (key ID + secret) generated on registration"
     ],
-    endpoint: "https://api.perksphere.org/events"
+    endpoint: "https://api.perksphere.org/v1/partners/events"
   },
   {
     id: "wordpress_woocommerce",
@@ -36,7 +36,7 @@ const KITS = [
       "Automatic user-account linking",
       "Admin settings panel for credential entry"
     ],
-    endpoint: "https://api.perksphere.org/events"
+    endpoint: "https://api.perksphere.org/v1/partners/events"
   },
   {
     id: "streaming_sdk",
@@ -52,7 +52,7 @@ const KITS = [
       "Broadcast lifecycle events (started, ended)",
       "Eligible-seconds calculation guidance"
     ],
-    endpoint: "https://api.perksphere.org/events"
+    endpoint: "https://api.perksphere.org/v1/partners/events"
   }
 ];
 
@@ -63,35 +63,119 @@ const STATUS_BADGE = {
 };
 
 const EVENT_TYPES = [
-  { type: "ACCOUNT_REGISTERED", desc: "User registered on the partner site", evidence: "user_reference" },
-  { type: "ACCOUNT_LINKED", desc: "User linked their partner account to Perk Sphere", evidence: "challenge_token, user_reference" },
-  { type: "ACCOUNT_DISABLED", desc: "User account disabled on the partner site", evidence: "user_reference" },
-  { type: "VIDEO_WATCH_PROGRESS", desc: "User watched video content", evidence: "content_id OR content_url (required)" },
-  { type: "STREAM_STARTED", desc: "A live stream broadcast started", evidence: "content_id" },
-  { type: "STREAM_VIEW_PROGRESS", desc: "User watched a live stream", evidence: "content_id OR content_url (required)" },
-  { type: "STREAM_ENDED", desc: "A live stream broadcast ended", evidence: "content_id" },
-  { type: "PURCHASE_COMPLETED", desc: "User completed a purchase", evidence: "content_id, user_reference" },
-  { type: "PURCHASE_REFUNDED", desc: "A purchase was refunded", evidence: "original_event_id (required)" },
-  { type: "CHARGEBACK_ISSUED", desc: "A chargeback was filed", evidence: "original_event_id (required)" },
-  { type: "SUBSCRIPTION_ACTIVATED", desc: "User activated a subscription", evidence: "content_id, user_reference" },
-  { type: "SUBSCRIPTION_RENEWED", desc: "User renewed a subscription", evidence: "content_id, user_reference" },
-  { type: "SUBSCRIPTION_CANCELLED", desc: "User cancelled a subscription", evidence: "user_reference" }
+  {
+    "type": "ACCOUNT_REGISTERED",
+    "desc": "Linux event_type: registration_completed",
+    "evidence": "registration_reference"
+  },
+  {
+    "type": "ACCOUNT_LINKED",
+    "desc": "Linux event_type: account_linked",
+    "evidence": "link_reference"
+  },
+  {
+    "type": "ACCOUNT_DISABLED",
+    "desc": "Linux event_type: account_disabled",
+    "evidence": "account_reference, disabled_at"
+  },
+  {
+    "type": "VIDEO_WATCH_PROGRESS",
+    "desc": "Linux event_type: video_watch_progress",
+    "evidence": "playback_session_id, content_id, eligible_seconds"
+  },
+  {
+    "type": "STREAM_STARTED",
+    "desc": "Linux event_type: stream_started",
+    "evidence": "stream_id, started_at"
+  },
+  {
+    "type": "STREAM_VIEW_PROGRESS",
+    "desc": "Linux event_type: stream_watch_progress",
+    "evidence": "stream_id, viewer_session_id, eligible_seconds"
+  },
+  {
+    "type": "STREAM_ENDED",
+    "desc": "Linux event_type: stream_ended",
+    "evidence": "stream_id, ended_at"
+  },
+  {
+    "type": "PURCHASE_COMPLETED",
+    "desc": "Linux event_type: purchase_completed",
+    "evidence": "transaction_reference, payment_status=captured, currency, amount_minor"
+  },
+  {
+    "type": "PURCHASE_REFUNDED",
+    "desc": "Linux event_type: purchase_refunded",
+    "evidence": "transaction_reference, refund_reference, currency, amount_minor"
+  },
+  {
+    "type": "CHARGEBACK_ISSUED",
+    "desc": "Linux event_type: chargeback_issued",
+    "evidence": "transaction_reference, chargeback_reference, currency, amount_minor"
+  },
+  {
+    "type": "SUBSCRIPTION_ACTIVATED",
+    "desc": "Linux event_type: subscription_activated",
+    "evidence": "subscription_reference, transaction_reference, payment_status=captured, currency, amount_minor, period_start, period_end"
+  },
+  {
+    "type": "SUBSCRIPTION_RENEWED",
+    "desc": "Linux event_type: subscription_renewed",
+    "evidence": "subscription_reference, transaction_reference, payment_status=captured, currency, amount_minor, period_start, period_end"
+  },
+  {
+    "type": "SUBSCRIPTION_CANCELLED",
+    "desc": "Linux event_type: subscription_cancelled",
+    "evidence": "subscription_reference, cancelled_at"
+  }
 ];
 
 const ERROR_RESPONSES = [
-  { code: "missing_auth_headers", status: 401, message: "One or more required headers are missing" },
-  { code: "unknown_partner", status: 401, message: "The X-PS-Partner-Key does not match any registered partner" },
-  { code: "partner_not_active", status: 403, message: "The partner integration is not in 'active' status" },
-  { code: "partner_not_configured", status: 500, message: "Partner credentials are missing or could not be decrypted" },
-  { code: "stale_timestamp", status: 401, message: "Timestamp is outside the ±300 second clock skew window" },
-  { code: "invalid_nonce", status: 401, message: "Nonce is malformed (must be 8-128 chars, [A-Za-z0-9._-])" },
-  { code: "replay_detected", status: 401, message: "This nonce has already been used (replay protection)" },
-  { code: "invalid_signature", status: 401, message: "The HMAC signature does not match the canonical string" },
-  { code: "missing_event_id", status: 400, message: "external_event_id is required" },
-  { code: "unknown_event_type", status: 400, message: "The event_type is not in the supported list" },
-  { code: "event_type_not_permitted", status: 400, message: "This event type is not in the partner's permitted list" },
-  { code: "missing_content_evidence", status: 400, message: "Watch events require content_id or content_url" },
-  { code: "missing_original_event_id", status: 400, message: "Refund/chargeback events require original_event_id" }
+  {
+    "code": "invalid_partner_auth",
+    "status": 401,
+    "message": "Invalid credentials, signature or authentication headers"
+  },
+  {
+    "code": "partner_not_active",
+    "status": 403,
+    "message": "Partner or credential is inactive"
+  },
+  {
+    "code": "replayed_partner_request",
+    "status": 409,
+    "message": "Nonce has already been used"
+  },
+  {
+    "code": "duplicate_partner_event",
+    "status": 409,
+    "message": "Event ID already received; do not replace it to retry"
+  },
+  {
+    "code": "unsupported_event_type",
+    "status": 422,
+    "message": "Event type is not supported by the deployed API"
+  },
+  {
+    "code": "event_not_allowed_for_partner",
+    "status": 422,
+    "message": "Partner is not permitted to submit this event"
+  },
+  {
+    "code": "missing_event_evidence",
+    "status": 422,
+    "message": "Required evidence field is missing"
+  },
+  {
+    "code": "invalid_event_evidence",
+    "status": 422,
+    "message": "Evidence values do not meet the contract"
+  },
+  {
+    "code": "partner_event_unavailable",
+    "status": 503,
+    "message": "Temporary receiver failure"
+  }
 ];
 
 function DocumentationSection({ title, children }) {
@@ -115,7 +199,7 @@ export default function PartnerIntegrationKits({ onSelectKit = undefined }) {
         <p className="mt-1 text-xs text-muted-foreground">
           Partner websites send authenticated events to the Linux API at <code className="rounded bg-secondary px-1 py-0.5 text-xs">api.perksphere.org</code>.
           The Linux API validates credentials, prevents replay, and delivers trusted events to Perk Sphere.
-          Perk Sphere is the sole reward authority — no partner or Linux API event can issue Points or XP directly.
+          Partner events are claims. Rewards require independent activity verification, an enabled server policy and the authoritative transactional ledger.
         </p>
         <div className="mt-3 flex flex-wrap items-center gap-2 text-xs">
           <span className="rounded-lg bg-secondary px-2.5 py-1 font-medium">Partner Website</span>
@@ -177,7 +261,7 @@ export default function PartnerIntegrationKits({ onSelectKit = undefined }) {
 
         <DocumentationSection title="API Endpoint & HTTP Method">
           <div className="space-y-2">
-            <p><strong>Endpoint:</strong> <code className="rounded bg-secondary px-1 font-mono text-xs">POST https://api.perksphere.org/events</code></p>
+            <p><strong>Endpoint:</strong> <code className="rounded bg-secondary px-1 font-mono text-xs">POST https://api.perksphere.org/v1/partners/events</code></p>
             <p><strong>Content-Type:</strong> <code className="rounded bg-secondary px-1 font-mono text-xs">application/json</code></p>
             <p><strong>Method:</strong> POST only. GET, PUT, DELETE are not accepted.</p>
             <p>All requests must be server-to-server from the partner backend. Never expose the partner secret in client-side JavaScript.</p>
@@ -188,16 +272,16 @@ export default function PartnerIntegrationKits({ onSelectKit = undefined }) {
           <div className="space-y-2">
             <p><strong>Required headers:</strong></p>
             <ul className="ml-4 list-disc space-y-0.5">
-              <li><code className="rounded bg-secondary px-1 font-mono text-xs">X-PS-Partner-Key</code> — your Partner Key ID</li>
+              <li><code className="rounded bg-secondary px-1 font-mono text-xs">X-PS-Key-ID</code> — your Partner Key ID</li>
               <li><code className="rounded bg-secondary px-1 font-mono text-xs">X-PS-Timestamp</code> — Unix epoch seconds (±300s skew allowed)</li>
-              <li><code className="rounded bg-secondary px-1 font-mono text-xs">X-PS-Nonce</code> — unique random string (8-128 chars, [A-Za-z0-9._-])</li>
+              <li><code className="rounded bg-secondary px-1 font-mono text-xs">X-PS-Nonce</code> — unique random string (16-128 chars, [A-Za-z0-9_-])</li>
               <li><code className="rounded bg-secondary px-1 font-mono text-xs">X-PS-Signature</code> — HMAC-SHA256 hex of the canonical string</li>
             </ul>
             <p className="mt-2"><strong>Canonical string</strong> (lines joined with \n):</p>
             <pre className="rounded-lg bg-secondary p-3 font-mono text-xs overflow-x-auto">{`METHOD\nPATH\nTIMESTAMP\nNONCE\nBODY_SHA256
 
 METHOD      = POST
-PATH        = /events
+PATH        = /v1/partners/events
 TIMESTAMP   = same as X-PS-Timestamp
 NONCE       = same as X-PS-Nonce
 BODY_SHA256 = SHA-256 hex of the raw request body`}</pre>
@@ -208,14 +292,14 @@ BODY_SHA256 = SHA-256 hex of the raw request body`}</pre>
         <DocumentationSection title="Request Timestamps & Nonces">
           <div className="space-y-2">
             <p><strong>Timestamps:</strong> Unix epoch seconds. Requests with timestamps more than ±300 seconds from server time are rejected (<code className="font-mono text-xs">stale_timestamp</code>).</p>
-            <p><strong>Nonces:</strong> Each request must include a unique nonce. Nonces are persisted server-side — a reused nonce is rejected as <code className="font-mono text-xs">replay_detected</code>. Nonces must be 8-128 characters, matching [A-Za-z0-9._-].</p>
+            <p><strong>Nonces:</strong> Each request must include a unique nonce. Nonces are persisted server-side — a reused nonce is rejected as <code className="font-mono text-xs">replay_detected</code>. Nonces must be 16-128 characters, matching [A-Za-z0-9_-].</p>
             <p><strong>Replay protection:</strong> Nonces are stored for 600 seconds after first use. Any request reusing a nonce within that window is rejected. This prevents replay attacks even if a request is intercepted.</p>
           </div>
         </DocumentationSection>
 
         <DocumentationSection title="Event Identifiers & Idempotency">
           <div className="space-y-2">
-            <p>Every event must include a unique <code className="rounded bg-secondary px-1 font-mono text-xs">external_event_id</code>. This is the idempotency key — if the same ID is sent twice, the second request returns the stored result without reprocessing.</p>
+            <p>Every event must include a unique <code className="rounded bg-secondary px-1 font-mono text-xs">partner_event_id</code>. The Linux API rejects a reused ID with HTTP 409 duplicate_partner_event. A submitted claim does not authorise rewards.</p>
             <p>Use a UUID or a partner-specific unique identifier. The ID must be globally unique per partner.</p>
           </div>
         </DocumentationSection>
@@ -241,7 +325,7 @@ BODY_SHA256 = SHA-256 hex of the raw request body`}</pre>
               </tbody>
             </table>
           </div>
-          <p className="mt-2 text-xs text-amber-600 dark:text-amber-400">Watch events (VIDEO_WATCH_PROGRESS, STREAM_VIEW_PROGRESS, STREAM_ENDED) require content_id or content_url. Self-reported eligible_seconds alone is never accepted as proof of genuine viewing.</p>
+          <p className="mt-2 text-xs text-amber-600 dark:text-amber-400">The complete 13-event contract is prepared for the next Linux release. Existing deployments may accept fewer types. All evidence belongs in the evidence object. Signed claims and self-reported watch time do not prove eligibility.</p>
         </DocumentationSection>
 
         <DocumentationSection title="Error Responses">
@@ -269,7 +353,7 @@ BODY_SHA256 = SHA-256 hex of the raw request body`}</pre>
 
         <DocumentationSection title="Retry Behaviour">
           <div className="space-y-2">
-            <p>On a 5xx error or network timeout, retry the same request with the same <code className="font-mono text-xs">external_event_id</code> and nonce. Idempotency ensures duplicates are safely handled.</p>
+            <p>On a 5xx error or network timeout, retry the same payload with the same <code className="font-mono text-xs">partner_event_id</code> and a fresh timestamp, nonce and signature. A duplicate event returns HTTP 409; do not change its event ID to retry.</p>
             <p>On a 4xx error (authentication, validation), do NOT retry with the same nonce — generate a new nonce for each retry attempt. The original nonce may already be stored.</p>
             <p><strong>Recommended:</strong> exponential backoff (1s, 2s, 4s, 8s, max 60s), up to 5 retries.</p>
           </div>
@@ -277,9 +361,9 @@ BODY_SHA256 = SHA-256 hex of the raw request body`}</pre>
 
         <DocumentationSection title="Credential Rotation">
           <div className="space-y-2">
-            <p>An administrator can rotate credentials from Admin → Partners. Rotation revokes the old secret and generates a new key ID + secret pair. The new secret is shown once.</p>
-            <p>After rotation, proof-of-possession and test event verification must be repeated before the integration can be reactivated. The old credentials stop working immediately.</p>
-            <p><strong>Grace period:</strong> None. Update your backend with the new credentials before rotation if you need zero downtime, or accept a brief interruption.</p>
+            <p>An administrator can rotate credentials from Admin → Partners. Rotation prepares a pending key ID and secret while preserving the active credential. The new secret is shown once.</p>
+            <p>The pending credential must pass proof-of-possession and test-event verification before activation. Revoke the old credential only after the replacement works.</p>
+            <p>Keep the existing active credential until the replacement has been verified.</p>
           </div>
         </DocumentationSection>
 
@@ -289,8 +373,8 @@ BODY_SHA256 = SHA-256 hex of the raw request body`}</pre>
             <ol className="ml-4 list-decimal space-y-1">
               <li>The user requests a link from Perk Sphere → a challenge token is generated (valid 10 minutes)</li>
               <li>The user provides the challenge token to the partner site</li>
-              <li>The partner sends an <code className="font-mono text-xs">ACCOUNT_LINKED</code> event with the <code className="font-mono text-xs">challenge_token</code> and the user's account reference</li>
-              <li>Perk Sphere verifies the challenge hash, links the accounts, and creates a connection record</li>
+              <li>The partner confirms the challenge through the signed <code className="font-mono text-xs">/v1/partner-links/confirm</code> endpoint with challenge and partner_account_reference</li>
+              <li>Linux verifies the single-use challenge and records the account link. An account_linked event alone cannot create a link.</li>
             </ol>
             <p className="text-xs text-amber-600 dark:text-amber-400">Challenges are single-use, expiring, user-specific, and partner-specific. This prevents linking someone else's account, challenge replay, and cross-partner confusion.</p>
           </div>
@@ -298,23 +382,22 @@ BODY_SHA256 = SHA-256 hex of the raw request body`}</pre>
 
         <DocumentationSection title="Sandbox Testing">
           <div className="space-y-2">
-            <p>Partners can send test events by including <code className="rounded bg-secondary px-1 font-mono text-xs">"is_test": true</code> in the event payload. Test events are stored and processed but never enter reward processing or trigger completions.</p>
+            <p>Send signed validation requests to <code className="rounded bg-secondary px-1 font-mono text-xs">/partners/test-event</code>. Sign that exact path. Validation requests never issue rewards; do not add is_test to production payloads.</p>
             <p>Test events are used during the onboarding verification step — an administrator confirms a test event was received and processed before activating the integration.</p>
             <p><strong>Test event payload:</strong></p>
             <pre className="rounded-lg bg-secondary p-3 font-mono text-xs overflow-x-auto">{`{
-  "external_event_id": "test-001",
-  "event_type": "PURCHASE_COMPLETED",
-  "user_reference": "test-user-123",
-  "content_id": "product-456",
-  "is_test": true,
-  "source_timestamp": "2026-01-15T10:30:00Z"
+  "partner_event_id": "test-001",
+  "event_type": "registration_completed",
+  "partner_account_reference": "test-account-123",
+  "occurred_at": "REPLACE_WITH_CURRENT_UTC_TIMESTAMP",
+  "evidence": { "registration_reference": "registration-test-001" }
 }`}</pre>
           </div>
         </DocumentationSection>
 
         <DocumentationSection title="Refund & Chargeback Handling">
           <div className="space-y-2">
-            <p>Send <code className="font-mono text-xs">PURCHASE_REFUNDED</code> or <code className="font-mono text-xs">CHARGEBACK_ISSUED</code> events with the <code className="font-mono text-xs">original_event_id</code> of the original purchase. Perk Sphere flags the associated task completion for admin review — rewards are not silently reversed.</p>
+            <p>Send purchase_refunded or chargeback_issued with the original transaction_reference and the provider refund or chargeback reference. Only independently verified, original-purchase-bound reversals may alter the ledger.</p>
             <p>An administrator reviews the fraud flag and decides whether to reverse the reward through the existing ledger adjustment workflow. This preserves the immutable ledger audit trail.</p>
           </div>
         </DocumentationSection>
