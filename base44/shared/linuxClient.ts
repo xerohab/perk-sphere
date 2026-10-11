@@ -147,6 +147,7 @@ export const LINUX_PARTNER_ENDPOINTS = {
   ACTIVATE: "/partners/activate",
   VERIFY_DOMAIN: "/partners/verify-domain",
   PROOF_STATUS: "/partners/proof-status",
+  TEST_EVENT_STATUS: "/partners/test-event-status",
   PROOF_CHALLENGE: "/v1/partner-credentials/challenge",
   PROOF_CONFIRM: "/v1/partner-credentials/confirm",
   ACCOUNT_LINK_CREATE: "/v1/partner-links/challenges",
@@ -176,6 +177,7 @@ export const LINUX_ENDPOINT_CONTRACT_CONFIRMED = {
   // returns a clear "contract pending" message and makes NO live request.
   // Future partners use the confirmed challenge/confirm flow instead.
   PROOF_STATUS: true,
+  TEST_EVENT_STATUS: true,
   PROOF_CHALLENGE: true,
   PROOF_CONFIRM: true,
   ACCOUNT_LINK_CREATE: true,

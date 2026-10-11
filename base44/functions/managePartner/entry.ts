@@ -456,15 +456,36 @@ export default async function(req) {
 
     // ── Verify Test Event ────────────────────────────────────────────────
     if (action === 'verifyTestEvent') {
-      // Do not permit an admin-only toggle or an unrelated production event
-      // to stand in for Linux's signed pre-activation test-event validation.
-      // Linux /partners/test-event is partner-HMAC authenticated and currently
-      // does not persist a receipt that this service can independently verify.
-      return Response.json({
-        ok: false,
-        code: 'linux_test_evidence_required',
-        error: 'Test verification requires authoritative evidence from the signed Linux /partners/test-event endpoint. Manual confirmation is disabled until a verifiable Linux receipt workflow is connected.'
-      }, { status: 409 });
+      const before = await admin.entities.PartnerIntegration.get(partnerId);
+      if (!before.linux_api_partner_id || !before.partner_key_id) {
+        return Response.json({ ok: false, code: 'missing_linux_identity', error: 'Partner Linux identity or credential is missing.' }, { status: 400 });
+      }
+      if (!LINUX_ENDPOINT_CONTRACT_CONFIRMED.TEST_EVENT_STATUS) {
+        return Response.json({ ok: false, code: 'linux_contract_pending', error: 'Linux test-event verification endpoint is not confirmed.' }, { status: 503 });
+      }
+      const result = await linuxTrustedPost(LINUX_PARTNER_ENDPOINTS.TEST_EVENT_STATUS, {
+        partner_uuid: before.linux_api_partner_id
+      });
+      if (!result.ok) {
+        return Response.json({ ok: false, code: result.code || 'linux_status_failed', error: result.error || 'Linux test-event status unavailable.', linux_status: result.status }, { status: 503 });
+      }
+      const evidence = result.data || {};
+      if (evidence.ok !== true || evidence.partner_uuid !== before.linux_api_partner_id ||
+          evidence.partner_key_id !== before.partner_key_id || evidence.test_only !== true ||
+          evidence.test_event_verified !== true ||
+          typeof evidence.receipt_uuid !== 'string' ||
+          !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(evidence.receipt_uuid) ||
+          typeof evidence.validated_at !== 'string' ||
+          !Number.isFinite(Date.parse(evidence.validated_at)) ||
+          typeof evidence.event_type !== 'string' || !evidence.event_type) {
+        await writeAudit(admin, { adminId: user.id, action: 'partner_test_evidence_not_confirmed', entityType: 'PartnerIntegration', entityId: partnerId });
+        return Response.json({ ok: true, test_event_verified: false, message: 'Linux has not confirmed a signed test event for the current partner credential.' });
+      }
+      const cl = { ...(before.setup_checklist || {}), test_event_verified: true };
+      const fields = { setup_checklist: cl, test_event_verified: true, verification_status: computeVerificationStatus({ ...before, test_event_verified: true }) };
+      const record = await admin.entities.PartnerIntegration.update(partnerId, fields);
+      await writeAudit(admin, { adminId: user.id, action: 'partner_test_event_verified_from_linux', entityType: 'PartnerIntegration', entityId: partnerId, next: { receipt_uuid: evidence.receipt_uuid, key_id: evidence.partner_key_id, validated_at: evidence.validated_at, event_type: evidence.event_type } });
+      return Response.json({ ok: true, test_event_verified: true, record: sanitizePartnerRecord(record), receipt_uuid: evidence.receipt_uuid });
     }
 
     // ── Update Reward Policy ────────────────────────────────────────────

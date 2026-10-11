@@ -164,7 +164,6 @@ export default function PartnerSetupGuide({ partner, onUpdateChecklist, onRefres
   const [proofLoading, setProofLoading] = useState(false);
   const [syncingProof, setSyncingProof] = useState(false);
   const [proofSignature, setProofSignature] = useState("");
-  const [testEventId, setTestEventId] = useState("");
   const [verifyingTest, setVerifyingTest] = useState(false);
 
   const syncChecklist = (next) => {
@@ -270,11 +269,10 @@ export default function PartnerSetupGuide({ partner, onUpdateChecklist, onRefres
     try {
       const res = await base44.functions.invoke("managePartner", {
         action: "verifyTestEvent",
-        partnerId: partner.id,
-        data: { test_event_id: testEventId.trim() || undefined }
+        partnerId: partner.id
       });
       const body = res?.data || res;
-      if (body?.ok) {
+      if (body?.ok && body?.test_event_verified === true) {
         toast({ title: "Test event verified", description: "The partner may now proceed to activation approval." });
         if (onRefresh) onRefresh();
       } else {
@@ -417,9 +415,12 @@ export default function PartnerSetupGuide({ partner, onUpdateChecklist, onRefres
                 {isLinux && step.key === "test_event_verified" && !done && (
                   <div className="ml-8 mt-1.5">
                     <div className="rounded-lg border border-amber-300 bg-amber-50 p-3 text-xs text-amber-700 dark:border-amber-700 dark:bg-amber-950/30 dark:text-amber-400">
-                      <p className="flex items-center gap-1.5 font-medium"><TestTube className="h-3.5 w-3.5" /> Awaiting backend test verification</p>
-                      <p className="mt-1">Linux supports signed pre-activation validation at POST /partners/test-event without storing events or issuing rewards. PerkSphere's test verification workflow is not connected yet. Do not activate a partner solely to test events.</p>
+                      <p className="flex items-center gap-1.5 font-medium"><TestTube className="h-3.5 w-3.5" /> Signed test-event verification</p>
+                      <p className="mt-1">Send a signed pre-activation test from the partner backend to POST /partners/test-event, then synchronise the verified Linux receipt. No production event or reward is created.</p>
                     </div>
+                    <Button size="sm" variant="outline" className="mt-2" onClick={verifyTestEvent} disabled={verifyingTest}>
+                      {verifyingTest ? "Checking Linux..." : "Sync verified test from Linux"}
+                    </Button>
                   </div>
                 )}
 
