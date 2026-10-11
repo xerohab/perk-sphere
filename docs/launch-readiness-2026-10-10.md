@@ -78,12 +78,12 @@ All tests use mocks or isolated local HTTP servers. No live partner, PayPal, Bas
 
 | Repository | Offline tests | Lint | Typecheck | Backend/resource syntax | Frontend build | Dependency audit |
 |---|---:|---|---|---|---|---|
-| perk-sphere | 51 passing | Pass | Pass | Pass | Pass | 7 findings: 5 high, 2 moderate |
-| perk-sphere-api | 68 passing | No configured lint suite | JavaScript syntax checked | Pass for changed JS | Not applicable | 0 findings |
+| perk-sphere | 53 passing | Pass | Pass | Pass | Pass | 7 findings: 5 high, 2 moderate |
+| perk-sphere-api | 71 passing | No configured lint suite | JavaScript syntax checked | Pass for changed JS | Not applicable | 0 findings |
 | dko-wrestling | 4 passing | Pass | Pass | Pass | Pass | 7 findings: 5 high, 2 moderate |
-| xero-streams | 10 passing | Pass | Pass | Pass | Pass | 7 findings: 5 high, 2 moderate |
+| xero-streams | 15 passing | Pass | Pass | Pass | Pass | 7 findings: 5 high, 2 moderate |
 
-133 passing offline tests total. Coverage includes independent HMAC comparison, nonce format, actor/privilege boundaries, restriction/rank/stock validation, sequential idempotency, ledger rollback/outbox failures, BIGINT handling, immutable archives and ownership, payment capability validation, server price selection, fulfillment identity and entity write policy.
+143 passing offline tests total, plus four isolated MariaDB checks (see the server verification update). Coverage includes independent HMAC comparison, nonce format, actor/privilege boundaries, restriction/rank/stock validation, sequential idempotency, ledger rollback/outbox failures, BIGINT handling, immutable archives and ownership, payment capability validation, server price selection, fulfillment identity and entity write policy.
 
 Remaining audit findings are in the Tailwind 3 build chain (braces, chokidar, fast-glob, micromatch, postcss-nested, postcss-selector-parser, tailwindcss). They need a supported toolchain migration and visual regression checks. No forced major Tailwind migration was performed. A successful build is not a clean security audit.
 
@@ -248,3 +248,15 @@ Local verification results are recorded in docs/verification-results.json in eac
 Primary implementation references: [PayPal Orders API](https://developer.paypal.com/api/rest/integration/orders-api/), [PayPal idempotency](https://developer.paypal.com/api/make-api-requests/), [PayPal webhook verification](https://developer.paypal.com/api/rest/webhooks/rest/), [React Router changelog](https://reactrouter.com/start/start/changelog).
 
 GitHub Actions implementation-commit verification: [Perk Sphere](https://github.com/xerohab/perk-sphere/actions/runs/38124018224), [API](https://github.com/xerohab/perk-sphere-api/actions/runs/38124105438), [DKO](https://github.com/xerohab/dko-wrestling/actions/runs/38124182198), and [XeroStreams](https://github.com/xerohab/xero-streams/actions/runs/38124217834) completed successfully. CI does not include a clean full dependency audit or live deployment checks.
+
+## Server verification update — 11 October 2026
+
+The owner ran the API offline suite successfully on Node 22.23.3. Four isolated MariaDB 10.11.18 tests passed at eaba4d66416bd176d70a878dc32e05197634bd66: simultaneous reward replay, last-stock competition, transaction rollback, and simultaneous redemption retry. A duplicate-order gap lock was removed after the first real concurrency run exposed an unexpected rejection. API main was advanced with authorisation to 516d072cd588816650dd8d504765e7e12ef5f2db; the running Linux service still uses its original main commit.
+
+A private production dump restored successfully into a separate, non-networked MariaDB instance with scheduled events disabled. All 29 base tables passed CHECK TABLE; the isolated server stopped. Production was not restored or restarted. This verifies restore viability, not complete financial reconciliation.
+
+Both Linux partner integrations are already active with verification enabled, active possession-verified credentials, and one verified account link each. Base44 UUIDs and key identifiers match; its checklist booleans are stale. Do not reactivate partners, rotate keys, revoke links or equate the stale checklist with Linux state. A new authenticated read-only /partners/status endpoint and getPartnerLinuxStatus admin function display current Linux state without changing stored configuration.
+
+The owner explicitly cancelled the 400-point Base44 redemption; its status is now cancelled, its history retained and no refund was issued. Existing Base44 Points/XP remain unchanged. Linux ledger tables remain empty, redemption tables absent in production, and rollout flags unset. Fresh-start balance reset and coordinated ledger migration have not been executed.
+
+Current offline suites: Perk Sphere 53, Linux API 71, DKO 4, XeroStreams 15; 143 total, plus four isolated MariaDB checks. Payment changes are excluded from the requested same-day release and remain on the XeroStreams development branch. No Base44 publication or Linux production deployment has been performed. Full rewards issuance, independent verifiers, outbox consumption, migration/cutover and production frontend flows remain release gates.

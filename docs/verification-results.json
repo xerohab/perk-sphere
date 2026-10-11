@@ -5,7 +5,7 @@
   "check:backend": 0,
   "build": 0,
   "validated_at": "2026-10-11",
-  "offline_tests": 51,
+  "offline_tests": 53,
   "audit": {
     "passed": false,
     "high": 5,

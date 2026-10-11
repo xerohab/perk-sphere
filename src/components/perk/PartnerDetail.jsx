@@ -28,6 +28,23 @@ export default function PartnerDetail({ partner, events, onClose = undefined, on
   const [verifyingProof, setVerifyingProof] = useState(false);
   const [creatingProof, setCreatingProof] = useState(false);
 
+  const [linuxStatus, setLinuxStatus] = useState(null);
+  const [loadingLinuxStatus, setLoadingLinuxStatus] = useState(false);
+  const [linuxStatusError, setLinuxStatusError] = useState("");
+  const inspectLinuxStatus = async () => {
+    setLoadingLinuxStatus(true);
+    setLinuxStatus(null);
+    setLinuxStatusError("");
+    try {
+      const response = await base44.functions.invoke("getPartnerLinuxStatus", { partnerId: partner.id });
+      const data = response?.data || response;
+      if (!data?.partner) throw new Error(data?.error || "Partner status is unavailable.");
+      setLinuxStatus(data.partner);
+    } catch (error) {
+      setLinuxStatusError(error?.response?.data?.error || error.message || "Partner status is unavailable.");
+    } finally { setLoadingLinuxStatus(false); }
+  };
+
   const partnerEvents = (events || []).filter((e) => e.partner_integration_id === partner.id);
   const processed = partnerEvents.filter((e) => e.processing_status === "processed");
   const rejected = partnerEvents.filter((e) => e.processing_status === "rejected" || e.processing_status === "error");
@@ -155,6 +172,23 @@ export default function PartnerDetail({ partner, events, onClose = undefined, on
             <div><p className="text-xs text-muted-foreground">Rejected</p><p className="text-sm font-semibold text-red-600 dark:text-red-400">{rejected.length}</p></div>
           </div>
         </div>
+      </div>
+
+      <div className="rounded-xl border border-border bg-card p-4">
+        <div className="flex items-center justify-between gap-3">
+          <h3 className="text-sm font-semibold">Current partner connection</h3>
+          <Button size="sm" variant="outline" disabled={loadingLinuxStatus} onClick={inspectLinuxStatus}>{loadingLinuxStatus ? "Checking..." : "Check connection"}</Button>
+        </div>
+        <p className="mt-2 text-xs text-muted-foreground">Checks the current Linux connection. The saved onboarding checklist above may be out of date.</p>
+        {linuxStatusError && <p role="alert" className="mt-2 text-sm text-red-600 dark:text-red-400">{linuxStatusError}</p>}
+        {linuxStatus && <dl className="mt-3 grid grid-cols-2 gap-2 text-sm">
+          <dt>Status</dt><dd>{linuxStatus.status}</dd>
+          <dt>Integration enabled</dt><dd>{linuxStatus.enabled ? "Yes" : "No"}</dd>
+          <dt>Verification enabled</dt><dd>{linuxStatus.verification_enabled ? "Yes" : "No"}</dd>
+          <dt>Credential status</dt><dd>{linuxStatus.credential_status}</dd>
+          <dt>Credential possession verified</dt><dd>{linuxStatus.possession_verified ? "Yes" : "No"}</dd>
+          <dt>Verified account links</dt><dd>{linuxStatus.verified_link_count}</dd>
+        </dl>}
       </div>
 
       {/* Verification Steps */}
