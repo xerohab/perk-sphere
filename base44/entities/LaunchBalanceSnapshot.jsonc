@@ -1,0 +1,65 @@
+{
+  "name": "LaunchBalanceSnapshot",
+  "type": "object",
+  "properties": {
+    "run_reference": {
+      "type": "string"
+    },
+    "user_reference": {
+      "type": "string"
+    },
+    "previous_points": {
+      "type": "number"
+    },
+    "previous_xp": {
+      "type": "number"
+    },
+    "previous_rank": {
+      "type": "string"
+    },
+    "admin_reference": {
+      "type": "string"
+    },
+    "state": {
+      "type": "string",
+      "enum": [
+        "backed_up",
+        "verified"
+      ]
+    },
+    "verified_at": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "run_reference",
+    "user_reference",
+    "previous_points",
+    "previous_xp",
+    "previous_rank",
+    "admin_reference",
+    "state"
+  ],
+  "rls": {
+    "read": {
+      "user_condition": {
+        "role": "service_only"
+      }
+    },
+    "create": {
+      "user_condition": {
+        "role": "service_only"
+      }
+    },
+    "update": {
+      "user_condition": {
+        "role": "service_only"
+      }
+    },
+    "delete": {
+      "user_condition": {
+        "role": "service_only"
+      }
+    }
+  }
+}
