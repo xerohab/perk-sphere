@@ -435,7 +435,7 @@ export default async function(req) {
         return Response.json({ error: result.error || 'Proof status query failed', code: result.code, linux_status: result.status }, { status: 503 });
       }
       const data = result.data || {};
-      if (data.possession_verified === true) {
+      if (data.proof_of_possession_verified === true && data.partner_uuid === before.linux_api_partner_id && data.partner_key_id === before.partner_key_id && ['pending', 'active'].includes(data.credential_status)) {
         const verifiedAt = data.possession_verified_at || new Date().toISOString();
         const cl = before.setup_checklist || {};
         cl.proof_of_possession = true;
