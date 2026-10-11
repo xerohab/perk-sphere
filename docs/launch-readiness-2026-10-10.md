@@ -106,7 +106,7 @@ These are review/staging instructions. Production publishing requires explicit a
 
 1. In each existing Base44 app, verify its connected repository and selected development branch. Use the existing app IDs and secret configuration; do not create replacement apps or accounts. If GitHub synchronization would target a live resource rather than a preview, stop before applying it and arrange a staging app connection.
 2. Bring the launch-readiness-2026-10-10 branch into the existing Builder preview using the app's GitHub workflow. Review the change list. Never run base44 --remote or sandbox write commands against production; resource writes may auto-sync.
-3. In XeroStreams staging, ensure the new PaymentOrder entity and the updated link/challenge/viewing/log/purchase RLS schemas are applied with the backend functions and UI in the same release. Confirm backend service-role writes still succeed and ordinary member writes fail. Do not delete existing entity rows. Payment credentials retain PAYPAL_CLIENT_ID/PAYPAL_CLIENT_SECRET; PAYPAL_ENVIRONMENT=sandbox is for isolated staging only. Its absent value preserves the existing live default, so confirm the environment before any real transaction.
+3. In XeroStreams staging, ensure the new PaymentOrder entity and the updated link/challenge/viewing/log/purchase RLS schemas are applied with the backend functions and UI in the same release. Confirm backend service-role writes still succeed and ordinary member writes fail. Do not delete existing entity rows. Payment credentials retain PAYPAL_CLIENT_ID/PAYPAL_CLIENT_SECRET; PAYPAL_ENVIRONMENT=sandbox is for isolated staging only. Its absent value preserves the existing live default, so confirm the environment before any real transaction. For sandbox previews, set PAYPAL_SITE_ORIGIN to that exact HTTPS Base44 preview origin; it is a trusted server setting, never a browser-supplied return URL. Live checkout keeps the xerostreams.com origin.
 4. Preserve each partner's existing PERKSPHERE_PARTNER_KEY_ID and PERKSPHERE_PARTNER_HMAC_SECRET. Preserve the Perk Sphere outbound/inbound HMAC secrets and API URLs. Do not rotate, print, activate or copy production partner secrets into a public preview.
 5. Run the signed-in staging checklist below. Confirm existing links remain intact by reading them; do not consume production link challenges as a test.
 6. Only after a separately approved release, publish through each existing Base44 app's Publish workflow. Do not use CLI deployment for the GitHub-connected app. Apply the API archive change before relying on the new archive UI. Coordinate function/RLS/UI publication so old browser fulfillment cannot remain active with the new checkout.
@@ -231,3 +231,20 @@ The release must be installed and reviewed before this restart. Rollback restore
 - Queue failures are observable/retryable; backups restore correctly; audit and error logs contain no credentials.
 
 Release acceptance requires documented evidence for every blocker, not merely all green offline checks.
+
+## Verified development commits
+
+The implementation commits below were pushed only to launch-readiness-2026-10-10. This report may have a later documentation-only commit.
+
+| Repository | Implementation commit |
+|---|---|
+| perk-sphere | e9a7ea98a466c79765a447b6716f3291ee46f80a |
+| perk-sphere-api | 64147b379b5edf4f563a3a9a0e44661d01abe3c6 |
+| dko-wrestling | 06f0ce3160a26c0eeb44526ecdf611b6f824c60c |
+| xero-streams | 2b33ac27f4f29d9e98a17b51f6d62c5e51d6ec62 |
+
+Local verification results are recorded in docs/verification-results.json in each repository. GitHub Actions results are separate evidence; do not assume they passed from local results.
+
+Primary implementation references: [PayPal Orders API](https://developer.paypal.com/api/rest/integration/orders-api/), [PayPal idempotency](https://developer.paypal.com/api/make-api-requests/), [PayPal webhook verification](https://developer.paypal.com/api/rest/webhooks/rest/), [React Router changelog](https://reactrouter.com/start/start/changelog).
+
+GitHub Actions implementation-commit verification: [Perk Sphere](https://github.com/xerohab/perk-sphere/actions/runs/38124018224), [API](https://github.com/xerohab/perk-sphere-api/actions/runs/38124105438), [DKO](https://github.com/xerohab/dko-wrestling/actions/runs/38124182198), and [XeroStreams](https://github.com/xerohab/xero-streams/actions/runs/38124217834) completed successfully. CI does not include a clean full dependency audit or live deployment checks.
