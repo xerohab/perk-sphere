@@ -2,13 +2,22 @@ import { secrets } from 'base44:runtime';
 import { encryptToken, sha256Hex } from './oauth.ts';
 import { linuxTrustedPost, LINUX_PARTNER_ENDPOINTS } from './linuxClient.ts';
 
+export function normalizePartnerDomain(value) {
+  if (typeof value !== 'string' || !value.trim()) throw new Error('domain_required');
+  const text=value.trim();
+  const parsed=new URL(text.includes('://') ? text : 'https://' + text);
+  if (parsed.protocol !== 'https:' || parsed.username || parsed.password || parsed.port || parsed.search || parsed.hash || !['','/'].includes(parsed.pathname)) throw new Error('invalid_partner_domain');
+  const host=parsed.hostname.toLowerCase();
+  if (host.length>253 || !host.includes('.') || !host.split('.').every(label=>/^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$/.test(label)) || /^\d+\.\d+\.\d+\.\d+$/.test(host)) throw new Error('invalid_partner_domain');
+  return host;
+}
 export function partnerProvisionRequest(record) {
   return {
     base44_partner_reference: record.id,
     name: record.name,
     partner_type: record.partner_type,
     website_url: record.website_url,
-    verified_domains: record.verified_domains || [],
+    verified_domains: (record.verified_domains || []).map(normalizePartnerDomain),
     supported_event_types: record.supported_event_types || []
   };
 }
@@ -143,7 +152,10 @@ export async function provisionViaLinux(admin, record) {
     return { ok: true, already_provisioned: true, record, linux_api_partner_id: record.linux_api_partner_id };
   }
 
-  const result = await linuxTrustedPost(LINUX_PARTNER_ENDPOINTS.PROVISION, partnerProvisionRequest(record));
+  let request;
+  try { request = partnerProvisionRequest(record); }
+  catch { return {ok:false,code:'invalid_partner_domain',error:'Enter a valid HTTPS site hostname or root URL.'}; }
+  const result = await linuxTrustedPost(LINUX_PARTNER_ENDPOINTS.PROVISION, request);
   if (!result.ok) {
     // Linux returns 409 partner_already_provisioned when a partner with the same
     // base44_partner_reference already exists but the UUID was not saved in Base44.

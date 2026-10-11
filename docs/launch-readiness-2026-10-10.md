@@ -21,6 +21,21 @@ The other 13 repositories were not modified: plugins, testplugins, newnew, fixed
 
 Newer commits on the existing launch branches were incorporated before this batch. In particular, the API's existing work/perksphere-ledger-integration implementation, migrations, cutover gates, tests and routes were preserved. No branch was reset or force-pushed.
 
+## New partner activation request — 11 October 2026
+
+The owner added The Front Row (`6acb6bb37ff815363cc6fef6`) and DKO Entertainment
+(`6acb6b45359fa324443fe72f`) through the partner page and authorised activation
+for linking tests. Both records were inspected: Linux UUID/key fields are null,
+status is linux_integration_pending, and verification steps are incomplete.
+The new records' domain arrays contained full URLs. These two arrays were
+corrected to hostnames `thefrontrow.net` and `dkosportsentertainment.com`.
+No existing partner was changed. No credential was created and neither new
+partner has been activated yet. The provisioning adapter now normalises pasted
+HTTPS root URLs and rejects malformed domains, credentials, paths and ports.
+Creation already attempts Linux provisioning; activation still requires domain
+verification, possession proof and signed admin approval. Automatic activation
+on creation has not been enabled.
+
 ## Latest verified batch — ledger delivery and wallet reads
 
 Thirteen real isolated MariaDB tests now pass: five ledger/refund, five games,
@@ -31,7 +46,7 @@ binding. Base44 receives signed receipts without changing user balances.
 Receipts have at-least-once semantics; duplicate display receipts are possible,
 while financial operations remain idempotent in Linux.
 
-Perk Sphere passes 65 offline tests. Dashboard, points history and loyalty now
+Perk Sphere passes 67 offline tests. Dashboard, points history and loyalty now
 use a server-selected member wallet bridge. The cutover flag selects Linux;
 failed Linux reads cannot fall back to cached Base44 balances. Before cutover,
 existing member-scoped legacy history/balances remain in use. BIGINT balances
