@@ -175,7 +175,7 @@ export const LINUX_ENDPOINT_CONTRACT_CONFIRMED = {
   // API team confirms the endpoint path and response schema, syncProofStatus
   // returns a clear "contract pending" message and makes NO live request.
   // Future partners use the confirmed challenge/confirm flow instead.
-  PROOF_STATUS: false,
+  PROOF_STATUS: true,
   PROOF_CHALLENGE: true,
   PROOF_CONFIRM: true,
   ACCOUNT_LINK_CREATE: true,
