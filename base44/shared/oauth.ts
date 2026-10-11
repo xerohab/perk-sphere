@@ -12,6 +12,14 @@ const PROVIDERS = {
     scopes: 'openid email profile',
     secretNames: { clientId: 'GOOGLE_CLIENT_ID', clientSecret: 'GOOGLE_CLIENT_SECRET', redirectUri: 'GOOGLE_REDIRECT_URI' }
   },
+  youtube: {
+    authUrl: 'https://accounts.google.com/o/oauth2/v2/auth',
+    tokenUrl: 'https://oauth2.googleapis.com/token',
+    userInfoUrl: 'https://www.googleapis.com/youtube/v3/channels',
+    revokeUrl: 'https://oauth2.googleapis.com/revoke',
+    scopes: 'https://www.googleapis.com/auth/youtube.readonly',
+    secretNames: { clientId: 'YOUTUBE_CLIENT_ID', clientSecret: 'YOUTUBE_CLIENT_SECRET', redirectUri: 'YOUTUBE_REDIRECT_URI' }
+  },
   x: {
     authUrl: 'https://twitter.com/i/oauth2/authorize',
     tokenUrl: 'https://api.twitter.com/2/oauth2/token',
@@ -23,7 +31,7 @@ const PROVIDERS = {
 };
 
 export const STATE_TTL_MINUTES = 10;
-export const ALLOWED_PROVIDERS = ['google', 'x'];
+export const ALLOWED_PROVIDERS = ['google', 'youtube', 'x'];
 
 // --- Byte helpers ---
 
@@ -211,6 +219,29 @@ export async function getXUserInfo(accessToken) {
     provider_email: null,
     provider_display_name: u.name || null,
     provider_username: u.username || null
+  };
+}
+
+
+export async function getYouTubeUserInfo(accessToken) {
+  const res = await fetch('https://www.googleapis.com/youtube/v3/channels?part=id,snippet&mine=true&maxResults=2', {
+    headers: { Authorization: `Bearer ${accessToken}` },
+    signal: AbortSignal.timeout(10000)
+  });
+  const data = await res.json().catch(() => null);
+  if (!res.ok || !data) throw new Error('YouTube identity lookup failed: HTTP ' + res.status);
+  if (!Array.isArray(data.items) || data.items.length !== 1 || data.nextPageToken) {
+    throw new Error('YouTube requires one selected channel');
+  }
+  const channel = data.items[0];
+  if (typeof channel.id !== 'string' || !/^UC[A-Za-z0-9_-]{22}$/.test(channel.id)) {
+    throw new Error('Invalid YouTube channel identity');
+  }
+  return {
+    provider_user_id: channel.id,
+    provider_email: null,
+    provider_display_name: typeof channel.snippet?.title === 'string' ? channel.snippet.title : null,
+    provider_username: typeof channel.snippet?.customUrl === 'string' ? channel.snippet.customUrl : null
   };
 }
 
