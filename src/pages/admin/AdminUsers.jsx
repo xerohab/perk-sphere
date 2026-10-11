@@ -9,6 +9,8 @@ import ResponsiveTable from "@/components/perk/ResponsiveTable";
 import { Input } from "@/components/ui/input";
 import EmptyState from "@/components/perk/EmptyState";
 
+import LaunchBalanceResetPanel from "@/components/perk/LaunchBalanceResetPanel";
+
 export default function AdminUsers() {
   const [users, setUsers] = useState([]);
   const [q, setQ] = useState("");
@@ -48,6 +50,7 @@ export default function AdminUsers() {
   return (
     <div>
       <PageHeader title="Users" description={`${users.length} registered users`} />
+      <LaunchBalanceResetPanel />
       <div className="relative mb-4 max-w-sm">
         <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
         <Input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search by name or email..." className="pl-9" />
