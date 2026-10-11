@@ -1,3 +1,4 @@
+import {requestPartnerLinkReward} from '../../shared/partnerLinkReward.ts';
 
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.52';
 import { sha256Hex } from '../../shared/oauth.ts';
@@ -118,7 +119,10 @@ async function syncVerifiedPartner(admin, userId, partner, links, connected) {
     Object.assign(selected, updateData);
   }
 
-  return { synced: true, unavailable: false };
+  // A reward failure must never undo or misreport an independently verified link.
+  let reward = {issued:false,reason:'link_reward_pending'};
+  try { reward = await requestPartnerLinkReward(partner.linux_api_partner_id,userId); } catch (_) { /* retry on the next sync */ }
+  return { synced: true, unavailable: false, reward };
 }
 
 export default async function(req) {
