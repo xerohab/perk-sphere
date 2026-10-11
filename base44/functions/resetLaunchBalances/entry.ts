@@ -11,7 +11,7 @@ Deno.serve(async req => {
   try {
     if (secrets.get('PERKSPHERE_LINUX_LEDGER_AUTHORITATIVE') === 'true') return Response.json({error:'Linux ledger is already authoritative; reset requires a ledger procedure.'}, {status:409});
     const body = await req.json();
-    if (!body || !['begin','batch','verify'].includes(body.action) || Object.keys(body).some(k=>!['action','offset'].includes(k))) return Response.json({error:'Invalid reset request'}, {status:400});
+    if (!body || !['begin','batch','verify','export'].includes(body.action) || Object.keys(body).some(k=>!['action','offset'].includes(k))) return Response.json({error:'Invalid reset request'}, {status:400});
     const offset = body.offset ?? 0;
     if (!Number.isSafeInteger(offset) || offset < 0 || offset > 1000000 || offset % 25 !== 0) return Response.json({error:'Invalid offset'}, {status:400});
     const admin = base44.asServiceRole;
@@ -36,8 +36,10 @@ Deno.serve(async req => {
     const members=[];
     for (const user of users) {
       if ((user.points_balance??0)!==0 || (user.loyalty_xp??0)!==0) throw new Error('nonzero_balance_remains');
-      const snapshots=await admin.entities.LaunchBalanceSnapshot.filter({run_reference:RESET_RUN,user_reference:user.id});
-      if (snapshots.length!==1 || snapshots[0].state!=='verified') throw new Error('member_reset_not_verified');
+      if (body.action !== 'export') {
+        const snapshots=await admin.entities.LaunchBalanceSnapshot.filter({run_reference:RESET_RUN,user_reference:user.id});
+        if (snapshots.length!==1 || snapshots[0].state!=='verified') throw new Error('member_reset_not_verified');
+      }
       members.push({member_reference:user.id,account_status:user.account_status||'active',points:'0',xp:'0'});
     }
     return Response.json({run_reference:RESET_RUN,members,next_offset:offset+25,done:users.length<25});
