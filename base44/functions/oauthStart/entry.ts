@@ -48,7 +48,7 @@ export default async function(req) {
       used_at: null
     });
 
-    const authUrl = provider === 'google'
+    const authUrl = provider !== 'x'
       ? buildGoogleAuthUrl(creds.clientId, creds.redirectUri, state, codeChallenge, creds.scopes)
       : buildXAuthUrl(creds.clientId, creds.redirectUri, state, codeChallenge, creds.scopes);
 
