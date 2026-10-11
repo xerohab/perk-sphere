@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Download, Copy, Check, ExternalLink, AlertTriangle, Shield, Globe, KeyRound, FileCheck, TestTube, Rocket, Loader2 } from "lucide-react";
 import { base44 } from "@/api/base44Client";
 import { Button } from "@/components/ui/button";
@@ -158,6 +158,7 @@ ${pending.length ? pending.map((s) => "  [ ] " + s).join("\\n") : "  (all comple
 export default function PartnerSetupGuide({ partner, onUpdateChecklist, onRefresh }) {
   const { toast } = useToast();
   const [checklist, setChecklist] = useState(partner.setup_checklist || {});
+  useEffect(() => { setChecklist(partner.setup_checklist || {}); }, [partner.id, partner.setup_checklist]);
   const [saving, setSaving] = useState(false);
   const [verifyingDomain, setVerifyingDomain] = useState(false);
   const [proofChallenge, setProofChallenge] = useState(null);
@@ -273,8 +274,9 @@ export default function PartnerSetupGuide({ partner, onUpdateChecklist, onRefres
       });
       const body = res?.data || res;
       if (body?.ok && body?.test_event_verified === true) {
+        setChecklist(body.record?.setup_checklist || { ...checklist, test_event_verified: true });
         toast({ title: "Test event verified", description: "The partner may now proceed to activation approval." });
-        if (onRefresh) onRefresh();
+        if (onRefresh) await onRefresh();
       } else if (body?.ok && body?.test_event_verified === false) {
         toast({ title: "No verified test event yet", description: body.message || "Linux has not received a signed test event for this credential." });
       } else {

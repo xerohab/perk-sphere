@@ -102,6 +102,7 @@ export default function AdminPartners() {
         base44.entities.PartnerEvent.list('-created_date', 50)
       ]);
       setPartners(p || []);
+      setSetupGuidePartner(current => current ? ((p || []).find(item => item.id === current.id) || current) : null);
       setEvents(e || []);
     } finally {
       if (!silent) setLoading(false);
