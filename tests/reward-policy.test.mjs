@@ -12,6 +12,7 @@ function fixture(overrides = {}) {
   const user = { ...member, ...overrides.user };
   const item = { ...reward, ...overrides.reward };
   const entities = {
+    Setting: { filter: async () => [] },
     User: { get: async () => user, update: async (id, data) => { writes.push(['User', data]); Object.assign(user, data); return user; } },
     Reward: { get: async () => item, update: async (id, data) => { writes.push(['Reward', data]); Object.assign(item, data); } },
     Restriction: { filter: async () => overrides.restrictions || [] },
