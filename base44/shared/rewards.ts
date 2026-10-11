@@ -20,8 +20,7 @@ export async function recalcRank(base44, userId) {
   const rank = achieved ? achieved.name : (active[active.length - 1] ? active[active.length - 1].name : 'Bronze');
   if (user.loyalty_rank !== rank) {
     await requireLegacyWritesAllowed(base44);
-    await requireLegacyWritesAllowed(base44);
-  await base44.entities.User.update(userId, { loyalty_rank: rank });
+    await base44.entities.User.update(userId, { loyalty_rank: rank });
   }
   return rank;
 }
