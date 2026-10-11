@@ -1,3 +1,4 @@
+import {ensureLinuxWallet} from '../../shared/memberWalletEnrollment.ts';
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.52';
 import { linuxTrustedPost } from '../../shared/linuxClient.ts';
 import { assertAccountEligible } from '../../shared/rewardPolicy.ts';
@@ -15,6 +16,7 @@ export default async function(req) {
   if(!body || typeof body!=='object' || Array.isArray(body) || !['start','round'].includes(body.action) || !['number-memory','quick-maths','reverse-code'].includes(body.game_reference) ||
      Object.keys(body).sort().join(',')!==fields.sort().join(','))return Response.json({error:'Invalid game request'},{status:400});
   // Browser cannot choose member identity, reward amounts or elapsed time.
+  await ensureLinuxWallet(user.id);
   const result=await linuxTrustedPost('/v1/perk-sphere/games/play',{...body,actor:{role:'member',user_reference:user.id}});
   if(!result.ok)return Response.json({error:result.code || 'Game rewards are temporarily unavailable'},{status:result.status});
   const data=result.data;
