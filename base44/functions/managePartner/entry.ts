@@ -457,14 +457,15 @@ export default async function(req) {
     // ── Verify Test Event ────────────────────────────────────────────────
     if (action === 'verifyTestEvent') {
       const before = await admin.entities.PartnerIntegration.get(partnerId);
-      const testEventId = data?.test_event_id;
-      if (testEventId) {
-        const events = await admin.entities.PartnerEvent.filter({ partner_integration_id: partnerId, external_event_id: testEventId });
-        const evt = (events || [])[0];
-        if (!evt || evt.processing_status !== 'processed') {
-          return Response.json({ error: 'Test event not found or not successfully processed' }, { status: 400 });
-        }
-      }
+      // Do not permit an admin-only toggle or an unrelated production event
+      // to stand in for Linux's signed pre-activation test-event validation.
+      // Linux /partners/test-event is partner-HMAC authenticated and currently
+      // does not persist a receipt that this service can independently verify.
+      return Response.json({
+        ok: false,
+        code: 'linux_test_evidence_required',
+        error: 'Test verification requires authoritative evidence from the signed Linux /partners/test-event endpoint. Manual confirmation is disabled until a verifiable Linux receipt workflow is connected.'
+      }, { status: 409 });
       const now = new Date().toISOString();
       const cl = before.setup_checklist || {};
       cl.test_event_verified = true;
