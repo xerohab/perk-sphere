@@ -456,7 +456,6 @@ export default async function(req) {
 
     // ── Verify Test Event ────────────────────────────────────────────────
     if (action === 'verifyTestEvent') {
-      const before = await admin.entities.PartnerIntegration.get(partnerId);
       // Do not permit an admin-only toggle or an unrelated production event
       // to stand in for Linux's signed pre-activation test-event validation.
       // Linux /partners/test-event is partner-HMAC authenticated and currently
@@ -466,20 +465,6 @@ export default async function(req) {
         code: 'linux_test_evidence_required',
         error: 'Test verification requires authoritative evidence from the signed Linux /partners/test-event endpoint. Manual confirmation is disabled until a verifiable Linux receipt workflow is connected.'
       }, { status: 409 });
-      const now = new Date().toISOString();
-      const cl = before.setup_checklist || {};
-      cl.test_event_verified = true;
-      const updateFields = {
-        setup_checklist: cl,
-        test_event_verified: true,
-        test_event_at: now
-      };
-      if (testEventId) updateFields.test_event_id = testEventId;
-      const record = await admin.entities.PartnerIntegration.update(partnerId, updateFields);
-      const updated = { ...before, ...updateFields };
-      await admin.entities.PartnerIntegration.update(partnerId, { verification_status: computeVerificationStatus(updated) });
-      await writeAudit(admin, { adminId: user.id, action: 'partner_test_event_verified', entityType: 'PartnerIntegration', entityId: partnerId });
-      return Response.json({ ok: true, record: sanitizePartnerRecord(record) });
     }
 
     // ── Update Reward Policy ────────────────────────────────────────────
