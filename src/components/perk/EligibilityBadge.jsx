@@ -20,7 +20,7 @@ const CONFIG = {
   }
 };
 
-export default function EligibilityBadge({ eligibility, className = "", showIcon = true }) {
+export default function EligibilityBadge({ eligibility, className = undefined, showIcon = true }) {
   const cfg = CONFIG[eligibility] || CONFIG.neutral;
   const Icon = cfg.Icon;
   return (

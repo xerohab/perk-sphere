@@ -9,6 +9,7 @@ import { useToast } from "@/components/ui/use-toast";
 
 function extractList(data, key) {
   if (!data) return [];
+  if (data.ok === true && data.data !== undefined) return extractList(data.data, key);
   if (Array.isArray(data)) return data;
   return data[key] || data.items || data.data || [];
 }

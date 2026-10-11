@@ -1,6 +1,6 @@
 import React from "react";
 
-export default function PageHeader({ title, description = "", actions = null }) {
+export default function PageHeader({ title, description = undefined, actions = undefined }) {
   return (
     <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
       <div>

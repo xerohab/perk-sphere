@@ -1,5 +1,6 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.52';
 import { authorize, writeAudit } from '../../shared/permissions.ts';
+import { validateReward } from '../../shared/rewardPolicy.ts';
 
 // The ONLY way the admin UI creates / edits / deletes configuration records.
 // The entities below are write-locked for every app user (even admins) via RLS, so a
@@ -56,6 +57,7 @@ export default async function(req) {
     const action = entity.toLowerCase() + '_' + op;
 
     if (op === 'create') {
+      if (entity === 'Reward') validateReward(payload);
       const record = await store.create(payload);
       await writeAudit(admin, {
         adminId: user.id, action, entityType: entity, entityId: record.id,
@@ -68,6 +70,7 @@ export default async function(req) {
     const before = await store.get(id);
 
     if (op === 'update') {
+      if (entity === 'Reward') validateReward({ ...before, ...payload });
       const record = await store.update(id, payload);
       await writeAudit(admin, {
         adminId: user.id, action, entityType: entity, entityId: id,

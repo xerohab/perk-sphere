@@ -59,7 +59,7 @@ export default async function(req) {
     if (action === "adminPreview") {
       if (!userReference) return Response.json({ error: "Missing userReference" }, { status: 400 });
       const weekStart = body.week_start || getCurrentWeekStartUTC();
-      const result = await adminRequest(base44, PERK_SPHERE_ENDPOINTS.REPORTS_PREVIEW, { userReference, week_start: weekStart }, "analytics.view");
+      const result = await adminRequest(base44, PERK_SPHERE_ENDPOINTS.REPORTS_DETAIL, { userReference, week_start: weekStart }, "analytics.view");
       return linuxResponse(result);
     }
 
@@ -79,7 +79,8 @@ export default async function(req) {
     // ── Admin: create weekly archive ──────────────────────────────────
     // Preserves historical report versions. Clearly identifies superseded reports.
     if (action === "archive") {
-      const result = await adminRequest(base44, PERK_SPHERE_ENDPOINTS.REPORTS_ARCHIVE, {}, "analytics.view");
+      if (!userReference || !body.week_start) return Response.json({ error: "A member reference and completed UTC week are required" }, { status: 400 });
+      const result = await adminRequest(base44, PERK_SPHERE_ENDPOINTS.REPORTS_ARCHIVE, { userReference, week_start: body.week_start }, "analytics.view");
       return linuxResponse(result);
     }
 

@@ -15,6 +15,8 @@ export default async function(req) {
     const admin = base44.asServiceRole;
     const task = await admin.entities.Task.get(taskId);
     if (!task) return Response.json({ error: 'Task not found' }, { status: 404 });
+    if (['suspended', 'banned'].includes(user.account_status)) return Response.json({ error: 'Account is not permitted to start tasks.' }, { status: 403 });
+    if (task.publicly_visible === false) return Response.json({ error: 'This task is not publicly available.' }, { status: 403 });
     const now = new Date();
     if (!isTaskAvailable(task, now)) return Response.json({ error: 'This task is not currently available.' }, { status: 400 });
     // Trusted-automatic tasks are started automatically by the trusted verification path,

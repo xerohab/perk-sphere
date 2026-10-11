@@ -3,12 +3,14 @@ import { Loader2, Eye, Archive, AlertCircle } from "lucide-react";
 import { base44 } from "@/api/base44Client";
 import PageHeader from "@/components/perk/PageHeader";
 import EmptyState from "@/components/perk/EmptyState";
+import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { useToast } from "@/components/ui/use-toast";
 
 function getArray(data, key) {
   if (!data) return [];
+  if (data.data && !Array.isArray(data.data)) return getArray(data.data, key);
   if (Array.isArray(data)) return data;
   const v = data[key] || data.items || data.data;
   return Array.isArray(v) ? v : [];
@@ -16,6 +18,7 @@ function getArray(data, key) {
 
 function getData(data, key) {
   if (!data) return null;
+  if (data.data) return getData(data.data, key);
   return data[key] || data.data || data;
 }
 
@@ -27,6 +30,8 @@ export default function AdminReports() {
   const [activeArchive, setActiveArchive] = useState(null);
   const [loadingDetail, setLoadingDetail] = useState(false);
   const [archiving, setArchiving] = useState(false);
+  const [archiveUser, setArchiveUser] = useState("");
+  const [archiveWeek, setArchiveWeek] = useState("");
 
   const [stage2Disabled, setStage2Disabled] = useState(false);
 
@@ -71,9 +76,10 @@ export default function AdminReports() {
   };
 
   const createArchive = async () => {
+    if (!archiveUser.trim() || !archiveWeek) { toast({ title: "Enter a member reference and a completed Monday UTC date", variant: "destructive" }); return; }
     setArchiving(true);
     try {
-      const res = await base44.functions.invoke("perkSphereReports", { action: "archive" });
+      const res = await base44.functions.invoke("perkSphereReports", { action: "archive", userReference: archiveUser.trim(), week_start: archiveWeek });
       const data = res?.data || res;
       if (data?.ok === false) throw new Error(data.error);
       toast({ title: "Archive created", description: "The weekly archive has been created." });
@@ -98,6 +104,7 @@ export default function AdminReports() {
   return (
     <div>
       <PageHeader title="Administrator Reports" description="Review member reports, examine classifications and create weekly archives" />
+      <div className="mb-4 flex flex-wrap gap-3"><Input aria-label="Member reference for archive" placeholder="Member reference" value={archiveUser} onChange={e => setArchiveUser(e.target.value)} /><Input aria-label="Completed week starting Monday UTC" type="date" value={archiveWeek} onChange={e => setArchiveWeek(e.target.value)} /></div>
 
       <div className="mt-4 flex items-start gap-3 rounded-xl border border-blue-200 bg-blue-50 p-4 dark:border-blue-800 dark:bg-blue-950/30">
         <AlertCircle className="mt-0.5 h-4 w-4 flex-shrink-0 text-blue-600 dark:text-blue-400" />

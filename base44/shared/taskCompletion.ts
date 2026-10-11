@@ -11,6 +11,7 @@
 import { adjustPoints, adjustXp } from "./rewards.ts";
 import { deriveRewardType, periodStart } from "./tasks.ts";
 import { normalizePlatform } from "./destinations.ts";
+import { assertUnits } from "./rewardPolicy.ts";
 
 export async function finalizeCompletion(admin, { userId, task, progress, completedCount, now, source, verificationStatus, actorId }) {
   // Idempotency re-check — narrows the race window for concurrent completion attempts.
@@ -18,19 +19,17 @@ export async function finalizeCompletion(admin, { userId, task, progress, comple
     return { already_completed: true, completion_number: progress.completion_number };
   }
 
-  // Server-side uniqueness enforcement: re-read the progress record to catch
-  // concurrent completions that may have finalized between the caller's check and now.
-  // This is the authoritative guard against duplicate reward issuance under concurrency.
-  try {
-    const fresh = await admin.entities.TaskProgress.get(progress.id);
-    if (fresh && fresh.reward_issued) {
-      return { already_completed: true, completion_number: fresh.completion_number };
-    }
-  } catch (_e) { /* proceed — the original progress object is our fallback */ }
+  // Fail closed if the fresh read fails. This check handles sequential retries;
+  // it is NOT an atomic lock and does not guarantee concurrent exactly-once issuance.
+  const fresh = await admin.entities.TaskProgress.get(progress.id);
+  if (!fresh) throw new Error('Task progress is unavailable.');
+  if (fresh.reward_issued) {
+    return { already_completed: true, completion_number: fresh.completion_number };
+  }
 
   // For once_ever / once_daily / once_weekly, re-check completed records server-side
-  // to prevent duplicate completions from concurrent requests. This is the concurrency
-  // protection that supplements the caller's canCompleteAgain check.
+  // to catch sequential duplicate completions. Concurrent calls still require
+  // a transactional ledger and a unique completion key.
   const limitType = task.completion_limit_type || 'once_ever';
   if (limitType === 'once_ever' || limitType === 'once_daily' || limitType === 'once_weekly') {
     const allProgress = await admin.entities.TaskProgress.filter({ user_id: userId, task_id: task.id });
@@ -53,6 +52,10 @@ export async function finalizeCompletion(admin, { userId, task, progress, comple
   const isYouTubeTask = task.destination_platform && normalizePlatform(task.destination_platform) === "YouTube";
   const pointsToIssue = isYouTubeTask ? 0 : ((rewardType === "points" || rewardType === "points_xp") ? (task.points_reward || 0) : 0);
   const xpToIssue = isYouTubeTask ? 0 : ((rewardType === "xp" || rewardType === "points_xp") ? (task.xp_reward || 0) : 0);
+  // Validate both currencies before the first write, avoiding a points credit
+  // followed by an XP validation failure.
+  assertUnits(pointsToIssue, 'Task points reward');
+  assertUnits(xpToIssue, 'Task XP reward');
 
   let pointsResult = null;
   let xpResult = null;

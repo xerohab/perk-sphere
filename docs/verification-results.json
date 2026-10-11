@@ -1,0 +1,16 @@
+{
+  "test": 0,
+  "lint": 0,
+  "typecheck": 0,
+  "check:backend": 0,
+  "build": 0,
+  "validated_at": "2026-10-11",
+  "offline_tests": 51,
+  "audit": {
+    "passed": false,
+    "high": 5,
+    "moderate": 2,
+    "total": 7
+  },
+  "live_end_to_end": false
+}

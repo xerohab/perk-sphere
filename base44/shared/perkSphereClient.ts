@@ -14,6 +14,7 @@
 // Privileged operations require adminRequest() with a staff permission check.
 // Browser-provided actor, role, user ID or permission fields are never trusted.
 
+import { stage2Body, stage2Data } from "./stage2Contract.ts";
 import { linuxTrustedPost } from "./linuxClient.ts";
 import { loadStaff, evaluateAccess } from "./permissions.ts";
 
@@ -91,8 +92,9 @@ export async function memberRequest(base44, path, body) {
   let user = null;
   try { user = await base44.auth.me(); } catch { user = null; }
   if (!user) return { ok: false, status: 401, code: "unauthorized", error: "Authentication required" };
+  if (["suspended", "banned"].includes(user.account_status)) return { ok: false, status: 403, code: "account_restricted", error: "Account is restricted" };
   const actor = deriveActor(user);
-  return linuxTrustedPost(path, { ...cleanBody(body), actor });
+  return linuxTrustedPost(path, { ...cleanBody(stage2Body(path, body)), actor });
 }
 
 // Sends an admin request to the Linux perk-sphere API.
@@ -108,7 +110,7 @@ export async function adminRequest(base44, path, body, permission) {
   const verdict = evaluateAccess(user, staff, permission);
   if (!verdict.ok) return { ok: false, status: verdict.status, code: "forbidden", error: verdict.error };
   const actor = deriveActor(user);
-  return linuxTrustedPost(path, { ...cleanBody(body), actor });
+  return linuxTrustedPost(path, { ...cleanBody(stage2Body(path, body)), actor });
 }
 
 // Wraps a Linux API result into a Response.json call.
@@ -116,5 +118,5 @@ export function linuxResponse(result) {
   if (!result.ok) {
     return Response.json({ ok: false, error: result.error, code: result.code }, { status: result.status || 500 });
   }
-  return Response.json({ ok: true, data: result.data });
+  return Response.json({ ok: true, data: stage2Data(result.data) });
 }

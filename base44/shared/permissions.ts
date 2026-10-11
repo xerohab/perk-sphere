@@ -95,6 +95,9 @@ export function canManageMemberRole(actorRole, memberRole) {
 
 // Pure access decision (no I/O) so it can be unit-tested.
 export function evaluateAccess(user, staff, permission) {
+  if (user && ['suspended', 'banned'].includes(user.account_status)) {
+    return { ok: false, status: 403, error: 'Account is not permitted to perform this operation.' };
+  }
   if (!user) return { ok: false, status: 401, error: 'Unauthorized' };
   if (user.role !== 'admin') return { ok: false, status: 403, error: 'Forbidden' };
   if (!staff) return { ok: false, status: 403, error: 'Forbidden: no staff role assigned to this account' };

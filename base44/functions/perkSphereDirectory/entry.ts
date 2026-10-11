@@ -19,7 +19,7 @@ export default async function(req) {
     // destinations.view. Member directory uses memberRequest().
     if (action === "list") {
       if (scope === "all") {
-        const result = await adminRequest(base44, PERK_SPHERE_ENDPOINTS.DIRECTORY_LIST, { filters: filters || {} }, "destinations.view");
+        const result = await adminRequest(base44, PERK_SPHERE_ENDPOINTS.DIRECTORY_LIST, { filters: filters || {}, include_unpublished: true }, "destinations.view");
         return linuxResponse(result);
       }
       const result = await memberRequest(base44, PERK_SPHERE_ENDPOINTS.DIRECTORY_LIST, { filters: filters || {} });

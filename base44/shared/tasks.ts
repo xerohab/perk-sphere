@@ -67,7 +67,7 @@ export function isLiveStreamCompletionReady(task, aggregateEligible, broadcastEn
 
 export function deriveRewardType(task) {
   if (!task) return 'none';
-  if (task.reward_type && task.reward_type !== 'none') return task.reward_type;
+  if (task.reward_type) return task.reward_type;
   const hasP = (task.points_reward || 0) > 0;
   const hasX = (task.xp_reward || 0) > 0;
   const hasA = !!task.achievement_id;
@@ -81,12 +81,12 @@ export function deriveRewardType(task) {
 // Start of the current completion period for repeatable tasks.
 export function periodStart(limitType, now = new Date()) {
   if (limitType === 'once_daily') {
-    const d = new Date(now); d.setHours(0, 0, 0, 0); return d;
+    const d = new Date(now); d.setUTCHours(0, 0, 0, 0); return d;
   }
   if (limitType === 'once_weekly') {
-    const d = new Date(now); d.setHours(0, 0, 0, 0);
-    const day = d.getDay() || 7;
-    d.setDate(d.getDate() - (day - 1)); // Monday start
+    const d = new Date(now); d.setUTCHours(0, 0, 0, 0);
+    const day = d.getUTCDay() || 7;
+    d.setUTCDate(d.getUTCDate() - (day - 1)); // Monday start, UTC
     return d;
   }
   return null;

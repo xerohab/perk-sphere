@@ -13,7 +13,7 @@ const VERIFICATION_STYLES = {
   fully_verified: "bg-emerald-100 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-400"
 };
 
-export default function PartnerDetail({ partner, events, onClose = null, onRefresh }) {
+export default function PartnerDetail({ partner, events, onClose = undefined, onRefresh }) {
   const { toast } = useToast();
   const [rewardPolicy, setRewardPolicy] = useState({
     daily_points_limit: partner.daily_points_limit || 0,

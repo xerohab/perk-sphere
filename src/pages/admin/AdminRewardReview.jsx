@@ -13,6 +13,7 @@ import { useToast } from "@/components/ui/use-toast";
 
 function extractList(data) {
   if (!data) return [];
+  if (data.ok === true && data.data !== undefined) return extractList(data.data);
   if (Array.isArray(data)) return data;
   return data.requests || data.items || [];
 }
@@ -53,16 +54,14 @@ export default function AdminRewardReview() {
   const doDecision = async () => {
     if (!reviewDialog) return;
     const { requestId, decision, reason, pointsValue, xpValue } = reviewDialog;
-    if (!reason || reason.trim().length < 3) {
+    if (!reason || reason.trim().length < 5) {
       toast({ title: "Validation error", description: "A reason is required.", variant: "destructive" });
       return;
     }
     setSubmitting(true);
     try {
       const res = await base44.functions.invoke("perkSphereRewardReview", {
-        action: "decision", requestId, decision, reason,
-        pointsValue: pointsValue !== "" ? Number(pointsValue) : undefined,
-        xpValue: xpValue !== "" ? Number(xpValue) : undefined
+        action: "decision", requestId, decision, reason
       });
       const data = res?.data || res;
       if (data?.ok === false) throw new Error(data.error);
@@ -175,11 +174,11 @@ export default function AdminRewardReview() {
                   <div className="grid grid-cols-2 gap-4">
                     <div>
                       <Label>Points Value</Label>
-                      <Input className="mt-1" type="number" value={reviewDialog.pointsValue} onChange={(e) => setReviewDialog({ ...reviewDialog, pointsValue: e.target.value })} placeholder="0" />
+                      <Input className="mt-1" type="number" disabled value={reviewDialog.pointsValue} onChange={(e) => setReviewDialog({ ...reviewDialog, pointsValue: e.target.value })} placeholder="0" />
                     </div>
                     <div>
                       <Label>XP Value</Label>
-                      <Input className="mt-1" type="number" value={reviewDialog.xpValue} onChange={(e) => setReviewDialog({ ...reviewDialog, xpValue: e.target.value })} placeholder="0" />
+                      <Input className="mt-1" type="number" disabled value={reviewDialog.xpValue} onChange={(e) => setReviewDialog({ ...reviewDialog, xpValue: e.target.value })} placeholder="0" />
                     </div>
                   </div>
                   <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 dark:border-amber-800 dark:bg-amber-950/30">

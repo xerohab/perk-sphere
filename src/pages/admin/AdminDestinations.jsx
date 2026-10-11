@@ -72,7 +72,8 @@ export default function AdminDestinations() {
   const [eligFilter, setEligFilter] = useState("all");
   const [platFilter, setPlatFilter] = useState("all");
   const [editing, setEditing] = useState(null);
-  const [form, setForm] = useState(/** @type {Partial<{site_name: string, domain: string, platform: string, status: string, account_name: string, username: string, profile_url: string, destination_type: string, external_platform_id: string, eligibility: string, description: string, publicly_visible: boolean, tracking_enabled: boolean, points_eligible: boolean, xp_eligible: boolean, active: boolean}>} */ ({}));
+  /** @type {[{ eligibility?: string, publicly_visible?: boolean, tracking_enabled?: boolean, points_eligible?: boolean, xp_eligible?: boolean, description?: string, site_name?: string, domain?: string, platform?: string, status?: string, account_name?: string, username?: string, profile_url?: string, destination_type?: string, external_platform_id?: string, active?: boolean }, Function]} */
+  const [form, setForm] = useState({});
   const [saving, setSaving] = useState(false);
   const [newOpen, setNewOpen] = useState(false);
   const [newForm, setNewForm] = useState({ kind: "website", platform: "Website", destination_type: "channel", site_name: "", domain: "", account_name: "", username: "", profile_url: "", external_platform_id: "", eligibility: "neutral", description: "" });

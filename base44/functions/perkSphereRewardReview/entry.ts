@@ -41,12 +41,13 @@ export default async function(req) {
       if (!decision || !["approved", "denied"].includes(decision)) {
         return Response.json({ error: "Decision must be 'approved' or 'denied'" }, { status: 400 });
       }
-      if (!reason || reason.trim().length < 3) {
+      if (!reason || reason.trim().length < 5) {
         return Response.json({ error: "A reason is required" }, { status: 400 });
       }
+      if (pointsValue !== undefined || xpValue !== undefined) {
+        return Response.json({ error: "Reward amounts cannot be changed by review decisions." }, { status: 400 });
+      }
       const payload = { requestId, decision, reason };
-      if (pointsValue !== undefined) payload.points_value = Number(pointsValue);
-      if (xpValue !== undefined) payload.xp_value = Number(xpValue);
       const result = await adminRequest(base44, PERK_SPHERE_ENDPOINTS.REWARD_REVIEW_DECISION, payload, "rewards.manage");
       return linuxResponse(result);
     }

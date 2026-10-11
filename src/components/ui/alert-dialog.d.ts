@@ -1,0 +1,13 @@
+import * as React from 'react';
+import * as Primitive from '@radix-ui/react-alert-dialog';
+export declare const AlertDialogOverlay: React.ForwardRefExoticComponent<React.ComponentPropsWithoutRef<typeof Primitive.Overlay> & React.RefAttributes<React.ElementRef<typeof Primitive.Overlay>>>;
+export declare const AlertDialogContent: React.ForwardRefExoticComponent<React.ComponentPropsWithoutRef<typeof Primitive.Content> & React.RefAttributes<React.ElementRef<typeof Primitive.Content>>>;
+export declare const AlertDialogTitle: React.ForwardRefExoticComponent<React.ComponentPropsWithoutRef<typeof Primitive.Title> & React.RefAttributes<React.ElementRef<typeof Primitive.Title>>>;
+export declare const AlertDialogDescription: React.ForwardRefExoticComponent<React.ComponentPropsWithoutRef<typeof Primitive.Description> & React.RefAttributes<React.ElementRef<typeof Primitive.Description>>>;
+export declare const AlertDialogAction: React.ForwardRefExoticComponent<React.ComponentPropsWithoutRef<typeof Primitive.Action> & React.RefAttributes<React.ElementRef<typeof Primitive.Action>>>;
+export declare const AlertDialogCancel: React.ForwardRefExoticComponent<React.ComponentPropsWithoutRef<typeof Primitive.Cancel> & React.RefAttributes<React.ElementRef<typeof Primitive.Cancel>>>;
+export declare const AlertDialog: typeof Primitive.Root;
+export declare const AlertDialogTrigger: typeof Primitive.Trigger;
+export declare const AlertDialogPortal: typeof Primitive.Portal;
+export declare const AlertDialogHeader: React.FC<React.HTMLAttributes<HTMLDivElement>>;
+export declare const AlertDialogFooter: React.FC<React.HTMLAttributes<HTMLDivElement>>;

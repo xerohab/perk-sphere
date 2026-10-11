@@ -1,0 +1,12 @@
+import * as React from 'react';
+import * as Primitive from '@radix-ui/react-select';
+export declare const SelectTrigger: React.ForwardRefExoticComponent<React.ComponentPropsWithoutRef<typeof Primitive.Trigger> & React.RefAttributes<React.ElementRef<typeof Primitive.Trigger>>>;
+export declare const SelectScrollUpButton: React.ForwardRefExoticComponent<React.ComponentPropsWithoutRef<typeof Primitive.ScrollUpButton> & React.RefAttributes<React.ElementRef<typeof Primitive.ScrollUpButton>>>;
+export declare const SelectScrollDownButton: React.ForwardRefExoticComponent<React.ComponentPropsWithoutRef<typeof Primitive.ScrollDownButton> & React.RefAttributes<React.ElementRef<typeof Primitive.ScrollDownButton>>>;
+export declare const SelectContent: React.ForwardRefExoticComponent<React.ComponentPropsWithoutRef<typeof Primitive.Content> & React.RefAttributes<React.ElementRef<typeof Primitive.Content>>>;
+export declare const SelectLabel: React.ForwardRefExoticComponent<React.ComponentPropsWithoutRef<typeof Primitive.Label> & React.RefAttributes<React.ElementRef<typeof Primitive.Label>>>;
+export declare const SelectItem: React.ForwardRefExoticComponent<React.ComponentPropsWithoutRef<typeof Primitive.Item> & React.RefAttributes<React.ElementRef<typeof Primitive.Item>>>;
+export declare const SelectSeparator: React.ForwardRefExoticComponent<React.ComponentPropsWithoutRef<typeof Primitive.Separator> & React.RefAttributes<React.ElementRef<typeof Primitive.Separator>>>;
+export declare const Select: typeof Primitive.Root;
+export declare const SelectGroup: typeof Primitive.Group;
+export declare const SelectValue: typeof Primitive.Value;

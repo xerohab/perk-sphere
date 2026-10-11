@@ -13,6 +13,7 @@
 // It never logs secrets, signatures, pairing codes, device tokens, or token hashes.
 
 import { secrets } from "base44:runtime";
+import { isValidLinuxPath } from './linuxPath.ts';
 
 export const LINUX_API_BASE = "https://api.perksphere.org";
 
@@ -37,24 +38,12 @@ async function hmacSha256Hex(secret, text) {
 
 // Allowed path prefixes for Linux API requests. Prevents arbitrary external
 // URL construction — any path not starting with one of these is rejected.
-const ALLOWED_PATH_PREFIXES = [
-  "/v1/perk-sphere/",
-  "/partners/",
-  "/v1/partner-credentials/",
-  "/v1/partner-links/"
-];
-
-function isValidPath(path) {
-  if (!path || typeof path !== "string") return false;
-  if (!path.startsWith("/") || path.includes("://") || path.includes("..")) return false;
-  return ALLOWED_PATH_PREFIXES.some((prefix) => path.startsWith(prefix));
-}
 
 // Signs and sends a trusted POST to the Linux API.
 // Returns { ok: true, status, data } on success or
 // { ok: false, status, code, error } on failure.
 export async function linuxTrustedPost(path, body, extraHeaders) {
-  if (!isValidPath(path)) {
+  if (!isValidLinuxPath(path)) {
     return { ok: false, status: 400, code: "invalid_path", error: "Invalid or unrecognised endpoint path." };
   }
   const keyId = (secrets.get("PERKSPHERE_LINUX_KEY_ID") || "").trim();

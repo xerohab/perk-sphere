@@ -17,7 +17,7 @@ const TYPE_LABEL = {
   complete_activity: "Complete Activity", campaign_task: "Campaign Task", custom: "Custom Task"
 };
 
-export default function TaskCard({ task, progress = null, onStart = null, onComplete = null, starting = false, completing = false, isAuthed = false, onSignIn = () => {} }) {
+export default function TaskCard({ task, progress = undefined, onStart = undefined, onComplete = undefined, starting = false, completing = false, isAuthed = false, onSignIn = undefined }) {
   const Icon = TYPE_ICON[task.task_type] || Sparkles;
   const status = progress?.status || "not_started";
   const eligible = progress?.eligible_seconds || 0;
@@ -141,7 +141,7 @@ export default function TaskCard({ task, progress = null, onStart = null, onComp
           ) : !isAuthed ? (
             <Button className="w-full" onClick={handleStart}>Sign in to start</Button>
           ) : !isInProgress ? (
-            <Button className="w-full" onClick={handleStart} disabled={starting || !onStart}>
+            <Button className="w-full" onClick={handleStart} disabled={starting}>
               {starting ? "Starting..." : "Start Task"}
             </Button>
           ) : isViewing && !viewingReady ? (
@@ -149,7 +149,7 @@ export default function TaskCard({ task, progress = null, onStart = null, onComp
               <Lock className="mr-1 h-3.5 w-3.5" /> Tracking in progress
             </Button>
           ) : (
-            <Button className="w-full" onClick={onComplete} disabled={completing || !onComplete}>
+            <Button className="w-full" onClick={onComplete} disabled={completing}>
               {completing ? "Completing..." : "Complete Task"}
             </Button>
           )}

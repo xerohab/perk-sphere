@@ -1,13 +1,15 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.52';
 import { adjustPoints } from '../../shared/rewards.ts';
 import { authorize, writeAudit } from '../../shared/permissions.ts';
+import { canTransitionRedemption } from '../../shared/rewardPolicy.ts';
 
 const STATUSES = ['pending', 'approved', 'fulfilled', 'rejected', 'cancelled', 'refunded'];
 // Statuses that mean the points have been (or must be) returned to the member.
 const RETURNED = ['rejected', 'cancelled', 'refunded'];
 
 // Updates a redemption's status. Requires redemptions.manage (server-checked).
-// Points are returned exactly once, and a returned redemption cannot be re-opened.
+// Returned redemptions cannot be re-opened. Atomic refund issuance remains a
+// launch blocker until the transactional Linux ledger is connected.
 export default async function(req) {
   try {
     const base44 = createClientFromRequest(req);
@@ -20,6 +22,10 @@ export default async function(req) {
 
     const admin = base44.asServiceRole;
     const redemption = await admin.entities.Redemption.get(redemptionId);
+    if (!canTransitionRedemption(redemption.status, status)) {
+      return Response.json({ error: 'Invalid redemption status transition.' }, { status: 400 });
+    }
+    if (redemption.status === status) return Response.json({ ok: true, unchanged: true });
     const alreadyReturned = RETURNED.includes(redemption.status);
     if (alreadyReturned && !RETURNED.includes(status)) {
       return Response.json({ error: 'This redemption was already returned to the member and cannot be re-opened.' }, { status: 400 });

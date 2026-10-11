@@ -17,6 +17,7 @@ const TYPE_LABELS = { website: "Website", x_account: "X Account", youtube_channe
 
 function extractList(data) {
   if (!data) return [];
+  if (data.ok === true && data.data !== undefined) return extractList(data.data);
   if (Array.isArray(data)) return data;
   return data.entries || data.items || data.directory || [];
 }

@@ -13,6 +13,7 @@ export default async function(req) {
     const base44 = createClientFromRequest(req);
     const body = await req.json().catch(() => ({}));
     const { taskId, manual, userId: overrideUserId } = body;
+    if (!taskId || typeof taskId !== 'string') return Response.json({ error: 'Missing taskId' }, { status: 400 });
 
     let user = null;
     try { user = await base44.auth.me(); } catch (_e) { user = null; }
@@ -32,6 +33,13 @@ export default async function(req) {
     if (!isTaskAvailable(task, now)) return Response.json({ error: 'This task is not currently available.' }, { status: 400 });
 
     const targetUserId = manual ? (overrideUserId || user.id) : user.id;
+    const targetUser = await admin.entities.User.get(targetUserId);
+    if (!targetUser || ['suspended', 'banned'].includes(targetUser.account_status)) {
+      return Response.json({ error: 'Account is not permitted to complete tasks.' }, { status: 403 });
+    }
+    if (task.verification_mode === 'manual' && !manual) {
+      return Response.json({ error: 'This task requires administrator verification.' }, { status: 403 });
+    }
 
     // Trusted-automatic tasks must only be completed through the trusted verification path
     // (trustedActivityBridge), never through manual user completion.

@@ -107,7 +107,7 @@ function DocumentationSection({ title, children }) {
   );
 }
 
-export default function PartnerIntegrationKits({ onSelectKit = null }) {
+export default function PartnerIntegrationKits({ onSelectKit = undefined }) {
   return (
     <div className="space-y-4">
       <div className="rounded-xl border border-border bg-card p-4">

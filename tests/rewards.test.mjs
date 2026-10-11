@@ -1,15 +1,14 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { readFile } from 'node:fs/promises';
-const source = (await readFile(new URL('../base44/shared/rewards.ts', import.meta.url), 'utf8'))
-  .replace('import { secrets } from "base44:runtime";', 'const secrets = { get: () => globalThis.__ledgerCutover };');
-const rewards = await import('data:text/javascript;base64,' + Buffer.from(source).toString('base64'));
+import * as rewards from '../base44/shared/rewards.ts';
+globalThis.__testSecrets = { get PERKSPHERE_LINUX_LEDGER_AUTHORITATIVE() { return globalThis.__ledgerCutover; } };
 function fixture({ points = 100, xp = 50, reward = {}, rank = 'Bronze' } = {}) {
   const writes = [];
   const api = { entities: {
     User: { get: async () => ({ points_balance: points, loyalty_xp: xp, loyalty_rank: rank }), update: async (...args) => { writes.push(args); } },
     PointsTransaction: { create: async (data) => { writes.push(data); return data; } },
     XpTransaction: { create: async (data) => { writes.push(data); return data; } },
+    Restriction: { filter: async () => [] },
     Reward: { get: async () => ({ active: true, points_cost: 20, unlimited_stock: true, ...reward }) },
     Redemption: { create: async () => { writes.push('redemption'); return { id: 'r' }; }, filter: async () => [] },
     Notification: { create: async () => {} }, LoyaltyLevel: { list: async () => [] }
@@ -37,7 +36,7 @@ test('XP cannot silently clamp a debit and misstate its transaction', async () =
 });
 test('redemption enforces rank before creating an order or changing balance', async () => {
   const { api, writes } = fixture({ reward: { required_rank: 'Gold' } });
-  await assert.rejects(rewards.redeemReward(api, { userId: 'u', rewardId: 'r' }), /rank/);
+  await assert.rejects(rewards.redeemReward(api, { userId: 'u', rewardId: 'r' }), /rank/i);
   assert.equal(writes.length, 0);
 });
 test('malformed reward price and inventory fail before writes', async () => {

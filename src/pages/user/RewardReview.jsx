@@ -15,6 +15,7 @@ const STATUS_CONFIG = {
 
 function extractList(data) {
   if (!data) return [];
+  if (data.ok === true && data.data !== undefined) return extractList(data.data);
   if (Array.isArray(data)) return data;
   return data.requests || data.items || [];
 }
