@@ -6,7 +6,8 @@ import PageHeader from "@/components/perk/PageHeader";
 import ServiceCard from "@/components/perk/ServiceCard";
 
 const SERVICES = [
-  { key: "google", name: "YouTube / Google", icon: "▶" },
+  { key: "google", name: "Google", icon: "G" },
+  { key: "youtube", name: "YouTube", icon: "▶" },
   { key: "x", name: "X (Twitter)", icon: "𝕏" }
 ];
 
@@ -102,10 +103,11 @@ export default function ConnectedServices() {
   return (
     <div>
       <PageHeader title="Connected Services" description="Manage third-party accounts linked to your Perk Sphere profile" />
+      <p className="mb-4 text-sm text-muted-foreground">YouTube verifies your channel identity. Views, likes, comments, shares and subscriptions do not earn Points or XP.</p>
       <div className="grid gap-4 sm:grid-cols-2">
         {SERVICES.map((s) => {
           const conn = getConnection(s.key);
-          const configured = config[s.key]?.configured !== false;
+          const configured = config[s.key]?.configured === true;
           const isConnected = conn && conn.status === "connected";
           return (
             <ServiceCard
