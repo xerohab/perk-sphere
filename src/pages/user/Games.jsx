@@ -49,7 +49,7 @@ export default function Games() {
         <option value="quick-maths">Quick Maths</option>
         <option value="reverse-code">Reverse Code</option>
       </select>
-      <p className="text-sm text-muted-foreground">Remember a six-digit number and type it back. Successful rounds count towards the configured play-time target. One reward per game per day, resetting at midnight UTC. Long pauses do not count.</p>
+      <p className="text-sm text-muted-foreground">{game === 'quick-maths' ? 'Add the two numbers and enter the six-digit answer.' : game === 'reverse-code' ? 'Read the six-digit code and enter its digits in reverse order.' : 'Memorise the six-digit number, then type it back after it disappears.'} Successful rounds count towards the configured play-time target. One reward per game per day, resetting at midnight UTC. Long pauses do not count.</p>
       <Button disabled={busy} onClick={() => send('start')}>Start / Resume</Button>
       {error && <p role="alert" className="text-sm text-destructive">{error}</p>}
       {session && <>
