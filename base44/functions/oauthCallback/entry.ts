@@ -3,7 +3,7 @@ import { secrets } from 'base44:runtime';
 import {
   sha256Hex, getProviderSecrets,
   exchangeGoogleCode, exchangeXCode, getGoogleUserInfo, getXUserInfo, getYouTubeUserInfo,
-  encryptToken, ALLOWED_PROVIDERS
+  encryptToken, validateOAuthTokens, validateProviderIdentity, ALLOWED_PROVIDERS
 } from '../../shared/oauth.ts';
 
 // OAuth callback endpoint. The provider redirects the user's browser here with
@@ -27,12 +27,13 @@ export default async function(req) {
   let baseUrl = 'https://perksphere.org';
 
   try {
+    if (req.method !== 'GET') return Response.json({error:'method_not_allowed'},{status:405,headers:{'Cache-Control':'no-store'}});
     const base44 = createClientFromRequest(req);
     const admin = base44.asServiceRole;
 
     const url = new URL(req.url);
     provider = url.searchParams.get('provider') || 'google';
-    if (!ALLOWED_PROVIDERS.includes(provider)) provider = 'google';
+    if (!ALLOWED_PROVIDERS.includes(provider)) return redirectError(baseUrl, 'google', 'provider_invalid');
 
     const code = url.searchParams.get('code');
     const state = url.searchParams.get('state');
@@ -44,10 +45,10 @@ export default async function(req) {
     }
 
     if (error) {
-      console.error(`oauthCallback[${provider}] provider_error: ${error}`);
+      console.error(`oauthCallback[${provider}] provider_error`);
       return redirectError(baseUrl, provider, 'provider_error');
     }
-    if (!code || !state) {
+    if (!code || !state || !/^[a-f0-9]{64}$/.test(state)) {
       return redirectError(baseUrl, provider, 'missing_params');
     }
 
@@ -55,13 +56,13 @@ export default async function(req) {
     const stateHash = await sha256Hex(state);
     const states = await admin.entities.OAuthConnectionState.filter({ state_hash: stateHash, provider });
     const stateRec = (states || [])[0];
-    if (!stateRec) {
+    if (states.length !== 1 || !stateRec || typeof stateRec.user_id !== 'string' || !stateRec.user_id || typeof stateRec.code_verifier !== 'string' || !/^[A-Za-z0-9_~-]{43,128}$/.test(stateRec.code_verifier)) {
       return redirectError(baseUrl, provider, 'state_invalid');
     }
     if (stateRec.used_at) {
       return redirectError(baseUrl, provider, 'state_used');
     }
-    if (new Date(stateRec.expires_at) < new Date()) {
+    if (typeof stateRec.expires_at !== 'string' || !Number.isFinite(Date.parse(stateRec.expires_at)) || Date.parse(stateRec.expires_at) <= Date.now()) {
       return redirectError(baseUrl, provider, 'state_expired');
     }
 
@@ -76,8 +77,9 @@ export default async function(req) {
       } else {
         tokenData = await exchangeXCode(code, creds.redirectUri, stateRec.code_verifier, creds.clientId, creds.clientSecret);
       }
+      validateOAuthTokens(tokenData);
     } catch (e) {
-      console.error(`oauthCallback[${provider}] token_exchange_failed: ${e.message}`);
+      console.error(`oauthCallback[${provider}] token_exchange_failed`);
       return redirectError(baseUrl, provider, 'token_exchange_failed');
     }
 
@@ -91,8 +93,9 @@ export default async function(req) {
       } else {
         userInfo = await getXUserInfo(tokenData.access_token);
       }
+      validateProviderIdentity(provider, userInfo);
     } catch (e) {
-      console.error(`oauthCallback[${provider}] provider_identity_failed: ${e.message}`);
+      console.error(`oauthCallback[${provider}] provider_identity_failed`);
       return redirectError(baseUrl, provider, 'provider_identity_failed');
     }
 
@@ -107,7 +110,7 @@ export default async function(req) {
       encAccess = await encryptToken(tokenData.access_token, encKey);
       encRefresh = await encryptToken(tokenData.refresh_token || '', encKey);
     } catch (e) {
-      console.error(`oauthCallback[${provider}] credential_encryption_failed: ${e.message}`);
+      console.error(`oauthCallback[${provider}] credential_encryption_failed`);
       return redirectError(baseUrl, provider, 'credential_encryption_failed');
     }
 
@@ -123,7 +126,7 @@ export default async function(req) {
       const connData = {
         user_id: stateRec.user_id,
         service: provider,
-        status: 'connected',
+        status: 'pending',
         external_account_id: userInfo.provider_user_id,
         account_handle: userInfo.provider_username || userInfo.provider_display_name || null,
         connected_at: now.toISOString(),
@@ -143,7 +146,7 @@ export default async function(req) {
         connectedServiceId = connRec.id;
       }
     } catch (e) {
-      console.error(`oauthCallback[${provider}] connection_storage_failed: ${e.message}`);
+      console.error(`oauthCallback[${provider}] connection_storage_failed`);
       return redirectError(baseUrl, provider, 'connection_storage_failed');
     }
 
@@ -169,13 +172,19 @@ export default async function(req) {
         await admin.entities.ConnectedServiceCredential.create(credData);
       }
     } catch (e) {
-      console.error(`oauthCallback[${provider}] credential_storage_failed: ${e.message}`);
+      console.error(`oauthCallback[${provider}] credential_storage_failed`);
       return redirectError(baseUrl, provider, 'credential_storage_failed');
     }
 
+    // Publish connected status only after credentials were stored successfully.
+    try {
+      await admin.entities.ConnectedService.update(connectedServiceId, {status:'connected'});
+    } catch {
+      return redirectError(baseUrl, provider, 'connection_storage_failed');
+    }
     return Response.redirect(`${baseUrl}/connected-services?status=connected&provider=${provider}`, 302);
   } catch (error) {
-    console.error(`oauthCallback[${provider || 'unknown'}] unexpected_error: ${error.message}`);
+    console.error(`oauthCallback[${provider || 'unknown'}] unexpected_error`);
     return redirectError(baseUrl, provider || 'google', 'callback_failed');
   }
 }
