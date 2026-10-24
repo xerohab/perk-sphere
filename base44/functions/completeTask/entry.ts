@@ -8,7 +8,7 @@ import { isTaskAvailable, isViewingTask, isEventWindowOpen, canCompleteAgain, is
 // without re-issuing. Viewing tasks require server-accumulated eligible_seconds to meet
 // the requirement (populated by recordTaskEvent / the future Linux API). An admin with
 // tasks.edit can pass manual:true to force-complete (verification_status='manual').
-export default async function(req) {
+async function perkSphereHandler(req) {
   try {
     const base44 = createClientFromRequest(req);
     const body = await req.json().catch(() => ({}));
@@ -142,3 +142,5 @@ export default async function(req) {
     return Response.json({ error: error.message }, { status: 500 });
   }
 }
+export default perkSphereHandler;
+if (typeof Deno !== 'undefined') Deno.serve(perkSphereHandler);

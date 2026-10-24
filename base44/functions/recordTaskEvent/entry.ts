@@ -9,7 +9,7 @@ import { requiredSecondsFor } from '../../shared/tasks.ts';
 // TASK_COMPLETED as trusted commands; those are rejected as unknown event types.
 const BLOCKED_EVENTS = ['AWARD_POINTS', 'AWARD_XP', 'TASK_COMPLETED'];
 
-export default async function(req) {
+async function perkSphereHandler(req) {
   try {
     const base44 = createClientFromRequest(req);
     const user = await base44.auth.me();
@@ -81,3 +81,5 @@ export default async function(req) {
     return Response.json({ error: error.message }, { status: 500 });
   }
 }
+export default perkSphereHandler;
+if (typeof Deno !== 'undefined') Deno.serve(perkSphereHandler);

@@ -1,7 +1,7 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.52';
 import { redeemReward } from '../../shared/rewards.ts';
 
-export default async function(req) {
+async function perkSphereHandler(req) {
   try {
     const base44 = createClientFromRequest(req);
     const user = await base44.auth.me();
@@ -27,3 +27,5 @@ export default async function(req) {
     return Response.json({ error: error.message }, { status: 400 });
   }
 }
+export default perkSphereHandler;
+if (typeof Deno !== 'undefined') Deno.serve(perkSphereHandler);

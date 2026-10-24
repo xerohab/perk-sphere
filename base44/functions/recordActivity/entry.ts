@@ -5,7 +5,7 @@ import { authorize, writeAudit } from '../../shared/permissions.ts';
 // will reuse the same shape). Requires activity.record. Rejects duplicate event_ids so
 // replayed events are not double counted. Recording an activity does NOT award or
 // deduct anything by itself; points/XP are only changed by explicit ledger operations.
-export default async function(req) {
+async function perkSphereHandler(req) {
   try {
     const base44 = createClientFromRequest(req);
     const auth = await authorize(base44, 'activity.record');
@@ -53,3 +53,5 @@ export default async function(req) {
     return Response.json({ error: error.message }, { status: 500 });
   }
 }
+export default perkSphereHandler;
+if (typeof Deno !== 'undefined') Deno.serve(perkSphereHandler);

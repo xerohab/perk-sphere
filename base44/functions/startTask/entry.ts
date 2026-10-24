@@ -3,7 +3,7 @@ import { isTaskAvailable, isViewingTask, isEventWindowOpen, canCompleteAgain } f
 
 // A logged-in user starts a task. Creates (or reuses) an in-progress TaskProgress
 // record and, for viewing tasks, opens a WatchSession. Does NOT award anything.
-export default async function(req) {
+async function perkSphereHandler(req) {
   try {
     const base44 = createClientFromRequest(req);
     const user = await base44.auth.me();
@@ -83,3 +83,5 @@ export default async function(req) {
     return Response.json({ error: error.message }, { status: 500 });
   }
 }
+export default perkSphereHandler;
+if (typeof Deno !== 'undefined') Deno.serve(perkSphereHandler);
