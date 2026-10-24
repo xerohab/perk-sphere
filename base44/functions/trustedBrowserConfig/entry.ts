@@ -4,6 +4,7 @@ import { verifyTrustedRequest, pruneExpiredNonces } from "../../shared/hmac.ts";
 import { writeAudit } from "../../shared/permissions.ts";
 import { assertAccountEligible } from "../../shared/rewardPolicy.ts";
 import { isProviderConfigured } from "../../shared/oauth.ts";
+import { socialLinkEvidence } from "../../shared/socialEvidence.ts";
 import {
   isTaskAvailable,
   isEventWindowOpen,
@@ -136,6 +137,14 @@ export default async function (req) {
         token_encryption_configuration_present:/^[a-f0-9]{64}$/i.test(secrets.get('OAUTH_TOKEN_ENCRYPTION_KEY')||''),
         provider_round_trips_verified:false
       }},{headers:{'Cache-Control':'no-store'}});
+    }
+
+    if (body.action === 'social_link_evidence') {
+      if (Object.keys(body).sort().join(',') !== 'action,provider,user_reference') return err('invalid_social_request','Unsupported social evidence fields.',400);
+      try {
+        const data=await socialLinkEvidence(admin,{provider:body.provider,userReference:user_reference});
+        return Response.json({ok:true,data},{headers:{'Cache-Control':'no-store'}});
+      } catch { return err('social_evidence_unavailable','Current social ownership could not be verified.',503); }
     }
 
     // Signed Linux-only eligibility query. No game duration or rewards are
