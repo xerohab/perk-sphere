@@ -36,9 +36,9 @@ export default function AdminUsers() {
   const cols = [
     { key: "email", label: "User", render: (u) => (<div><p className="font-medium">{u.display_name || u.username || u.email}</p><p className="text-xs text-muted-foreground">{u.email}</p></div>) },
     { key: "account_status", label: "Status", render: (u) => <StatusBadge status={u.account_status || "active"} /> },
-    { key: "loyalty_rank", label: "Rank", render: (u) => <RankBadge rank={u.loyalty_rank || "Bronze"} /> },
-    { key: "points_balance", label: "Points", align: "right", render: (u) => (u.points_balance || 0).toLocaleString() },
-    { key: "loyalty_xp", label: "XP", align: "right", render: (u) => (u.loyalty_xp || 0).toLocaleString() },
+    { key: "loyalty_rank", label: "Saved rank", render: (u) => <RankBadge rank={u.loyalty_rank || "Bronze"} /> },
+    { key: "points_balance", label: "Saved Points", align: "right", render: (u) => (u.points_balance || 0).toLocaleString() },
+    { key: "loyalty_xp", label: "Saved XP", align: "right", render: (u) => (u.loyalty_xp || 0).toLocaleString() },
     { key: "created_date", label: "Joined", render: (u) => u.created_date ? new Date(u.created_date).toLocaleDateString() : "—" },
     { key: "_action", label: "", align: "right", render: (u) => <Link to={`/admin/users/${u.id}`} className="inline-flex items-center text-indigo-600 hover:underline dark:text-indigo-400">Manage <ChevronRight className="h-4 w-4" /></Link> }
   ];
@@ -50,6 +50,7 @@ export default function AdminUsers() {
   return (
     <div>
       <PageHeader title="Users" description={`${users.length} registered users`} />
+      <p className="mb-4 text-sm text-muted-foreground">This list shows saved account balances. Open a member to inspect their current wallet and history.</p>
       <LaunchBalanceResetPanel />
       <div className="relative mb-4 max-w-sm">
         <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
