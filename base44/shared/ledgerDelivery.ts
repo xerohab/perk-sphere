@@ -1,5 +1,6 @@
 import { secrets } from 'base44:runtime';
 import {projectPartnerTaskAward} from './partnerTaskProjection.ts';
+export function ledgerDeliveryCapabilities(){return {revision:'ledger-delivery-v2',task_projection_supported:true,wallet_authoritative:secrets.get('PERKSPHERE_LINUX_LEDGER_AUTHORITATIVE')==='true'};}
 const uuid=/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const fields=['delivery_uuid','event_type','operation_type','operation_uuid','points_delta','user_reference','xp_delta'];
 function deliveryFields(body){return body?.task_reference===undefined?fields:[...fields,'task_reference'].sort();}
