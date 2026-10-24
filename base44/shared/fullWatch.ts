@@ -5,7 +5,7 @@ export function fullWatchRewards(seconds){
 export function fullWatchError(task){
  if(task?.task_type!=='watch_video'||task.required_percentage!==100)return null;
  if(!Number.isSafeInteger(task.content_duration_seconds)||task.content_duration_seconds<1||task.content_duration_seconds>86400||
-  task.required_seconds!==task.content_duration_seconds||!['operator_media_probe','provider_api'].includes(task.content_duration_source)||
+  task.required_seconds!==task.content_duration_seconds||! /^[a-f0-9]{64}$/.test(task.content_media_url_sha256||'')||!['operator_media_probe','provider_api'].includes(task.content_duration_source)||
   typeof task.content_duration_verified_at!=='string'||!Number.isFinite(Date.parse(task.content_duration_verified_at)))return 'Full-video tasks require a verified duration and a matching watch-time requirement.';
  return null;
 }
