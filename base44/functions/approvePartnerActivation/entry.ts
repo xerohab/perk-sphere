@@ -25,7 +25,7 @@ import { ONBOARDING_STEPS, sanitizePartnerRecord } from '../../shared/partners.t
 // The admin's identity is recorded in the audit trail but is NOT used as the
 // signing key — the secret is independent of any admin account.
 
-export default async function(req) {
+async function perkSphereHandler(req) {
   try {
     const base44 = createClientFromRequest(req);
     const body = await req.json().catch(() => ({}));
@@ -180,3 +180,5 @@ export default async function(req) {
     return Response.json({ error: error.message }, { status: 500 });
   }
 }
+export default perkSphereHandler;
+if (typeof Deno !== 'undefined') Deno.serve(perkSphereHandler);

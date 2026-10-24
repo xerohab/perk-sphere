@@ -30,7 +30,7 @@ function bad(msg, code) {
   return Response.json({ error: msg, code: code || 'validation_error' }, { status: 400 });
 }
 
-export default async function(req) {
+async function perkSphereHandler(req) {
   try {
     const base44 = createClientFromRequest(req);
     const body = await req.json().catch(() => ({}));
@@ -172,3 +172,5 @@ export default async function(req) {
     return Response.json({ error: error.message }, { status: 500 });
   }
 }
+export default perkSphereHandler;
+if (typeof Deno !== 'undefined') Deno.serve(perkSphereHandler);

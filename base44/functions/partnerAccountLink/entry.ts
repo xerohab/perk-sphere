@@ -125,7 +125,7 @@ async function syncVerifiedPartner(admin, userId, partner, links, connected) {
   return { synced: true, unavailable: false, reward };
 }
 
-export default async function(req) {
+async function perkSphereHandler(req) {
   try {
     const base44 = createClientFromRequest(req);
     const body = await req.json().catch(() => ({}));
@@ -479,3 +479,5 @@ export default async function(req) {
     }, { status: 500 });
   }
 }
+export default perkSphereHandler;
+if (typeof Deno !== 'undefined') Deno.serve(perkSphereHandler);

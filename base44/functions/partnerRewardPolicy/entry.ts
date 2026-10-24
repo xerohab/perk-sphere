@@ -1,7 +1,7 @@
 import {createClientFromRequest} from 'npm:@base44/sdk';
 import {authorize} from '../../shared/permissions.ts';
 import {linuxTrustedPost} from '../../shared/linuxClient.ts';
-export default async function(req) {
+async function perkSphereHandler(req) {
  const base44=createClientFromRequest(req);
  const auth=await authorize(base44,'rules.manage');
  if(auth.error)return auth.error;
@@ -12,3 +12,5 @@ export default async function(req) {
  if(!result.ok)return Response.json({error:'Partner reward rules unavailable',code:result.code},{status:result.status===409?409:503});
  return Response.json({ok:true,data:result.data});
 }
+export default perkSphereHandler;
+if (typeof Deno !== 'undefined') Deno.serve(perkSphereHandler);

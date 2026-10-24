@@ -34,7 +34,7 @@ function err(code, message, status = 400) {
   return Response.json({ ok: false, error: { code, message } }, { status });
 }
 
-export default async function(req) {
+async function perkSphereHandler(req) {
   let admin = null;
   let requestId = null;
   let partner = null;
@@ -254,3 +254,5 @@ async function sha256Hex(text) {
   const hash = await crypto.subtle.digest("SHA-256", data);
   return [...new Uint8Array(hash)].map((b) => b.toString(16).padStart(2, "0")).join("");
 }
+export default perkSphereHandler;
+if (typeof Deno !== 'undefined') Deno.serve(perkSphereHandler);

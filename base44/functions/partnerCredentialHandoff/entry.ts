@@ -26,7 +26,7 @@ import { sanitizePartnerRecord } from '../../shared/partners.ts';
 
 const HANDOFF_TTL_MINUTES = 5;
 
-export default async function(req) {
+async function perkSphereHandler(req) {
   try {
     const base44 = createClientFromRequest(req);
     const body = await req.json().catch(() => ({}));
@@ -136,3 +136,5 @@ export default async function(req) {
     return Response.json({ error: error.message }, { status: 500 });
   }
 }
+export default perkSphereHandler;
+if (typeof Deno !== 'undefined') Deno.serve(perkSphereHandler);

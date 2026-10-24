@@ -1,7 +1,7 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.52';
 import { authorize } from '../../shared/permissions.ts';
 import { linuxTrustedPost } from '../../shared/linuxClient.ts';
-export default async function(req) {
+async function perkSphereHandler(req) {
  if(req.method!=='POST')return Response.json({error:'Method not allowed'},{status:405});
  try {
   const base44=createClientFromRequest(req);
@@ -18,3 +18,5 @@ export default async function(req) {
   return Response.json({partner:{status:state.status,enabled:state.enabled,verification_enabled:state.verification_enabled,credential_status:state.credential_status,possession_verified:state.possession_verified,verified_link_count:state.verified_link_count}});
  }catch{return Response.json({error:'Unable to inspect partner status'},{status:502});}
 }
+export default perkSphereHandler;
+if (typeof Deno !== 'undefined') Deno.serve(perkSphereHandler);
