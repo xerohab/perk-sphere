@@ -4,6 +4,8 @@ import { useToast } from "@/components/ui/use-toast";
 import { useSearchParams } from "react-router-dom";
 import PageHeader from "@/components/perk/PageHeader";
 import ServiceCard from "@/components/perk/ServiceCard";
+import {useAuth} from "@/lib/AuthContext";
+import {Button} from "@/components/ui/button";
 
 const SERVICES = [
   { key: "google", name: "Google", icon: "G" },
@@ -28,6 +30,9 @@ const ERROR_MESSAGES = {
 
 export default function ConnectedServices() {
   const { toast } = useToast();
+  const {user} = useAuth();
+  const [claiming,setClaiming] = useState(null);
+  const [loadError,setLoadError] = useState("");
   const [searchParams] = useSearchParams();
   const [connections, setConnections] = useState([]);
   const [config, setConfig] = useState({});
@@ -36,17 +41,20 @@ export default function ConnectedServices() {
   const [disconnecting, setDisconnecting] = useState(null);
 
   const load = useCallback(async () => {
+    if(!user?.id){setConnections([]);setLoading(false);return;}
+    setLoadError("");
     try {
       const [c, cfgRes] = await Promise.all([
-        base44.entities.ConnectedService.list('-created_date', 50),
+        base44.entities.ConnectedService.filter({user_id:user.id},'-created_date', 50),
         base44.functions.invoke("oauthConfig", {}).then(r => r.data || r).catch(() => ({ providers: {} }))
       ]);
       setConnections(c || []);
       setConfig(cfgRes.providers || {});
+    } catch { setConnections([]);setConfig({});setLoadError("Could not load your connections. Please retry.");
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [user?.id]);
 
   useEffect(() => { load(); }, [load]);
 
@@ -63,7 +71,19 @@ export default function ConnectedServices() {
     if (status) window.history.replaceState({}, "", "/connected-services");
   }, [searchParams, toast, load]);
 
-  const getConnection = (key) => connections.find((c) => c.service === key);
+  const getConnection = (key) => connections.find((c) => c.service === key && c.user_id === user?.id);
+  const claimReward = async provider => {
+    setClaiming(provider);
+    try {
+      const response=await base44.functions.invoke("claimSocialLinkReward",{provider});
+      const body=response.data;
+      if(body?.ok!==true)throw Error("Current ownership could not be verified. Please retry.");
+      const result=body.data;
+      const description=result?.issued ? `You earned ${result.points} Points and ${result.xp} XP.` : result?.duplicate ? "You have already received this linking reward." : result?.reason==="social_account_already_rewarded" ? "This account has already received its linking reward." : "Linking rewards are not available for this service yet.";
+      toast({title:result?.issued?"Linking reward received":"Linking reward",description});
+    } catch { toast({title:"Reward unavailable",description:"Current ownership could not be verified. Please retry later.",variant:"destructive"}); }
+    finally { setClaiming(null); }
+  };
 
   const handleConnect = async (key) => {
     setConnecting(key);
@@ -104,14 +124,14 @@ export default function ConnectedServices() {
     <div>
       <PageHeader title="Connected Services" description="Manage third-party accounts linked to your Perk Sphere profile" />
       <p className="mb-4 text-sm text-muted-foreground">YouTube verifies your channel identity. Views, likes, comments, shares and subscriptions do not earn Points or XP.</p>
+      {loadError && <div role="alert" className="mb-4 rounded-lg border p-4">{loadError} <Button variant="outline" onClick={load}>Retry</Button></div>}
       <div className="grid gap-4 sm:grid-cols-2">
         {SERVICES.map((s) => {
           const conn = getConnection(s.key);
           const configured = config[s.key]?.configured === true;
           const isConnected = conn && conn.status === "connected";
           return (
-            <ServiceCard
-              key={s.key}
+            <div key={s.key} className="space-y-2"><ServiceCard
               name={s.name}
               icon={s.icon}
               configured={configured}
@@ -122,6 +142,8 @@ export default function ConnectedServices() {
               onConnect={() => handleConnect(s.key)}
               onDisconnect={() => handleDisconnect(s.key)}
             />
+            {isConnected && config[s.key]?.linking_rewards_available === true && <Button variant="outline" disabled={claiming!==null || disconnecting!==null || connecting!==null} onClick={()=>claimReward(s.key)}>{claiming===s.key ? "Verifying ownership…" : "Check linking reward"}</Button>}
+            </div>
           );
         })}
       </div>
