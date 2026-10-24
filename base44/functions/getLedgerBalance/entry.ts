@@ -3,7 +3,7 @@ import { linuxTrustedPost } from '../../shared/linuxClient.ts';
 
 // Read-only bridge. Linux remains authoritative; never fall back to Base44
 // cached balances if the ledger is unavailable or not yet migrated.
-export default async function (req: Request) {
+async function perkSphereHandler(req: Request) {
   try {
     const client = createClientFromRequest(req);
     const user = await client.auth.me().catch(() => null);
@@ -26,3 +26,5 @@ export default async function (req: Request) {
     return Response.json({ ok: false, error: 'ledger_unavailable' }, { status: 503 });
   }
 }
+export default perkSphereHandler;
+if (typeof Deno !== 'undefined') Deno.serve(perkSphereHandler);

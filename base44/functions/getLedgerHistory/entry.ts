@@ -3,7 +3,7 @@ import { linuxTrustedPost } from '../../shared/linuxClient.ts';
 
 // Member-scoped, read-only history from the authoritative Linux ledger.
 // Never query Base44 legacy transaction entities as a fallback.
-export default async function (req: Request) {
+async function perkSphereHandler(req: Request) {
   try {
     const client = createClientFromRequest(req);
     const user = await client.auth.me().catch(() => null);
@@ -26,3 +26,5 @@ export default async function (req: Request) {
     return Response.json({ ok: false, error: 'ledger_unavailable' }, { status: 503 });
   }
 }
+export default perkSphereHandler;
+if (typeof Deno !== 'undefined') Deno.serve(perkSphereHandler);

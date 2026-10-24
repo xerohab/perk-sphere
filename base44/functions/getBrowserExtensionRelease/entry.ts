@@ -25,7 +25,7 @@ function fail(code) {
   );
 }
 
-export default async function (req) {
+async function perkSphereHandler(req) {
   try {
     const res = await fetch(LINUX_RELEASE_URL, {
       signal: AbortSignal.timeout(10000)
@@ -73,3 +73,5 @@ export default async function (req) {
     return fail("release_unavailable");
   }
 }
+export default perkSphereHandler;
+if (typeof Deno !== 'undefined') Deno.serve(perkSphereHandler);

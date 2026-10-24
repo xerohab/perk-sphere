@@ -3,7 +3,7 @@ import { loadStaff, roleCatalog, ROLE_LABELS } from '../../shared/permissions.ts
 
 // Tells the admin UI what the signed-in account may see. The UI only uses this to
 // hide navigation; every privileged function re-checks permissions server-side.
-export default async function(req) {
+async function perkSphereHandler(req) {
   try {
     const base44 = createClientFromRequest(req);
     let user = null;
@@ -33,3 +33,5 @@ export default async function(req) {
     return Response.json({ error: 'Unable to load access' }, { status: 500 });
   }
 }
+export default perkSphereHandler;
+if (typeof Deno !== 'undefined') Deno.serve(perkSphereHandler);

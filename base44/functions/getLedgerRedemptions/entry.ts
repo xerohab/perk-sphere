@@ -1,7 +1,7 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.52';
 import { linuxTrustedPost } from '../../shared/linuxClient.ts';
 
-export default async function (req: Request) {
+async function perkSphereHandler(req: Request) {
   try {
     if (req.method !== 'POST') {
       return Response.json({ ok: false, error: 'method_not_allowed' }, { status: 405 });
@@ -25,3 +25,5 @@ export default async function (req: Request) {
     return Response.json({ ok: false, error: 'redemption_history_unavailable' }, { status: 503 });
   }
 }
+export default perkSphereHandler;
+if (typeof Deno !== 'undefined') Deno.serve(perkSphereHandler);

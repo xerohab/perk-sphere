@@ -6,7 +6,7 @@ import { websiteToDestination, accountToDestination, isPublicDestination, toPubl
 // service role and returns ONLY active + publicly visible destinations, projected
 // through toPublic() (no notes, rule values, tracking switches, ids of other systems
 // or user data).
-export default async function(req) {
+async function perkSphereHandler(req) {
   try {
     const base44 = createClientFromRequest(req);
     const admin = base44.asServiceRole;
@@ -28,3 +28,5 @@ export default async function(req) {
     return Response.json({ error: 'Unable to load destinations' }, { status: 500 });
   }
 }
+export default perkSphereHandler;
+if (typeof Deno !== 'undefined') Deno.serve(perkSphereHandler);
