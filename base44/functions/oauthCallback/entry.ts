@@ -56,7 +56,7 @@ export default async function(req) {
     const stateHash = await sha256Hex(state);
     const states = await admin.entities.OAuthConnectionState.filter({ state_hash: stateHash, provider });
     const stateRec = (states || [])[0];
-    if (states.length !== 1 || !stateRec || typeof stateRec.user_id !== 'string' || !stateRec.user_id || typeof stateRec.code_verifier !== 'string' || !/^[A-Za-z0-9_~-]{43,128}$/.test(stateRec.code_verifier)) {
+    if (states.length !== 1 || !stateRec || typeof stateRec.user_id !== 'string' || !stateRec.user_id || typeof stateRec.code_verifier !== 'string' || !/^[A-Za-z0-9._~-]{43,128}$/.test(stateRec.code_verifier)) {
       return redirectError(baseUrl, provider, 'state_invalid');
     }
     if (stateRec.used_at) {
