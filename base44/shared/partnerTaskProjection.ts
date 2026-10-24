@@ -1,6 +1,6 @@
 // A projection of an already committed Linux award. This never adjusts balances.
 export async function projectPartnerTaskAward(admin,body){
- const task=await admin.entities.Task.get(body.task_reference).catch(()=>null);
+ let task;try{task=await admin.entities.Task.get(body.task_reference);}catch(error){if(error?.status===404||error?.response?.status===404)return {projected:false};throw error;}
  if(!task||task.id!==body.task_reference||task.reward_processing!=='linux_partner')return {projected:false};
  const records=await admin.entities.TaskProgress.filter({user_id:body.user_reference,task_id:body.task_reference});
  const points=Number(body.points_delta),xp=Number(body.xp_delta);
