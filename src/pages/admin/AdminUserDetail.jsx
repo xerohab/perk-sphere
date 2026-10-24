@@ -1,4 +1,5 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
+import {formatWalletInteger,rankXp} from "@/hooks/useMemberWallet";
 import { useParams, useNavigate } from "react-router-dom";
 import { ArrowLeft, Coins, TrendingUp, Plus, Minus, ShieldBan, ShieldCheck } from "lucide-react";
 import { base44 } from "@/api/base44Client";
@@ -22,6 +23,10 @@ export default function AdminUserDetail() {
   const navigate = useNavigate();
   const { toast } = useToast();
   const [user, setUser] = useState(null);
+  const [wallet, setWallet] = useState(null);
+  const [walletError, setWalletError] = useState("");
+  const [levels, setLevels] = useState(null);
+  const generation = useRef(0);
   const [pointsTxns, setPointsTxns] = useState([]);
   const [xpTxns, setXpTxns] = useState([]);
   const [activities, setActivities] = useState([]);
@@ -34,30 +39,41 @@ export default function AdminUserDetail() {
   const [saving, setSaving] = useState(false);
 
   const load = async () => {
+    const current = ++generation.current;
+    setLoading(true); setWallet(null); setWalletError("");
     try {
-      const [u, pt, xt, a, r, rs, al] = await Promise.all([
+      const [u, a, r, rs, al, response, rankLevels] = await Promise.all([
         base44.entities.User.get(id),
-        base44.entities.PointsTransaction.filter({ user_id: id }),
-        base44.entities.XpTransaction.filter({ user_id: id }),
         base44.entities.Activity.filter({ user_id: id }),
         base44.entities.Redemption.filter({ user_id: id }),
         base44.entities.Restriction.filter({ user_id: id }),
-        base44.entities.AuditLog.filter({ entity_id: id })
+        base44.entities.AuditLog.filter({ entity_id: id }),
+        base44.functions.invoke("getAdminMemberWallet", { userId: id }).catch(() => null),
+        base44.entities.LoyaltyLevel.list("-minimum_xp", 50).catch(() => null)
       ]);
-      setUser(u);
+      if (current !== generation.current) return;
+      const snapshot = response?.data?.ok === true ? response.data.data : null;
+      setUser(u); setWallet(snapshot); setLevels(rankLevels);
+      setWalletError(snapshot ? "" : "Current balance and history are unavailable. Retry before reconciling this account.");
       const byDate = (x, y) => new Date(y.created_date).getTime() - new Date(x.created_date).getTime();
-      setPointsTxns((pt || []).sort(byDate));
-      setXpTxns((xt || []).sort(byDate));
+      setPointsTxns((snapshot?.points || []).sort(byDate));
+      setXpTxns((snapshot?.xp || []).sort(byDate));
       setActivities((a || []).sort(byDate));
       setRedemptions((r || []).sort(byDate));
       setRestrictions((rs || []).sort(byDate));
       setAudit((al || []).sort(byDate));
+    } catch {
+      if (current !== generation.current) return;
+      setUser(null);
+      toast({ title: "Unable to load member", description: "Please retry.", variant: "destructive" });
     } finally {
-      setLoading(false);
+      if (current === generation.current) setLoading(false);
     }
   };
 
-  useEffect(() => { load(); }, [id]);
+  useEffect(() => { load(); return () => { generation.current++; }; }, [id]);
+  const currentLevel = levels?.filter(level => level.active !== false && Number.isSafeInteger(level.minimum_xp) && level.minimum_xp <= rankXp(wallet?.loyalty_xp)).sort((a, b) => b.minimum_xp - a.minimum_xp)[0];
+  const currentRank = !wallet ? null : wallet.source === "legacy" ? user?.loyalty_rank || currentLevel?.name || "Bronze" : levels ? currentLevel?.name || "Bronze" : null;
 
   const submitAdjust = async () => {
     const { currency, direction } = adjustOpen;
@@ -96,7 +112,7 @@ export default function AdminUserDetail() {
   }
 
   const ActionButton = ({ currency, direction, label }) => (
-    <Button variant="outline" size="sm" onClick={() => setAdjustOpen({ currency, direction })} className={direction === "deduct" ? "text-red-600 dark:text-red-400" : "text-emerald-600 dark:text-emerald-400"}>
+    <Button variant="outline" size="sm" disabled={!wallet || wallet.source !== "legacy"} onClick={() => setAdjustOpen({ currency, direction })} className={direction === "deduct" ? "text-red-600 dark:text-red-400" : "text-emerald-600 dark:text-emerald-400"}>
       {direction === "deduct" ? <Minus className="mr-1 h-3.5 w-3.5" /> : <Plus className="mr-1 h-3.5 w-3.5" />}{label}
     </Button>
   );
@@ -106,13 +122,13 @@ export default function AdminUserDetail() {
     { key: "transaction_type", label: "Type", render: (t) => <span className="capitalize">{t.transaction_type?.replace(/_/g, " ")}</span> },
     { key: "reason", label: "Reason", render: (t) => t.reason || "—" },
     { key: "amount", label: "Amount", align: "right", render: (t) => <span className={t.amount >= 0 ? "text-emerald-600 dark:text-emerald-400" : "text-red-600 dark:text-red-400"}>{t.amount >= 0 ? "+" : ""}{t.amount}</span> },
-    { key: "balance_after", label: "Balance", align: "right", render: (t) => t.balance_after }
+    { key: "balance_after", label: "Balance", align: "right", render: (t) => t.balance_after ?? "—" }
   ];
   const xpCols = [
     { key: "created_date", label: "Date", render: (t) => new Date(t.created_date).toLocaleString() },
     { key: "reason", label: "Reason", render: (t) => t.reason || "—" },
     { key: "xp_amount", label: "XP", align: "right", render: (t) => <span className={t.xp_amount >= 0 ? "text-emerald-600 dark:text-emerald-400" : "text-red-600 dark:text-red-400"}>{t.xp_amount >= 0 ? "+" : ""}{t.xp_amount}</span> },
-    { key: "xp_after", label: "After", align: "right", render: (t) => t.xp_after }
+    { key: "xp_after", label: "After", align: "right", render: (t) => t.xp_after ?? "—" }
   ];
   const activityCols = [
     { key: "platform", label: "Platform", render: (a) => <span className="capitalize">{a.platform}</span> },
@@ -143,7 +159,7 @@ export default function AdminUserDetail() {
               <p className="text-sm text-muted-foreground">{user.email}</p>
               <div className="mt-2 flex flex-wrap gap-2">
                 <StatusBadge status={user.account_status || "active"} />
-                <RankBadge rank={user.loyalty_rank || "Bronze"} />
+                {currentRank ? <RankBadge rank={currentRank} /> : <span className="text-xs text-muted-foreground">Rank unavailable</span>}
                 {user.role === "admin" && <StatusBadge status="admin" />}
               </div>
             </div>
@@ -172,14 +188,19 @@ export default function AdminUserDetail() {
         </div>
       </div>
 
+      <div className="mt-4 flex flex-wrap items-center gap-3">
+        <Button size="sm" variant="outline" onClick={load}>Refresh wallet</Button>
+        {walletError && <p role="alert" className="text-sm text-red-600 dark:text-red-400">{walletError}</p>}
+        {wallet?.source === "linux" && <p className="text-sm text-muted-foreground">Showing the active wallet and its latest 100 operations. Manual adjustments are paused during launch.</p>}
+      </div>
       <div className="mt-4 grid gap-4 sm:grid-cols-2">
         <div className="rounded-2xl border border-border bg-card p-5 shadow-sm">
           <div className="flex items-center gap-2 text-xs uppercase tracking-wide text-indigo-700 dark:text-indigo-400"><Coins className="h-4 w-4" /> Points</div>
-          <p className="mt-2 text-3xl font-bold text-indigo-900 dark:text-indigo-300">{(user.points_balance || 0).toLocaleString()}</p>
+          <p className="mt-2 text-3xl font-bold text-indigo-900 dark:text-indigo-300">{formatWalletInteger(wallet?.points_balance)}</p>
         </div>
         <div className="rounded-2xl border border-border bg-card p-5 shadow-sm">
           <div className="flex items-center gap-2 text-xs uppercase tracking-wide text-amber-700 dark:text-amber-400"><TrendingUp className="h-4 w-4" /> Loyalty XP</div>
-          <p className="mt-2 text-3xl font-bold text-amber-900 dark:text-amber-300">{(user.loyalty_xp || 0).toLocaleString()}</p>
+          <p className="mt-2 text-3xl font-bold text-amber-900 dark:text-amber-300">{formatWalletInteger(wallet?.loyalty_xp)}</p>
         </div>
       </div>
 
@@ -196,8 +217,8 @@ export default function AdminUserDetail() {
 
         <TabsContent value="overview" className="mt-4">
           <div className="grid gap-4 sm:grid-cols-3">
-            <div className="rounded-xl border border-border bg-card p-4"><p className="text-xs text-muted-foreground">Total Points Txns</p><p className="mt-1 text-xl font-semibold">{pointsTxns.length}</p></div>
-            <div className="rounded-xl border border-border bg-card p-4"><p className="text-xs text-muted-foreground">Total XP Txns</p><p className="mt-1 text-xl font-semibold">{xpTxns.length}</p></div>
+            <div className="rounded-xl border border-border bg-card p-4"><p className="text-xs text-muted-foreground">Shown Points Txns</p><p className="mt-1 text-xl font-semibold">{pointsTxns.length}</p></div>
+            <div className="rounded-xl border border-border bg-card p-4"><p className="text-xs text-muted-foreground">Shown XP Txns</p><p className="mt-1 text-xl font-semibold">{xpTxns.length}</p></div>
             <div className="rounded-xl border border-border bg-card p-4"><p className="text-xs text-muted-foreground">Activities</p><p className="mt-1 text-xl font-semibold">{activities.length}</p></div>
           </div>
         </TabsContent>
