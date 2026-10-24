@@ -27,6 +27,6 @@ export default async function(req:Request){
   }
   // Explicit pre-cutover mode. Never reached as a fallback to failed Linux reads.
   const [points,xp]=await Promise.all([client.entities.PointsTransaction.filter({user_id:user.id},'-created_date',100),client.entities.XpTransaction.filter({user_id:user.id},'-created_date',100)]);
-  return Response.json({ok:true,data:{source:'legacy',points_balance:integer(user.points_balance??0),loyalty_xp:integer(user.loyalty_xp??0),version:null,points:points.map(row=>({...row,amount:integer(row.amount,true)})),xp:xp.map(row=>({...row,xp_amount:integer(row.xp_amount,true)}))}},{headers});
+  return Response.json({ok:true,data:{source:'legacy',points_balance:integer(user.points_balance??0,true),loyalty_xp:integer(user.loyalty_xp??0,true),version:null,points:points.map(row=>({...row,amount:integer(row.amount,true)})),xp:xp.map(row=>({...row,xp_amount:integer(row.xp_amount,true)}))}},{headers});
  }catch{return Response.json({ok:false,error:'wallet_unavailable'},{status:503,headers});}
 }
