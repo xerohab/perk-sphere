@@ -15,8 +15,8 @@ const LINUX_PATH = "/v1/account-devices/pairing/create";
 export default async function (req) {
   try {
     const base44 = createClientFromRequest(req);
-    const user = await base44.auth.me();
-    if (!user) {
+    const user = await base44.auth.me().catch(() => null);
+    if (!user?.id) {
       return Response.json({ ok: false, error: { code: "unauthorized", message: "Authentication required." } }, { status: 401 });
     }
 
