@@ -8,7 +8,7 @@ import { memberRequest, adminRequest, linuxResponse, PERK_SPHERE_ENDPOINTS } fro
 // All requests are signed server-side. The actor object is derived from the
 // authenticated Base44 user — never from browser input.
 
-export default async function(req) {
+Deno.serve(async function(req) {
   try {
     const base44 = createClientFromRequest(req);
     const body = await req.json().catch(() => ({}));
@@ -47,4 +47,4 @@ export default async function(req) {
   } catch (error) {
     return Response.json({ error: error.message }, { status: 500 });
   }
-}
+});
