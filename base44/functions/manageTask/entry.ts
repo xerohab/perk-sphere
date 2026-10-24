@@ -2,6 +2,8 @@ import { createClientFromRequest } from 'npm:@base44/sdk@0.8.52';
 import { authorize, writeAudit } from '../../shared/permissions.ts';
 import { validateBrowserUrl, domainsFor } from '../../shared/destinations.ts';
 import {taskActivationError} from '../../shared/fullWatch.ts';
+import {secrets} from 'base44:runtime';
+const activationErrorFor=task=>taskActivationError(task,{partnerTasksEnabled:secrets.get('PERKSPHERE_PARTNER_TASKS_ENABLED')==='true'&&secrets.get('PERKSPHERE_LINUX_LEDGER_AUTHORITATIVE')==='true'});
 
 // Admin task management with granular permissions. Each action maps to a specific
 // permission. Creating/updating a task on a Disallowed destination requires explicit
@@ -99,7 +101,7 @@ async function perkSphereHandler(req) {
         payload = clean(data);
       }
       if (!payload.name || !payload.task_type) return Response.json({ error: 'Name and task_type are required' }, { status: 400 });
-      const activationError = payload.active !== false ? taskActivationError(payload) : null;
+      const activationError = payload.active !== false ? activationErrorFor(payload) : null;
       if(activationError) return Response.json({error:activationError},{status:409});
       const record = await admin.entities.Task.create(payload);
       await writeAudit(admin, { adminId: user.id, action: 'task_created', entityType: 'Task', entityId: record.id, next: { name: record.name, task_type: record.task_type } });
@@ -112,7 +114,7 @@ async function perkSphereHandler(req) {
       const before = await admin.entities.Task.get(taskId);
       const payload = clean(data);
       const candidate = {...before,...payload};
-      const activationError = candidate.active !== false ? taskActivationError(candidate) : null;
+      const activationError = candidate.active !== false ? activationErrorFor(candidate) : null;
       if(activationError) return Response.json({error:activationError},{status:409});
       const record = await admin.entities.Task.update(taskId, payload);
       await writeAudit(admin, {
@@ -125,7 +127,7 @@ async function perkSphereHandler(req) {
 
     if (action === 'publish') {
       const before = await admin.entities.Task.get(taskId);
-      const activationError = taskActivationError(before);
+      const activationError = activationErrorFor(before);
       if(activationError) return Response.json({error:activationError},{status:409});
       const record = await admin.entities.Task.update(taskId, { active: true, archived: false });
       await writeAudit(admin, { adminId: user.id, action: 'task_published', entityType: 'Task', entityId: taskId, previous: { active: before.active, archived: before.archived }, next: { active: true, archived: false } });
