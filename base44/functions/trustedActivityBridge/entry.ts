@@ -1,4 +1,4 @@
-import { receiveLedgerDelivery } from "../../shared/ledgerDelivery.ts";
+import { receiveLedgerDelivery,ledgerDeliveryCapabilities } from "../../shared/ledgerDelivery.ts";
 import { createClientFromRequest } from "npm:@base44/sdk@0.8.52";
 import { waitUntil } from "base44:runtime";
 import { verifyTrustedRequest, pruneExpiredNonces } from "../../shared/hmac.ts";
@@ -88,6 +88,10 @@ async function perkSphereHandler(req) {
     waitUntil(pruneExpiredNonces(admin).catch(() => {}));
 
     const body = JSON.parse(auth.rawBody || "{}");
+    if (body.event_type === "LEDGER_DELIVERY_READINESS") {
+      if(Object.keys(body).join(",") !== "event_type") return err("invalid_readiness_request","Invalid readiness request.");
+      return Response.json({ok:true,data:ledgerDeliveryCapabilities()},{headers:{"Cache-Control":"no-store"}});
+    }
     if (body.event_type === "LEDGER_APPLIED") return receiveLedgerDelivery(admin, body);
     const {
       external_event_id,
