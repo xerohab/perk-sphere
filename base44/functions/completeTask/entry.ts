@@ -32,6 +32,8 @@ async function perkSphereHandler(req) {
     const now = new Date();
     if (!isTaskAvailable(task, now)) return Response.json({ error: 'This task is not currently available.' }, { status: 400 });
 
+    if(task.reward_processing === 'linux_partner') return Response.json({error:'This task completes automatically after independent partner verification.',pending_verification:true},{status:409});
+
     const targetUserId = manual ? (overrideUserId || user.id) : user.id;
     const targetUser = await admin.entities.User.get(targetUserId);
     if (!targetUser || ['suspended', 'banned'].includes(targetUser.account_status)) {
