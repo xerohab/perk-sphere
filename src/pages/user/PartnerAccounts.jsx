@@ -9,21 +9,11 @@ import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogClose
 } from "@/components/ui/dialog";
 import ConfirmDialog from "@/components/perk/ConfirmDialog";
-
-function getPartnerState(partner, links, connected) {
-  const conn = connected.find((c) => c.service === `partner_${partner.id}`);
-  if (conn && conn.status === "connected") return { state: "connected", conn };
-  if (partner.integration_status !== "active") return { state: "coming_soon" };
-  const link = links.find((l) => l.partner_integration_id === partner.id && l.status === "pending");
-  if (link) {
-    const expired = link.expires_at && new Date(link.expires_at) < new Date();
-    return { state: expired ? "expired" : "pending", link };
-  }
-  if (conn && conn.status === "disconnected") return { state: "disconnected", conn };
-  return { state: "connect" };
-}
+import { getPartnerState } from "@/lib/partner-account-state";
 
 const STATE_BADGE = {
+  unavailable: { label: "Check unavailable", cls: "bg-amber-100 text-amber-700 dark:bg-amber-500/15 dark:text-amber-400", icon: AlertTriangle },
+  unverified: { label: "Verification needed", cls: "bg-amber-100 text-amber-700 dark:bg-amber-500/15 dark:text-amber-400", icon: AlertTriangle },
   connected: { label: "Connected", cls: "bg-emerald-100 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-400", icon: ShieldCheck },
   pending: { label: "Pending", cls: "bg-amber-100 text-amber-700 dark:bg-amber-500/15 dark:text-amber-400", icon: Clock },
   expired: { label: "Expired", cls: "bg-red-100 text-red-700 dark:bg-red-500/15 dark:text-red-400", icon: XCircle },
@@ -37,12 +27,16 @@ export default function PartnerAccounts() {
   const [partners, setPartners] = useState([]);
   const [links, setLinks] = useState([]);
   const [connected, setConnected] = useState([]);
+  const [verification, setVerification] = useState({});
+  const [loadError, setLoadError] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
   const [loading, setLoading] = useState(true);
   const [challengeDialog, setChallengeDialog] = useState(null);
   const [copied, setCopied] = useState(false);
   const [linking, setLinking] = useState(null);
 
   const load = useCallback(async () => {
+    setRefreshing(true);
     try {
       const [partnersRes, linksRes] = await Promise.all([
         base44.functions.invoke("partnerAccountLink", { action: "listPartners" }),
@@ -53,10 +47,15 @@ export default function PartnerAccounts() {
       setPartners(pData?.partners || []);
       setLinks(lData?.links || []);
       setConnected(lData?.connected || []);
+      setVerification(lData?.verification || {});
+      setLoadError(false);
     } catch (e) {
-      toast({ title: "Failed to load", description: e.message, variant: "destructive" });
+      setLoadError(true);
+      setVerification({});
+      toast({ title: "Failed to load", description: "Your saved connections have been kept. Please retry the connection check.", variant: "destructive" });
     } finally {
       setLoading(false);
+      setRefreshing(false);
     }
   }, [toast]);
 
@@ -118,12 +117,16 @@ export default function PartnerAccounts() {
     <div>
       <PageHeader title="Partner Accounts" description="Connect your partner site accounts to earn rewards for verified activity." />
 
+      <div className="mb-4 flex flex-wrap items-center gap-3">
+        <Button variant="outline" size="sm" disabled={refreshing} onClick={load}><RefreshCw className={`mr-1.5 h-3.5 w-3.5 ${refreshing ? "animate-spin" : ""}`} />{refreshing ? "Checking connections…" : "Refresh connections"}</Button>
+        {loadError && <p role="alert" className="text-sm text-amber-700 dark:text-amber-400">Connection checks are temporarily unavailable. Saved connections have not been removed.</p>}
+      </div>
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
         {partners.length === 0 ? (
-          <div className="col-span-full"><EmptyState title="No partners available" description="Partner integrations will appear here once they are configured." /></div>
+          <div className="col-span-full"><EmptyState title={loadError ? "Unable to load partners" : "No partners available"} description={loadError ? "Retry the connection check to load your partners." : "Partner integrations will appear here once they are configured."} /></div>
         ) : (
           partners.map((p) => {
-            const { state, conn, link } = getPartnerState(p, links, connected);
+            const { state, conn, link } = getPartnerState(p, links, connected, verification);
             const badge = STATE_BADGE[state];
             const BadgeIcon = badge.icon;
             return (
@@ -137,9 +140,11 @@ export default function PartnerAccounts() {
                 </div>
                 {p.description && <p className="mt-2 line-clamp-2 text-sm text-muted-foreground">{p.description}</p>}
 
-                {state === "connected" && conn && (
+                {["connected", "unavailable", "unverified"].includes(state) && conn && (
                   <p className="mt-2 text-xs text-muted-foreground">Account: <span className="font-medium">{conn.account_handle || conn.external_account_id}</span></p>
                 )}
+                {state === "unavailable" && <p className="mt-2 text-xs text-muted-foreground">We could not verify the current connection. Refresh to try again; any saved connection is preserved.</p>}
+                {state === "unverified" && <p className="mt-2 text-xs text-muted-foreground">Your saved connection is not currently confirmed by the partner. Disconnect it before reconnecting.</p>}
                 {state === "pending" && link && (
                   <p className="mt-2 flex items-center gap-1.5 text-xs text-amber-600 dark:text-amber-400"><Loader2 className="h-3 w-3 animate-spin" /> Waiting for {p.name} to confirm...{link.expires_at && <span className="ml-1">expires {new Date(link.expires_at).toLocaleTimeString()}</span>}</p>
                 )}
@@ -175,7 +180,7 @@ export default function PartnerAccounts() {
                       Reconnect
                     </Button>
                   )}
-                  {state === "connected" && (
+                  {conn?.status === "connected" && (
                     <ConfirmDialog
                       trigger={<Button variant="outline" size="sm" className="text-red-600"><Unlink className="mr-1.5 h-3.5 w-3.5" /> Disconnect</Button>}
                       title={`Disconnect from ${p.name}?`}
