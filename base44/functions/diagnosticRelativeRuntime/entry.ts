@@ -1,1 +1,0 @@
-Deno.serve(async()=>{try{const module=await import('../../shared/perkSphereClient.ts');return Response.json({ok:typeof module.linuxResponse==='function',probe:'shared-client-v1'});}catch(error){return Response.json({ok:false,probe:'shared-client-v1',kind:error.name,detail:String(error.message).slice(0,800)},{status:500});}});
