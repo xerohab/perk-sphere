@@ -6,7 +6,7 @@ const STATUSES = ['active', 'restricted', 'suspended', 'banned'];
 // Changes a member's account status. Server-authorised + audit-logged. The
 // account_status field is also write-locked for app users (field-level security),
 // so this function is the only path.
-export default async function(req) {
+async function perkSphereHandler(req) {
   try {
     const base44 = createClientFromRequest(req);
     const auth = await authorize(base44, 'users.status');
@@ -36,3 +36,5 @@ export default async function(req) {
     return Response.json({ error: error.message }, { status: 500 });
   }
 }
+export default perkSphereHandler;
+if (typeof Deno !== 'undefined') Deno.serve(perkSphereHandler);

@@ -10,7 +10,7 @@ const RETURNED = ['rejected', 'cancelled', 'refunded'];
 // Updates a redemption's status. Requires redemptions.manage (server-checked).
 // Returned redemptions cannot be re-opened. Atomic refund issuance remains a
 // launch blocker until the transactional Linux ledger is connected.
-export default async function(req) {
+async function perkSphereHandler(req) {
   try {
     const base44 = createClientFromRequest(req);
     const auth = await authorize(base44, 'redemptions.manage');
@@ -75,3 +75,5 @@ export default async function(req) {
     return Response.json({ error: error.message }, { status: 500 });
   }
 }
+export default perkSphereHandler;
+if (typeof Deno !== 'undefined') Deno.serve(perkSphereHandler);

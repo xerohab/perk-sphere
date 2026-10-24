@@ -24,7 +24,7 @@ async function findUserByEmail(admin, email) {
   return (all || []).find((u) => String(u.email || '').toLowerCase() === em) || null;
 }
 
-export default async function(req) {
+async function perkSphereHandler(req) {
   try {
     const base44 = createClientFromRequest(req);
     const admin = base44.asServiceRole;
@@ -130,3 +130,5 @@ export default async function(req) {
     return Response.json({ error: error.message }, { status: 500 });
   }
 }
+export default perkSphereHandler;
+if (typeof Deno !== 'undefined') Deno.serve(perkSphereHandler);

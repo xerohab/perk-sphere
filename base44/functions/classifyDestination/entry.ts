@@ -8,7 +8,7 @@ import { parseTarget, buildResult } from '../../shared/classify.ts';
 // (tracking + points/XP eligibility). Requires a signed-in Perk Sphere user.
 // Never returns notes, rules, credentials, user data, fraud data or admin info, and
 // only matches destinations that are active AND publicly visible.
-export default async function(req) {
+async function perkSphereHandler(req) {
   try {
     const base44 = createClientFromRequest(req);
     let user = null;
@@ -38,3 +38,5 @@ export default async function(req) {
     return Response.json({ error: 'Classification failed' }, { status: 500 });
   }
 }
+export default perkSphereHandler;
+if (typeof Deno !== 'undefined') Deno.serve(perkSphereHandler);

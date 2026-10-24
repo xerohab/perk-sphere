@@ -3,7 +3,7 @@ import { adjustPoints, adjustXp } from '../../shared/rewards.ts';
 import { authorize, writeAudit } from '../../shared/permissions.ts';
 
 // Manual Points / XP adjustment. Requires points.adjust or xp.adjust (server-checked).
-export default async function(req) {
+async function perkSphereHandler(req) {
   try {
     const base44 = createClientFromRequest(req);
     const body = await req.json().catch(() => ({}));
@@ -67,3 +67,5 @@ export default async function(req) {
     return Response.json({ error: error.message }, { status });
   }
 }
+export default perkSphereHandler;
+if (typeof Deno !== 'undefined') Deno.serve(perkSphereHandler);

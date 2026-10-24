@@ -9,7 +9,7 @@ const lifecycle = new Set(['STREAM_STARTED', 'STREAM_ENDED']);
 const defaultMode = (type) => reverse.has(type) ? 'reverse' : invalidate.has(type) ? 'invalidate' : lifecycle.has(type) ? 'lifecycle' : 'award';
 const safeInt = (value, max) => Number.isSafeInteger(value) && value >= 0 && value <= max;
 const respond = (data, status = 200) => Response.json(data, { status });
-export default async function(req) {
+async function perkSphereHandler(req) {
   if (req.method !== 'POST') return respond({error:'Method not allowed'},405);
   try {
     const client = createClientFromRequest(req);
@@ -46,3 +46,5 @@ export default async function(req) {
     return respond({ok:true,rule:saved,live_issuance_enabled:false});
   } catch (_) { return respond({error:'Unable to manage reward rules'},500); }
 }
+export default perkSphereHandler;
+if (typeof Deno !== 'undefined') Deno.serve(perkSphereHandler);
