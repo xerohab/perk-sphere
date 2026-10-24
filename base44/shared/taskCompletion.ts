@@ -12,8 +12,11 @@ import { adjustPoints, adjustXp } from "./rewards.ts";
 import { deriveRewardType, periodStart } from "./tasks.ts";
 import { normalizePlatform } from "./destinations.ts";
 import { assertUnits } from "./rewardPolicy.ts";
+import {fullWatchError} from "./fullWatch.ts";
 
 export async function finalizeCompletion(admin, { userId, task, progress, completedCount, now, source, verificationStatus, actorId }) {
+  if(task.reward_processing === "linux_partner") throw new Error("Partner tasks require independent transactional reward verification.");
+  const invalidFullWatch = fullWatchError(task); if(invalidFullWatch) throw new Error(invalidFullWatch);
   // Idempotency re-check — narrows the race window for concurrent completion attempts.
   if (progress.reward_issued) {
     return { already_completed: true, completion_number: progress.completion_number };
