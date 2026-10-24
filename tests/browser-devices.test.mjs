@@ -36,7 +36,9 @@ test('device listing uses the restored route and strips private device tokens',a
 test('device revocation binds the authenticated owner and anonymous requests do not reach Linux',async()=>{
  setup(async(path,body)=>{assert.equal(path,'/v1/account-devices/revoke');assert.deepEqual(body,{user_reference:'actual-member',device_uuid:'device'});return Response.json({ok:true});});
  assert.equal((await revoke(post({device_uuid:'device',user_reference:'forged-member'}))).status,200);
- globalThis.__testClient.auth.me=async()=>null;
  globalThis.fetch=async()=>{throw Error('No anonymous network access');};
- for(const handler of [createCode,listDevices,revoke])assert.equal((await handler(post({device_uuid:'device'}))).status,401);
+ for(const auth of [async()=>null,async()=>{throw Error('SDK unauthorized');}]){
+  globalThis.__testClient.auth.me=auth;
+  for(const handler of [createCode,listDevices,revoke])assert.equal((await handler(post({device_uuid:'device'}))).status,401);
+ }
 });
