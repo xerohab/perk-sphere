@@ -7,7 +7,7 @@ import { isProviderConfigured, ALLOWED_PROVIDERS } from '../../shared/oauth.ts';
 // any secret values, client IDs, or redirect URIs — only whether the provider
 // is usable. Used by the Connected Services UI to distinguish "Not configured"
 // from "Not connected".
-export default async function(req) {
+async function handleRequest(req) {
   try {
     const base44 = createClientFromRequest(req);
     let user = null;
@@ -23,3 +23,5 @@ export default async function(req) {
     return Response.json({ error: error.message }, { status: 500 });
   }
 }
+export default handleRequest;
+if (typeof Deno !== 'undefined') Deno.serve(handleRequest);
