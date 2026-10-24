@@ -9,6 +9,7 @@ import { writeAudit } from "../../shared/permissions.ts";
 // Only device_uuid is accepted from the frontend. Linux enforces ownership
 // using both user_reference and device_uuid.
 
+// Rebundle: preserve the existing account-device route in the shared path allowlist.
 const LINUX_PATH = "/v1/account-devices/revoke";
 
 export default async function (req) {
