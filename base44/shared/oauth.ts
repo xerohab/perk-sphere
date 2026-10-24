@@ -277,7 +277,8 @@ export async function revokeGoogleToken(token) {
     await fetch(PROVIDERS.google.revokeUrl, {
       method: 'POST',
       headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-      body: new URLSearchParams({ token })
+      body: new URLSearchParams({ token }),
+      signal: AbortSignal.timeout(10000)
     });
   } catch (_e) { /* non-fatal */ }
 }
