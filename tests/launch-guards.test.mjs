@@ -36,3 +36,12 @@ test('audit failure prevents a rule update',async()=>{
 test('rule identity overrides and unsupported methods are rejected',async()=>{
  const f=fixture();assert.equal((await rules(post({...bodyFor('ACCOUNT_LINKED','award'),actor:{user_reference:'other'}}))).status,400);assert.equal((await rules(new Request('https://test.invalid'))).status,405);assert.equal(f.writes.length,0);
 });
+test('authoritative wallet preserves a signed historical XP total and its opening history',async()=>{
+ const original=globalThis.fetch;
+ globalThis.__testSecrets={PERKSPHERE_LINUX_LEDGER_AUTHORITATIVE:'true',PERKSPHERE_LINUX_KEY_ID:'test',PERKSPHERE_LINUX_HMAC_SECRET:'offline-test'};
+ globalThis.__testClient={auth:{me:async()=>({id:'member',loyalty_xp:-3})}};
+ try{
+  globalThis.fetch=async url=>Response.json({ok:true,data:url.endsWith('/balance')?{points_balance:'0',xp_balance:'-3',version:'0'}:[{operation_uuid:'11111111-1111-4111-8111-111111111111',operation_type:'opening_balance',status:'applied',applied_at:'2026-10-24T12:00:00.000Z',points_delta:'0',xp_delta:'-3'}]});
+  const response=await wallet(post({}));assert.equal(response.status,200);const body=await response.json();assert.equal(body.data.source,'linux');assert.equal(body.data.loyalty_xp,'-3');assert.equal(body.data.xp[0].xp_amount,'-3');
+ }finally{globalThis.fetch=original;}
+});
