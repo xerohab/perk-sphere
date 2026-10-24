@@ -16,7 +16,7 @@ export default async function(req) {
 
     const providers = {};
     for (const p of ALLOWED_PROVIDERS) {
-      providers[p] = { configured: isProviderConfigured(secrets, p) };
+      providers[p] = { configured: isProviderConfigured(secrets, p), linking_rewards_available: ['youtube','x'].includes(p) && secrets.get('PERKSPHERE_SOCIAL_LINK_REWARDS_ENABLED') === 'true' && secrets.get('PERKSPHERE_LINUX_LEDGER_AUTHORITATIVE') === 'true' };
     }
     return Response.json({ ok: true, providers });
   } catch (error) {
