@@ -3,6 +3,7 @@ import { waitUntil, secrets } from "base44:runtime";
 import { verifyTrustedRequest, pruneExpiredNonces } from "../../shared/hmac.ts";
 import { writeAudit } from "../../shared/permissions.ts";
 import { assertAccountEligible } from "../../shared/rewardPolicy.ts";
+import { isProviderConfigured } from "../../shared/oauth.ts";
 import {
   isTaskAvailable,
   isEventWindowOpen,
@@ -120,6 +121,22 @@ export default async function (req) {
     // 2. Parse + validate request body.
     const body = JSON.parse(auth.rawBody || "{}");
     const { user_reference, client_type, client_version } = body;
+
+    // Authenticated operational metadata: booleans only, no credential values.
+    if (body.action === 'launch_readiness') {
+      if (Object.keys(body).join(',') !== 'action') return err('invalid_readiness_request','Unsupported readiness fields.',400);
+      const controls = await admin.entities.Setting.filter({key:'perk_sphere_balance_reset_freeze'});
+      return Response.json({ok:true,data:{
+        wallet_authoritative:secrets.get('PERKSPHERE_LINUX_LEDGER_AUTHORITATIVE')==='true',
+        partner_link_rewards_enabled:secrets.get('PERKSPHERE_PARTNER_LINK_REWARDS_ENABLED')==='true',
+        new_member_wallets_enabled:secrets.get('PERKSPHERE_NEW_MEMBER_WALLETS_ENABLED')==='true',
+        legacy_writers_frozen:controls.some(row=>row.value==='true'),
+        youtube_configuration_present:isProviderConfigured(secrets,'youtube'),
+        x_configuration_present:isProviderConfigured(secrets,'x'),
+        token_encryption_configuration_present:/^[a-f0-9]{64}$/i.test(secrets.get('OAUTH_TOKEN_ENCRYPTION_KEY')||''),
+        provider_round_trips_verified:false
+      }},{headers:{'Cache-Control':'no-store'}});
+    }
 
     // Signed Linux-only eligibility query. No game duration or rewards are
     // accepted here; Linux owns those decisions. Existing config flow is intact.
