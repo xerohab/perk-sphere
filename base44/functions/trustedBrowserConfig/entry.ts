@@ -95,7 +95,7 @@ function projectTask(t) {
   };
 }
 
-export default async function (req) {
+async function handleRequest(req) {
   let admin = null;
   let requestId = null;
 
@@ -298,3 +298,5 @@ export default async function (req) {
     return Response.json({ ok: false, error: { code: "internal_error", message: "Processing failed." }, request_id: requestId }, { status: 500 });
   }
 }
+export default handleRequest;
+if (typeof Deno !== 'undefined') Deno.serve(handleRequest);
