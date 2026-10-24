@@ -12,7 +12,7 @@ import { writeAudit } from "../../shared/permissions.ts";
 // Rebundle: preserve the existing account-device route in the shared path allowlist.
 const LINUX_PATH = "/v1/account-devices/pairing/create";
 
-export default async function (req) {
+async function handleRequest(req) {
   try {
     const base44 = createClientFromRequest(req);
     const user = await base44.auth.me().catch(() => null);
@@ -48,3 +48,5 @@ export default async function (req) {
     return Response.json({ ok: false, error: { code: "internal_error", message: "Unable to generate pairing code." } }, { status: 500 });
   }
 }
+export default handleRequest;
+if (typeof Deno !== 'undefined') Deno.serve(handleRequest);
