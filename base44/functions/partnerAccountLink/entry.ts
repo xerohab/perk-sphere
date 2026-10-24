@@ -47,7 +47,9 @@ async function syncVerifiedPartner(admin, userId, partner, links, connected) {
   const data = result.data || {};
 
   if (!validVerifiedLink(data)) {
-    return { synced: false, unavailable: false };
+    // Only an explicit, well-formed negative is an authoritative absence.
+    // A malformed success response must remain unavailable, never verified.
+    return { synced: false, unavailable: !(data.ok === true && data.linked === false) };
   }
 
   const now = new Date().toISOString();
@@ -320,6 +322,7 @@ async function perkSphereHandler(req) {
       );
 
       let syncUnavailable = false;
+      const verification = {};
 
       // Check every active partner for an existing Linux-verified
       // account. This recovers links that Base44 missed previously.
@@ -332,6 +335,7 @@ async function perkSphereHandler(req) {
           localConnected
         );
 
+        verification[partner.id] = result.unavailable ? 'unavailable' : result.synced ? 'verified' : 'not_linked';
         if (result.unavailable) {
           syncUnavailable = true;
         }
@@ -361,7 +365,8 @@ async function perkSphereHandler(req) {
         ok: true,
         links: sanitizedLinks,
         connected: sanitizedConnected,
-        sync_unavailable: syncUnavailable
+        sync_unavailable: syncUnavailable,
+        verification
       });
     }
 
