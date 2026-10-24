@@ -80,6 +80,7 @@ export async function computeCodeChallenge(verifier) {
 
 export async function encryptToken(plaintext, keyHex) {
   if (!plaintext) return { ciphertext: '', iv: '' };
+  if (typeof keyHex !== 'string' || !/^[a-f0-9]{64}$/i.test(keyHex)) throw new Error('invalid_token_encryption_key');
   const key = await crypto.subtle.importKey('raw', hexToBytes(keyHex), { name: 'AES-GCM' }, false, ['encrypt']);
   const iv = crypto.getRandomValues(new Uint8Array(12));
   const ct = await crypto.subtle.encrypt({ name: 'AES-GCM', iv }, key, new TextEncoder().encode(plaintext));
@@ -87,10 +88,34 @@ export async function encryptToken(plaintext, keyHex) {
 }
 
 export async function decryptToken(ciphertextHex, ivHex, keyHex) {
-  if (!ciphertextHex || !ivHex) return '';
+  if (!ciphertextHex && !ivHex) return '';
+  if (typeof keyHex !== 'string' || !/^[a-f0-9]{64}$/i.test(keyHex) || typeof ivHex !== 'string' || !/^[a-f0-9]{24}$/i.test(ivHex) || typeof ciphertextHex !== 'string' || !/^(?:[a-f0-9]{2}){16,}$/i.test(ciphertextHex)) throw new Error('invalid_encrypted_token');
   const key = await crypto.subtle.importKey('raw', hexToBytes(keyHex), { name: 'AES-GCM' }, false, ['decrypt']);
   const pt = await crypto.subtle.decrypt({ name: 'AES-GCM', iv: hexToBytes(ivHex) }, key, hexToBytes(ciphertextHex));
   return new TextDecoder().decode(pt);
+}
+
+// Validate provider evidence before it can become connected-account metadata.
+export function validateOAuthTokens(data, now = Date.now()) {
+  if (!data || typeof data !== 'object' || typeof data.access_token !== 'string' ||
+      !/^[\x21-\x7e]{1,16384}$/.test(data.access_token) ||
+      typeof data.token_type !== 'string' || data.token_type.toLowerCase() !== 'bearer' ||
+      (data.refresh_token !== undefined && typeof data.refresh_token !== 'string') ||
+      (data.scope !== undefined && typeof data.scope !== 'string') ||
+      (data.expires_in !== undefined && (!Number.isSafeInteger(data.expires_in) || data.expires_in <= 0 ||
+        !Number.isFinite(new Date(now + data.expires_in * 1000).getTime())))) {
+    throw new Error('invalid_oauth_token_response');
+  }
+  return data;
+}
+
+export function validateProviderIdentity(provider, identity) {
+  const id = identity?.provider_user_id;
+  const valid = typeof id === 'string' && (provider === 'youtube' ? /^UC[A-Za-z0-9_-]{22}$/.test(id) :
+    provider === 'x' ? /^[1-9][0-9]{0,24}$/.test(id) :
+    provider === 'google' ? /^[A-Za-z0-9_-]{1,255}$/.test(id) : false);
+  if (!valid) throw new Error('invalid_provider_identity');
+  return identity;
 }
 
 // --- Provider config ---
