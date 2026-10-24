@@ -29,5 +29,5 @@ export default async function(req){
    members.push({member_reference:user.id,points:String(points),xp:String(xp),account_status:status});
   }
   return Response.json({members,legacy_writers_frozen:true,verified_at:new Date().toISOString(),next_offset:offset+25,done:users.length<25},{headers});
- }catch{return Response.json({error:'Opening export could not complete. Balances are unchanged; earning stays paused until resumed.'},{status:409,headers});}
+ }catch{return Response.json({error:'Opening preparation could not complete. Existing balances are preserved.'},{status:409,headers});}
 }
