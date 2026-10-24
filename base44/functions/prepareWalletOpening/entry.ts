@@ -2,7 +2,7 @@ import {createClientFromRequest} from 'npm:@base44/sdk@0.8.52';
 import {secrets} from 'base44:runtime';
 import {authorize,writeAudit} from '../../shared/permissions.ts';
 import {FREEZE_KEY} from '../../shared/launchBalanceReset.ts';
-export default async function(req){
+async function perkSphereHandler(req) {
  const headers={'Cache-Control':'no-store'};
  if(req.method!=='POST')return Response.json({error:'Method not allowed'},{status:405,headers});
  try{
@@ -31,3 +31,5 @@ export default async function(req){
   return Response.json({members,legacy_writers_frozen:true,verified_at:new Date().toISOString(),next_offset:offset+25,done:users.length<25},{headers});
  }catch{return Response.json({error:'Opening preparation could not complete. Existing balances are preserved.'},{status:409,headers});}
 }
+export default perkSphereHandler;
+if (typeof Deno !== 'undefined') Deno.serve(perkSphereHandler);

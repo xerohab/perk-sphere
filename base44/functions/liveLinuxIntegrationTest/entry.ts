@@ -8,7 +8,7 @@ import { ONBOARDING_STEPS } from '../../shared/partners.ts';
 
 // Comprehensive live integration test — compact response to avoid truncation.
 // All HTTP calls go to the real Linux API. No mocks. Admin-only.
-export default async function(req) {
+async function perkSphereHandler(req) {
   const R = { ts: new Date().toISOString(), base: LINUX_API_BASE, act: false, rew: false };
   let admin, record, pk, ps, lpid, uid;
   const sens = [];
@@ -286,3 +286,5 @@ export default async function(req) {
   R.end = new Date().toISOString();
   return Response.json(R);
 }
+export default perkSphereHandler;
+if (typeof Deno !== 'undefined') Deno.serve(perkSphereHandler);
