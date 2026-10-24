@@ -9,6 +9,7 @@ import { writeAudit } from "../../shared/permissions.ts";
 // The plaintext pairing code is returned to the authenticated user only and is
 // never persisted in Base44 entities or audit logs.
 
+// Rebundle: preserve the existing account-device route in the shared path allowlist.
 const LINUX_PATH = "/v1/account-devices/pairing/create";
 
 export default async function (req) {
