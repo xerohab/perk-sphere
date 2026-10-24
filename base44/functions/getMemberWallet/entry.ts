@@ -23,7 +23,7 @@ export default async function(req:Request){
     if(typeof row.operation_uuid!=='string'||!/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(row.operation_uuid)||!['opening_balance','task_reward','partner_reward','manual_adjustment','redemption','reversal'].includes(row.operation_type)||row.status!=='applied'||!Number.isFinite(Date.parse(row.applied_at)))throw Error('invalid_ledger_history');
     return {id:row.operation_uuid,created_date:row.applied_at,transaction_type:row.operation_type,reason:row.operation_type.replace(/_/g,' '),amount:integer(row.points_delta,true),xp_amount:integer(row.xp_delta,true),balance_after:null};
    });
-   return Response.json({ok:true,data:{source:'linux',points_balance:integer(balance.data.points_balance),loyalty_xp:integer(balance.data.xp_balance),version:integer(balance.data.version),points:operations.filter(row=>row.amount!=='0'),xp:operations.filter(row=>row.xp_amount!=='0')}},{headers});
+   return Response.json({ok:true,data:{source:'linux',points_balance:integer(balance.data.points_balance),loyalty_xp:integer(balance.data.xp_balance,true),version:integer(balance.data.version),points:operations.filter(row=>row.amount!=='0'),xp:operations.filter(row=>row.xp_amount!=='0')}},{headers});
   }
   // Explicit pre-cutover mode. Never reached as a fallback to failed Linux reads.
   const [points,xp]=await Promise.all([client.entities.PointsTransaction.filter({user_id:user.id},'-created_date',100),client.entities.XpTransaction.filter({user_id:user.id},'-created_date',100)]);
