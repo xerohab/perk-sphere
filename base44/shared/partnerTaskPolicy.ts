@@ -16,7 +16,8 @@ export async function readPartnerTaskPolicy(admin,{taskReference,partnerUuid}){
  else if(task.task_type==='watch_video'&&id(task.content_id)){
   kind='native_video';
   if(!Number.isSafeInteger(task.required_seconds)||task.required_seconds<1||task.required_seconds>86400||
-   !Number.isSafeInteger(task.content_duration_seconds)||task.content_duration_seconds<task.required_seconds||
+   !Number.isSafeInteger(task.content_duration_seconds)||task.content_duration_seconds<task.required_seconds||task.content_duration_seconds>86400||
+   ![0,100].includes(task.required_percentage??0)||task.require_continuous===true||
    !/^[a-f0-9]{64}$/.test(task.content_media_url_sha256||'')||!['operator_media_probe','provider_api'].includes(task.content_duration_source)||
    !Number.isFinite(Date.parse(task.content_duration_verified_at))||fullWatchError(task))throw Error('UNVERIFIED_PARTNER_TASK_DURATION');
  }else throw Error('UNSUPPORTED_PARTNER_TASK');
