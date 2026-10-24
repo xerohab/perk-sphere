@@ -2,7 +2,7 @@ import {ensureLinuxWallet} from '../../shared/memberWalletEnrollment.ts';
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.52';
 import { linuxTrustedPost } from '../../shared/linuxClient.ts';
 import { assertAccountEligible } from '../../shared/rewardPolicy.ts';
-export default async function(req) {
+async function perkSphereHandler(req) {
  if(req.method!=='POST')return Response.json({error:'Method not allowed'},{status:405});
  try {
   const base44=createClientFromRequest(req);
@@ -26,3 +26,5 @@ export default async function(req) {
   return Response.json({data},{headers:{'Cache-Control':'no-store'}});
  }catch{return Response.json({error:'Unable to load game session'},{status:502});}
 }
+export default perkSphereHandler;
+if (typeof Deno !== 'undefined') Deno.serve(perkSphereHandler);

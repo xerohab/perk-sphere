@@ -1,7 +1,7 @@
 import {createClientFromRequest} from 'npm:@base44/sdk@0.8.52';
 import {authorize} from '../../shared/permissions.ts';
 import {linuxTrustedPost} from '../../shared/linuxClient.ts';
-export default async function(req){
+async function perkSphereHandler(req) {
  if(req.method!=='POST')return Response.json({error:'Method not allowed'},{status:405});
  try{
   const base44=createClientFromRequest(req);
@@ -15,3 +15,5 @@ export default async function(req){
   return Response.json({data:result.data},{headers:{'Cache-Control':'no-store'}});
  }catch{return Response.json({error:'Game policy unavailable'},{status:502});}
 }
+export default perkSphereHandler;
+if (typeof Deno !== 'undefined') Deno.serve(perkSphereHandler);

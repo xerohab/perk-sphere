@@ -4,7 +4,7 @@ import { getProviderSecrets, decryptToken, revokeGoogleToken, revokeXToken, ALLO
 
 // Stop local use and remove credentials before making best-effort remote calls.
 // Provider outages cannot leave a locally connected account or usable tokens.
-export default async function(req) {
+async function perkSphereHandler(req) {
  const headers={'Cache-Control':'no-store'};
  if(req.method!=='POST')return Response.json({error:'method_not_allowed'},{status:405,headers});
  try {
@@ -36,3 +36,5 @@ export default async function(req) {
   return Response.json({ok:true},{headers});
  }catch{return Response.json({error:'disconnect_unavailable'},{status:503,headers});}
 }
+export default perkSphereHandler;
+if (typeof Deno !== 'undefined') Deno.serve(perkSphereHandler);

@@ -1,7 +1,7 @@
 import {createClientFromRequest} from 'npm:@base44/sdk@0.8.52';
 import {secrets} from 'base44:runtime';
 import {linuxTrustedPost} from '../../shared/linuxClient.ts';
-export default async function(req){
+async function perkSphereHandler(req) {
  const headers={'Cache-Control':'no-store'};
  if(req.method!=='POST')return Response.json({ok:false,error:'method_not_allowed'},{status:405,headers});
  try{
@@ -17,3 +17,5 @@ export default async function(req){
   return Response.json({ok:true,data:result.data},{headers});
  }catch{return Response.json({ok:false,error:'social_reward_unavailable'},{status:503,headers});}
 }
+export default perkSphereHandler;
+if (typeof Deno !== 'undefined') Deno.serve(perkSphereHandler);

@@ -3,7 +3,7 @@ import { linuxTrustedPost } from '../../shared/linuxClient.ts';
 
 // Authenticated bridge only. The Linux service owns pricing, stock and debits.
 // This function never reads or modifies Base44 Points/XP balances.
-export default async function (req: Request) {
+async function perkSphereHandler(req: Request) {
   try {
     if (req.method !== 'POST') {
       return Response.json({ ok: false, error: 'method_not_allowed' }, { status: 405 });
@@ -38,3 +38,5 @@ export default async function (req: Request) {
     return Response.json({ ok: false, error: 'redemption_unavailable' }, { status: 503 });
   }
 }
+export default perkSphereHandler;
+if (typeof Deno !== 'undefined') Deno.serve(perkSphereHandler);

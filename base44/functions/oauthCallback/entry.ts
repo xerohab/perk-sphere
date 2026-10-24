@@ -22,7 +22,7 @@ function redirectError(baseUrl, provider, reason) {
   return Response.redirect(`${baseUrl}/connected-services?status=error&provider=${provider}&reason=${reason}`, 302);
 }
 
-export default async function(req) {
+async function perkSphereHandler(req) {
   let provider = null;
   let baseUrl = 'https://perksphere.org';
 
@@ -188,3 +188,5 @@ export default async function(req) {
     return redirectError(baseUrl, provider || 'google', 'callback_failed');
   }
 }
+export default perkSphereHandler;
+if (typeof Deno !== 'undefined') Deno.serve(perkSphereHandler);
