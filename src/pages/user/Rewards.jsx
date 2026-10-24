@@ -1,4 +1,5 @@
 import React, { useEffect, useRef, useState } from "react";
+import { useMemberWallet, formatWalletInteger } from "@/hooks/useMemberWallet";
 import { rewardEligibility } from "../../../base44/shared/rewardPolicy.ts";
 import { Gift, Lock, Check } from "lucide-react";
 import { base44 } from "@/api/base44Client";
@@ -16,6 +17,9 @@ import {
 export default function Rewards() {
   const { user, checkUserAuth } = useAuth();
   const { toast } = useToast();
+  const { wallet, error: walletError, loading: walletLoading, refresh: refreshWallet } = useMemberWallet();
+  // The current redemption handler supports the legacy wallet only.
+  const redemptionAvailable = wallet?.source === "legacy" && !walletError && !walletLoading;
   const [rewards, setRewards] = useState([]);
   const [loading, setLoading] = useState(true);
   const [selected, setSelected] = useState(null);
@@ -41,16 +45,16 @@ export default function Rewards() {
   useEffect(() => { load(); }, []);
 
   const handleRedeem = async () => {
-    if (!selected || redeemLock.current) return;
+    if (!selected || redeemLock.current || !redemptionAvailable) return;
     const reward = selected;
-    const eligibility = rewardEligibility(user, reward);
+    const eligibility = rewardEligibility({ ...user, points_balance: Number(wallet.points_balance) }, reward);
     if (!eligibility.ok) {
       toast({ title: 'Redemption unavailable', description: eligibility.reason, variant: 'destructive' });
       return;
     }
     redeemLock.current = true;
     const cost = reward.points_cost;
-    const currentBalance = user?.points_balance || 0;
+    const currentBalance = Number(wallet.points_balance);
     setOptimisticPoints(currentBalance - cost);
     setRedeemingIds((prev) => new Set(prev).add(reward.id));
     setRedeeming(true);
@@ -59,7 +63,7 @@ export default function Rewards() {
       if (response?.data?.ok === false) throw new Error(response.data.error || 'Redemption failed.');
       // Refresh the authoritative balance before clearing the optimistic value
       // so the displayed number never flickers back to the stale balance.
-      await Promise.all([checkUserAuth?.(), load(true)]);
+      await Promise.all([checkUserAuth?.(), load(true), refreshWallet()]);
       toast({ title: "Reward redeemed!", description: `${reward.name} has been redeemed for ${cost} points.` });
       setSelected(null);
     } catch (e) {
@@ -72,23 +76,25 @@ export default function Rewards() {
     }
   };
 
-  const displayPoints = optimisticPoints !== null ? optimisticPoints : (user?.points_balance || 0);
+  const displayPoints = optimisticPoints !== null ? optimisticPoints : wallet?.points_balance;
 
   if (loading) {
     return <div className="flex h-64 items-center justify-center"><div className="h-8 w-8 animate-spin rounded-full border-4 border-secondary border-t-foreground" /></div>;
   }
 
   return (
-    <PullToRefresh onRefresh={() => load(true)}>
+    <PullToRefresh onRefresh={() => Promise.all([load(true), refreshWallet()])}>
       <div>
-        <PageHeader title="Rewards Store" description={`You have ${displayPoints.toLocaleString()} points to spend`} />
+        <PageHeader title="Rewards Store" description={wallet ? `Your balance: ${formatWalletInteger(displayPoints)} points` : "Your balance is temporarily unavailable"} />
+        {walletError && <div role="alert" className="mb-4 rounded-lg border p-4">{walletError} <Button variant="outline" onClick={refreshWallet}>Retry balance</Button></div>}
+        {wallet?.source === "linux" && <p role="status" className="mb-4 rounded-lg border p-4">Your points are safe. Reward redemption is temporarily unavailable.</p>}
         {error && <div role="alert" className="mb-4 rounded-lg border border-destructive p-4"><p>{error}</p><Button variant="outline" onClick={() => load()}>Retry</Button></div>}
         {rewards.length === 0 ? (
           <EmptyState title="No rewards available" description="New rewards will appear here when published by administrators." />
         ) : (
           <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
             {rewards.map((r) => {
-              const eligibility = rewardEligibility({ ...user, points_balance: displayPoints }, r);
+              const eligibility = redemptionAvailable ? rewardEligibility({ ...user, points_balance: Number(displayPoints) }, r) : { ok: false, reason: walletLoading ? "Loading balance" : "Redemption unavailable" };
               const isRedeeming = redeemingIds.has(r.id);
               return (
                 <div key={r.id} className="flex flex-col overflow-hidden rounded-2xl border border-border bg-card shadow-sm">
@@ -127,7 +133,7 @@ export default function Rewards() {
             {selected?.terms && <p className="rounded-lg bg-secondary p-3 text-xs text-muted-foreground">{selected.terms}</p>}
             <DialogFooter>
               <DialogClose asChild><Button variant="outline" disabled={redeeming}>Cancel</Button></DialogClose>
-              <Button onClick={handleRedeem} disabled={redeeming}>{redeeming ? "Processing..." : <><Check className="mr-1 h-4 w-4" /> Confirm Redemption</>}</Button>
+              <Button onClick={handleRedeem} disabled={redeeming || !redemptionAvailable}>{redeeming ? "Processing..." : <><Check className="mr-1 h-4 w-4" /> Confirm Redemption</>}</Button>
             </DialogFooter>
           </DialogContent>
         </Dialog>
