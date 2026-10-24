@@ -7,7 +7,7 @@ function integer(value,signed=false){
  const s=String(value);if(!(signed?/^(0|-?[1-9][0-9]*)$/:/^(0|[1-9][0-9]*)$/).test(s))throw Error('invalid_ledger_integer');
  const n=BigInt(s);if(n<-(1n<<63n)||n>(1n<<63n)-1n)throw Error('invalid_ledger_integer');return s;
 }
-export default async function(req:Request){
+async function handleRequest(req:Request) {
  const headers={'Cache-Control':'no-store'};
  if(req.method!=='POST')return Response.json({ok:false,error:'method_not_allowed'},{status:405,headers});
  try{
@@ -30,3 +30,5 @@ export default async function(req:Request){
   return Response.json({ok:true,data:{source:'legacy',points_balance:integer(user.points_balance??0,true),loyalty_xp:integer(user.loyalty_xp??0,true),version:null,points:points.map(row=>({...row,amount:integer(row.amount,true)})),xp:xp.map(row=>({...row,xp_amount:integer(row.xp_amount,true)}))}},{headers});
  }catch{return Response.json({ok:false,error:'wallet_unavailable'},{status:503,headers});}
 }
+export default handleRequest;
+if (typeof Deno !== 'undefined') Deno.serve(handleRequest);
