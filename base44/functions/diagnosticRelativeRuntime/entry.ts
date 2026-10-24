@@ -1,0 +1,1 @@
+Deno.serve(async()=>{try{const module=await import('../../shared/linuxPath.ts');return Response.json({ok:module.isValidLinuxPath('/v1/account-devices/list'),probe:'relative-import-v1'});}catch(error){return Response.json({ok:false,kind:error.name,detail:String(error.message).slice(0,500)},{status:500});}});
