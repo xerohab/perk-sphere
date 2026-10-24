@@ -2,6 +2,12 @@
   "name": "LedgerDeliveryReceipt",
   "type": "object",
   "properties": {
+    "ledger_operation_uuid": {
+      "type": "string"
+    },
+    "task_reference": {
+      "type": "string"
+    },
     "user_id": {
       "type": "string"
     },
