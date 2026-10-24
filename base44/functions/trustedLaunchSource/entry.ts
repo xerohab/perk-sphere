@@ -4,6 +4,7 @@ import {verifyTrustedRequest} from '../../shared/hmac.ts';
 import {assertAccountEligible} from '../../shared/rewardPolicy.ts';
 import {isProviderConfigured} from '../../shared/oauth.ts';
 import {socialLinkEvidence} from '../../shared/socialEvidence.ts';
+import {readPartnerTaskPolicy} from '../../shared/partnerTaskPolicy.ts';
 const PATH='/functions/trustedLaunchSource';
 const headers={'Cache-Control':'no-store'};
 const fail=(status,error)=>Response.json({ok:false,error},{status,headers});
@@ -27,11 +28,16 @@ async function handleRequest(req) {
     new_member_wallets_enabled:secrets.get('PERKSPHERE_NEW_MEMBER_WALLETS_ENABLED')==='true',
     social_source_enabled:secrets.get('PERKSPHERE_SOCIAL_LINK_SOURCE_ENABLED')==='true',
     social_claims_enabled:secrets.get('PERKSPHERE_SOCIAL_LINK_REWARDS_ENABLED')==='true',
+    partner_tasks_enabled:secrets.get('PERKSPHERE_PARTNER_TASKS_ENABLED')==='true',
     youtube_configuration_present:isProviderConfigured(secrets,'youtube'),
     x_configuration_present:isProviderConfigured(secrets,'x'),
     token_encryption_configuration_present:/^[a-f0-9]{64}$/i.test(secrets.get('OAUTH_TOKEN_ENCRYPTION_KEY')||''),
     provider_round_trips_verified:false
    }},{headers});
+  }
+  if(action==='partner_task_policy'){
+   if(Object.keys(body).sort().join(',')!=='action,partner_uuid,task_reference')return fail(400,'invalid_request');
+   return Response.json({ok:true,data:await readPartnerTaskPolicy(admin,{taskReference:body.task_reference,partnerUuid:body.partner_uuid})},{headers});
   }
   if(action==='social_link_evidence'){
    if(Object.keys(body).sort().join(',')!=='action,provider,user_reference')return fail(400,'invalid_request');
