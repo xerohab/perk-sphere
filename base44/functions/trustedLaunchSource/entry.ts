@@ -9,7 +9,7 @@ const headers={'Cache-Control':'no-store'};
 const fail=(status,error)=>Response.json({ok:false,error},{status,headers});
 // Signed read-only launch/source API. The extension configuration API keeps its
 // existing URL and contract. Nonce storage is the only authentication-side write.
-export default async function(req){
+async function handleRequest(req) {
  if(req.method!=='POST')return fail(405,'method_not_allowed');
  try{
   const client=createClientFromRequest(req),admin=client.asServiceRole;
@@ -51,3 +51,5 @@ export default async function(req){
   }},{headers});
  }catch{return fail(503,'launch_source_unavailable');}
 }
+export default handleRequest;
+if (typeof Deno !== 'undefined') Deno.serve(handleRequest);
