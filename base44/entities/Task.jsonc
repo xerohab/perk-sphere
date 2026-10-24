@@ -2,6 +2,32 @@
   "name": "Task",
   "type": "object",
   "properties": {
+    "reward_processing": {
+      "type": "string",
+      "enum": [
+        "legacy",
+        "linux_partner"
+      ],
+      "default": "legacy"
+    },
+    "content_duration_seconds": {
+      "type": "number",
+      "default": 0
+    },
+    "content_duration_source": {
+      "type": "string",
+      "enum": [
+        "operator_media_probe",
+        "provider_api"
+      ]
+    },
+    "content_duration_verified_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "content_media_url_sha256": {
+      "type": "string"
+    },
     "name": {
       "type": "string"
     },
