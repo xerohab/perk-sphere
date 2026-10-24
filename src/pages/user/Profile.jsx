@@ -1,4 +1,5 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
+import { useMemberWallet, formatWalletInteger, rankXp } from "@/hooks/useMemberWallet";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/lib/AuthContext";
 import { base44 } from "@/api/base44Client";
@@ -19,6 +20,11 @@ import {
 export default function Profile() {
   const { user, checkUserAuth, logout } = useAuth();
   const { toast } = useToast();
+  const { wallet, error: walletError, refresh: refreshWallet } = useMemberWallet();
+  const [levels, setLevels] = useState(null);
+  useEffect(() => { let active = true; base44.entities.LoyaltyLevel.list("-minimum_xp", 50).then(rows => { if (active) setLevels(rows || []); }).catch(() => { if (active) setLevels(null); }); return () => { active = false; }; }, []);
+  const currentLevel = levels?.filter(level => level.active !== false && Number.isSafeInteger(level.minimum_xp) && level.minimum_xp <= rankXp(wallet?.loyalty_xp)).sort((a, b) => b.minimum_xp - a.minimum_xp)[0];
+  const rank = !wallet ? null : wallet.source === "legacy" ? user?.loyalty_rank || currentLevel?.name || "Bronze" : levels ? currentLevel?.name || "Bronze" : null;
   const navigate = useNavigate();
   const { theme, setTheme } = useTheme();
   const [form, setForm] = useState({ username: user?.username || "", display_name: user?.display_name || "", profile_image: user?.profile_image || "" });
@@ -62,6 +68,7 @@ export default function Profile() {
   return (
     <div>
       <PageHeader title="Profile" description="Your Perk Sphere account details" />
+      {walletError && <div role="alert" className="mb-4 rounded-xl border p-4">{walletError} <button type="button" className="underline" onClick={refreshWallet}>Retry</button></div>}
       <div className="grid gap-4 lg:grid-cols-3">
         <div className="rounded-2xl border border-border bg-card p-6 shadow-sm">
           <div className="flex flex-col items-center text-center">
@@ -71,13 +78,13 @@ export default function Profile() {
             <p className="mt-3 text-base font-semibold">{form.display_name || user?.email}</p>
             <p className="text-xs text-muted-foreground">{user?.email}</p>
             <div className="mt-3 flex flex-wrap justify-center gap-2">
-              {user?.loyalty_rank && <RankBadge rank={user.loyalty_rank} />}
+              {rank && <RankBadge rank={rank} />}
               <StatusBadge status={user?.account_status || "active"} />
             </div>
           </div>
           <div className="mt-5 space-y-2 text-sm">
-            <div className="flex justify-between"><span className="text-muted-foreground">Points</span><span className="font-semibold">{(user?.points_balance || 0).toLocaleString()}</span></div>
-            <div className="flex justify-between"><span className="text-muted-foreground">Loyalty XP</span><span className="font-semibold">{(user?.loyalty_xp || 0).toLocaleString()}</span></div>
+            <div className="flex justify-between"><span className="text-muted-foreground">Points</span><span className="font-semibold">{formatWalletInteger(wallet?.points_balance)}</span></div>
+            <div className="flex justify-between"><span className="text-muted-foreground">Loyalty XP</span><span className="font-semibold">{formatWalletInteger(wallet?.loyalty_xp)}</span></div>
             <div className="flex justify-between"><span className="text-muted-foreground">Joined</span><span className="text-muted-foreground">{user?.created_date ? new Date(user.created_date).toLocaleDateString() : "—"}</span></div>
           </div>
         </div>
