@@ -7,6 +7,7 @@ import { linuxTrustedPost } from "../../shared/linuxClient.ts";
 // Sensitive fields (device_token, token_hash, HMAC data) are stripped before
 // the response reaches the frontend.
 
+// Rebundle: preserve the existing account-device route in the shared path allowlist.
 const LINUX_PATH = "/v1/account-devices/list";
 
 // Whitelist of safe device fields exposed to the frontend.
