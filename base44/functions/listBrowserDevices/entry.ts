@@ -31,7 +31,7 @@ function sanitizeDevice(d) {
   return safe;
 }
 
-export default async function (req) {
+async function handleRequest(req) {
   try {
     const base44 = createClientFromRequest(req);
     const user = await base44.auth.me().catch(() => null);
@@ -53,3 +53,5 @@ export default async function (req) {
     return Response.json({ ok: false, error: { code: "internal_error", message: "Unable to load connected devices." } }, { status: 500 });
   }
 }
+export default handleRequest;
+if (typeof Deno !== 'undefined') Deno.serve(handleRequest);
