@@ -57,5 +57,27 @@
   "required": [
     "rule_key",
     "event_type"
-  ]
+  ],
+  "rls": {
+    "read": {
+      "user_condition": {
+        "role": "service_only"
+      }
+    },
+    "create": {
+      "user_condition": {
+        "role": "service_only"
+      }
+    },
+    "update": {
+      "user_condition": {
+        "role": "service_only"
+      }
+    },
+    "delete": {
+      "user_condition": {
+        "role": "service_only"
+      }
+    }
+  }
 }
