@@ -25,3 +25,13 @@ test('restricted accounts cannot earn game rewards',async()=>{
  globalThis.__testClient={auth:{me:async()=>({id:'member-1'})},asServiceRole:{entities:{Restriction:{filter:async()=>[{type:'points_earning_paused',active:true}]}}}};
  assert.equal((await play(post({action:'start',game_reference:'number-memory'}))).status,403);
 });
+test('failed game authentication is reported as sign-in required without outbound calls',async()=>{
+ const previous=globalThis.fetch;globalThis.fetch=()=>{throw Error('must not call Linux');};
+ globalThis.__testClient={auth:{me:async()=>{throw Error('no session');}}};
+ try{assert.equal((await play(post({action:'start',game_reference:'number-memory'}))).status,401);}finally{globalThis.fetch=previous;}
+});
+test('malformed game JSON is rejected before wallet enrollment or gameplay',async()=>{
+ const previous=globalThis.fetch;globalThis.fetch=()=>{throw Error('must not call Linux');};
+ globalThis.__testClient={auth:{me:async()=>({id:'member-1'})},asServiceRole:{entities:{Restriction:{filter:async()=>[]}}}};
+ try{assert.equal((await play(new Request('https://test.invalid',{method:'POST',body:'{'}))).status,400);}finally{globalThis.fetch=previous;}
+});
