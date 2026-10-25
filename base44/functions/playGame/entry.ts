@@ -6,12 +6,12 @@ async function perkSphereHandler(req) {
  if(req.method!=='POST')return Response.json({error:'Method not allowed'},{status:405});
  try {
   const base44=createClientFromRequest(req);
-  const user=await base44.auth.me();
+  const user=await base44.auth.me().catch(()=>null);
   if(!user?.id)return Response.json({error:'Sign in to play'},{status:401});
   const restrictions=await base44.asServiceRole.entities.Restriction.filter({user_id:user.id});
   try{assertAccountEligible(user,restrictions,'earn game rewards');}
   catch{return Response.json({error:'Account is restricted from earning game rewards'},{status:403});}
-  const body=await req.json();
+  const body=await req.json().catch(()=>null);
   const fields=body?.action==='start'?['action','game_reference']:['action','game_reference','session_uuid','round_number','answer'];
   if(!body || typeof body!=='object' || Array.isArray(body) || !['start','round'].includes(body.action) || !['number-memory','quick-maths','reverse-code'].includes(body.game_reference) ||
      Object.keys(body).sort().join(',')!==fields.sort().join(','))return Response.json({error:'Invalid game request'},{status:400});
