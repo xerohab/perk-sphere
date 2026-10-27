@@ -35,6 +35,7 @@ const Rewards = lazy(() => import('@/pages/user/Rewards'));
 const Activity = lazy(() => import('@/pages/user/Activity'));
 const Achievements = lazy(() => import('@/pages/user/Achievements'));
 const PointsHistory = lazy(() => import('@/pages/user/PointsHistory'));
+const Wallet = lazy(() => import('@/pages/user/Wallet'));
 const Loyalty = lazy(() => import('@/pages/user/Loyalty'));
 const Notifications = lazy(() => import('@/pages/user/Notifications'));
 const ConnectedServices = lazy(() => import('@/pages/user/ConnectedServices'));
@@ -125,6 +126,7 @@ const AppRoutes = () => (
           <Route path="/activity" element={<Activity />} />
           <Route path="/achievements" element={<Achievements />} />
           <Route path="/points-history" element={<PointsHistory />} />
+          <Route path="/wallet" element={<Wallet />} />
           <Route path="/loyalty" element={<Loyalty />} />
           <Route path="/notifications" element={<Notifications />} />
           <Route path="/connected-services" element={<ConnectedServices />} />
