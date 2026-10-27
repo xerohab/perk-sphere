@@ -15,7 +15,7 @@ export default function VerifiedStreakBonuses({userId,tasks,refreshWallet}){
    const r=await base44.functions.invoke('claimVerifiedStreak',{account_reference:c.account_reference,campaign_reference:c.campaign_reference});
    const d=r.data?.data;
    let message;
-   if(d?.issued===true){message='Bonus added to your wallet.';await refreshWallet();}
+   if(d?.issued===true){message='Bonus added to your wallet.';try{await refreshWallet();}catch{}}
    else if(d?.duplicate===true)message='This bonus was already awarded today (UTC).';
    else if(d?.reason==='five_days_required')message='Complete a qualifying task on each of five consecutive UTC days, including today.';
    else if(d?.reason==='bonus_window_not_complete')message='The next five-day bonus window is not complete yet.';
