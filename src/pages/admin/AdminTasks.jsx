@@ -8,6 +8,7 @@ import ResponsiveTable from "@/components/perk/ResponsiveTable";
 import StatusBadge from "@/components/perk/StatusBadge";
 import ConfirmDialog from "@/components/perk/ConfirmDialog";
 import TaskWizard from "@/components/perk/TaskWizard";
+import VerifiedStreakAdmin from "@/components/perk/VerifiedStreakAdmin";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
@@ -112,7 +113,9 @@ export default function AdminTasks() {
     <div>
       <PageHeader title="Tasks" description={`${tasks.filter((t) => t.active && !t.archived).length} active · ${tasks.length} total`} actions={<Button size="sm" onClick={() => { setEditing(null); setWizardOpen(true); }}><Plus className="mr-1 h-4 w-4" /> Create Task</Button>} />
 
-      <Tabs defaultValue="tasks" onValueChange={(v) => v === "analytics" && !stats && loadStats()}>
+      <VerifiedStreakAdmin tasks={tasks} />
+
+      <Tabs defaultValue="tasks" onValueChange={(v) => v === "analytics" && !stats && loadStats()}> 
         <TabsList>
           <TabsTrigger value="tasks">All Tasks</TabsTrigger>
           <TabsTrigger value="analytics"><BarChart3 className="mr-1 h-4 w-4" /> Analytics</TabsTrigger>
