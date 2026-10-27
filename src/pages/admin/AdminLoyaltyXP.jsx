@@ -1,8 +1,11 @@
 import React from "react";
 import CrudPage from "@/components/perk/CrudPage";
+import XpConversionPolicy from "@/components/perk/XpConversionPolicy";
 
 export default function AdminLoyaltyXP() {
   return (
+    <div className="space-y-6">
+    <XpConversionPolicy />
     <CrudPage
       title="Loyalty Levels"
       description="Define XP thresholds for each loyalty rank. Users are ranked automatically from their XP."
@@ -23,5 +26,6 @@ export default function AdminLoyaltyXP() {
         { key: "active", label: "Active", type: "boolean" }
       ]}
     />
+    </div>
   );
 }
