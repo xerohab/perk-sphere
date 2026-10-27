@@ -33,6 +33,7 @@ export default function Dashboard() {
   const [tasks, setTasks] = useState([]);
   const [taskProgress, setTaskProgress] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [dailyReward, setDailyReward] = useState(null);
   const { destinations } = usePublicDestinations();
 
   const allowedDestinations = destinations.filter((d) => d.eligibility === "allowed").slice(0, 6);
@@ -62,6 +63,26 @@ export default function Dashboard() {
 
   useEffect(() => { loadData(); }, []);
 
+  useEffect(() => {
+    if (!user?.id) return;
+    let active = true;
+    setDailyReward(null);
+    (async () => {
+      try {
+        const status = await base44.functions.invoke('dailyLoginStatus', {});
+        if (!active || status.data?.enabled !== true) return;
+        const result = await base44.functions.invoke('claimDailyLogin', {});
+        const data = result.data?.data;
+        if (!active || data?.points !== 1 || typeof data.duplicate !== 'boolean') return;
+        setDailyReward(data);
+        if (!data.duplicate) await refreshWallet();
+      } catch {
+        // A paused or unavailable bonus must not prevent dashboard use.
+      }
+    })();
+    return () => { active = false; };
+  }, [user?.id]);
+
   const xp = rankXp(wallet?.loyalty_xp);
   const points = wallet?.points_balance;
   const activeLevels = levels.filter((l) => l.active !== false).sort((a, b) => (a.minimum_xp || 0) - (b.minimum_xp || 0));
@@ -85,6 +106,7 @@ export default function Dashboard() {
         <PageHeader title={`Welcome back, ${user?.display_name || user?.username || user?.email?.split("@")[0] || "Member"}`} description="Your Perk Sphere rewards overview" />
 
         {walletError && <div role="alert" className="mb-4 rounded-xl border p-4">{walletError} <button type="button" className="underline" onClick={refreshWallet}>Retry</button></div>}
+        {dailyReward && <div role="status" className="mb-4 rounded-xl border p-4">Daily bonus: {dailyReward.duplicate ? '1 point already earned today' : '1 point added today'} (UTC).</div>}
         {/* Admin access */}
         {user?.role === "admin" && (
           <Link to="/admin" className="mt-4 flex items-center justify-between rounded-2xl border border-indigo-200 bg-gradient-to-r from-indigo-50 to-violet-50 p-4 shadow-sm transition-shadow hover:shadow-md dark:border-indigo-900 dark:from-indigo-950/30 dark:to-violet-950/30">
