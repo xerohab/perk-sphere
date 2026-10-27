@@ -7,7 +7,7 @@ function deliveryFields(body){return body?.task_reference===undefined?fields:[..
 function valid(body){
  if(!body||typeof body!=='object'||Array.isArray(body)||Object.keys(body).sort().join(',')!==deliveryFields(body).join(',')||body.event_type!=='LEDGER_APPLIED')return false;
  if(!uuid.test(body.delivery_uuid||'')||!uuid.test(body.operation_uuid||'')||typeof body.user_reference!=='string'||!/^[A-Za-z0-9_:@.-]{1,191}$/.test(body.user_reference))return false;
- if(!['opening_balance','task_reward','partner_reward','manual_adjustment','redemption','reversal'].includes(body.operation_type))return false;
+ if(!['opening_balance','task_reward','partner_reward','manual_adjustment','redemption','reversal','xp_conversion'].includes(body.operation_type))return false;
  for(const key of ['points_delta','xp_delta']){if(typeof body[key]!=='string'||!/^(-?[1-9][0-9]*|0)$/.test(body[key]))return false;const n=BigInt(body[key]);if(n<-(1n<<63n)||n>(1n<<63n)-1n)return false;}
  if(body.task_reference!==undefined&&(!/^[a-f0-9]{24}$/.test(body.task_reference)||body.operation_type!=='partner_reward'||BigInt(body.points_delta)<0n||BigInt(body.xp_delta)<0n||BigInt(body.points_delta)>1000000n||BigInt(body.xp_delta)>1000000n))return false;
  return true;
