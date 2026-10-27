@@ -21,6 +21,7 @@ const navItems = [
   { label: "Directory Requests", path: "/directory-requests", icon: ListChecks },
   { label: "Achievements", path: "/achievements", icon: Award },
   { label: "Points History", path: "/points-history", icon: History },
+  { label: "Wallet", path: "/wallet", icon: Coins },
   { label: "Loyalty", path: "/loyalty", icon: TrendingUp },
   { label: "Notifications", path: "/notifications", icon: Bell },
   { label: "Connected Services", path: "/connected-services", icon: Plug },
