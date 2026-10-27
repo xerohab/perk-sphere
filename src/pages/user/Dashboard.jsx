@@ -15,6 +15,7 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import DestinationCard from "@/components/public/DestinationCard";
 import TaskCard from "@/components/perk/TaskCard";
 import PullToRefresh from "@/components/perk/PullToRefresh";
+import VerifiedStreakBonuses from "@/components/perk/VerifiedStreakBonuses";
 
 function startOfDay(d = new Date()) {
   const x = new Date(d);
@@ -107,6 +108,7 @@ export default function Dashboard() {
 
         {walletError && <div role="alert" className="mb-4 rounded-xl border p-4">{walletError} <button type="button" className="underline" onClick={refreshWallet}>Retry</button></div>}
         {dailyReward && <div role="status" className="mb-4 rounded-xl border p-4">Daily bonus: {dailyReward.duplicate ? '1 point already earned today' : '1 point added today'} (UTC).</div>}
+        <VerifiedStreakBonuses userId={user?.id} tasks={tasks} refreshWallet={refreshWallet} />
         {/* Admin access */}
         {user?.role === "admin" && (
           <Link to="/admin" className="mt-4 flex items-center justify-between rounded-2xl border border-indigo-200 bg-gradient-to-r from-indigo-50 to-violet-50 p-4 shadow-sm transition-shadow hover:shadow-md dark:border-indigo-900 dark:from-indigo-950/30 dark:to-violet-950/30">
