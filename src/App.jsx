@@ -55,6 +55,7 @@ const RewardReview = lazy(() => import('@/pages/user/RewardReview'));
 // Admin panel - lazy loaded
 const AdminLayout = lazy(() => import('@/components/admin/AdminLayout'));
 const AdminDashboard = lazy(() => import('@/pages/admin/AdminDashboard'));
+const AdminLaunchChecks = lazy(() => import('@/pages/admin/AdminLaunchChecks'));
 const AdminUsers = lazy(() => import('@/pages/admin/AdminUsers'));
 const AdminUserDetail = lazy(() => import('@/pages/admin/AdminUserDetail'));
 const AdminPoints = lazy(() => import('@/pages/admin/AdminPoints'));
@@ -140,6 +141,7 @@ const AppRoutes = () => (
         </Route>
         <Route element={<AdminLayout />}>
           <Route path="/admin" element={<AdminDashboard />} />
+          <Route path="/admin/launch-checks" element={<AdminLaunchChecks />} />
           <Route path="/admin/users" element={<AdminUsers />} />
           <Route path="/admin/users/:id" element={<AdminUserDetail />} />
           <Route path="/admin/destinations" element={<AdminDestinations />} />

@@ -12,6 +12,7 @@ import { useAuth } from "@/lib/AuthContext";
 
 const navItems = [
   { label: "Dashboard", path: "/admin", icon: LayoutDashboard, permission: "dashboard.view" },
+  { label: "Launch checks", path: "/admin/launch-checks", icon: ClipboardCheck, permission: "rules.view" },
   { label: "Users", path: "/admin/users", icon: Users, permission: "users.view" },
   { label: "Points", path: "/admin/points", icon: Coins, permission: "ledger.view" },
   { label: "Loyalty XP", path: "/admin/loyalty", icon: TrendingUp, permission: "loyalty.view" },
