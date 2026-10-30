@@ -3,7 +3,7 @@ import { secrets } from 'base44:runtime';
 import {
   sha256Hex, getProviderSecrets,
   exchangeGoogleCode, exchangeXCode, getGoogleUserInfo, getXUserInfo, getYouTubeUserInfo,
-  encryptToken, validateOAuthTokens, validateProviderIdentity, ALLOWED_PROVIDERS
+  encryptToken, validateOAuthTokens, validateProviderIdentity, ALLOWED_PROVIDERS, privateOAuthResponse
 } from '../../shared/oauth.ts';
 
 // OAuth callback endpoint. The provider redirects the user's browser here with
@@ -22,7 +22,7 @@ function redirectError(baseUrl, provider, reason) {
   return Response.redirect(`${baseUrl}/connected-services?status=error&provider=${provider}&reason=${reason}`, 302);
 }
 
-async function perkSphereHandler(req) {
+async function handleOAuthCallback(req) {
   let provider = null;
   let baseUrl = 'https://perksphere.org';
 
@@ -66,6 +66,13 @@ async function perkSphereHandler(req) {
       return redirectError(baseUrl, provider, 'state_expired');
     }
 
+    // The account may have been disabled after OAuth was started.
+    const memberIsEligible = async () => {
+      const member = await admin.entities.User.get(stateRec.user_id).catch(() => null);
+      return member?.id === stateRec.user_id && !['suspended','banned','disabled'].includes(member.account_status);
+    };
+    if (!await memberIsEligible()) return redirectError(baseUrl, provider, 'account_unavailable');
+
     // Stage 2: Consume state (single use, before token exchange for CSRF safety).
     await admin.entities.OAuthConnectionState.update(stateRec.id, { used_at: new Date().toISOString() });
 
@@ -98,6 +105,9 @@ async function perkSphereHandler(req) {
       console.error(`oauthCallback[${provider}] provider_identity_failed`);
       return redirectError(baseUrl, provider, 'provider_identity_failed');
     }
+
+    // Recheck after provider I/O before persisting credentials.
+    if (!await memberIsEligible()) return redirectError(baseUrl, provider, 'account_unavailable');
 
     // Stage 5: Encrypt tokens at rest.
     const encKey = secrets.get('OAUTH_TOKEN_ENCRYPTION_KEY');
@@ -188,5 +198,6 @@ async function perkSphereHandler(req) {
     return redirectError(baseUrl, provider || 'google', 'callback_failed');
   }
 }
+async function perkSphereHandler(req) { return privateOAuthResponse(await handleOAuthCallback(req)); }
 export default perkSphereHandler;
 if (typeof Deno !== 'undefined') Deno.serve(perkSphereHandler);

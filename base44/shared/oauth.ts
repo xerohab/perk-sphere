@@ -297,3 +297,11 @@ export async function revokeXToken(token, clientId, clientSecret) {
     });
   } catch (_e) { /* non-fatal */ }
 }
+// OAuth responses must not be cached or forward authorization URLs as referrers.
+export function privateOAuthResponse(response) {
+  const headers = new Headers(response.headers);
+  headers.set('Cache-Control', 'no-store');
+  headers.set('Pragma', 'no-cache');
+  headers.set('Referrer-Policy', 'no-referrer');
+  return new Response(response.body, {status:response.status,statusText:response.statusText,headers});
+}
