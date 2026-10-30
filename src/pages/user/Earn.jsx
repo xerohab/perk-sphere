@@ -1,4 +1,5 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useCallback } from "react";
+import { Link } from "react-router-dom";
 import { Globe, Share2, Info } from "lucide-react";
 import { base44 } from "@/api/base44Client";
 import PageHeader from "@/components/perk/PageHeader";
@@ -8,20 +9,20 @@ export default function Earn() {
   const [sites, setSites] = useState([]);
   const [accounts, setAccounts] = useState([]);
   const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    (async () => {
-      try {
-        const res = await base44.functions.invoke("publicDestinations", {});
-        const data = res.data || res;
-        const dests = (data.destinations || []).filter((d) => d.eligibility !== "disallowed");
-        setSites(dests.filter((d) => d.kind === "website"));
-        setAccounts(dests.filter((d) => d.kind === "account"));
-      } finally {
-        setLoading(false);
-      }
-    })();
+  const [error, setError] = useState(false);
+  const load = useCallback(async () => {
+    setLoading(true); setError(false);
+    try {
+      const res = await base44.functions.invoke("publicDestinations", {});
+      const data = res.data || res;
+      if (!Array.isArray(data.destinations)) throw Error("Invalid directory response");
+      const dests = data.destinations.filter(d => d.eligibility === "allowed");
+      setSites(dests.filter(d => d.kind === "website"));
+      setAccounts(dests.filter(d => d.kind === "account"));
+    } catch { setSites([]); setAccounts([]); setError(true); }
+    finally { setLoading(false); }
   }, []);
+  useEffect(() => { load(); }, [load]);
 
   if (loading) {
     return <div className="flex h-64 items-center justify-center"><div className="h-8 w-8 animate-spin rounded-full border-4 border-secondary border-t-foreground" /></div>;
@@ -29,10 +30,19 @@ export default function Earn() {
 
   return (
     <div>
-      <PageHeader title="Earn Points" description="Participating websites and tracked accounts where you can earn rewards" />
+      <PageHeader title="Earn Points" description="Choose an activity and check its reward and completion rules." />
+      <div className="mb-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+        {[
+          {to:"/partner-accounts",title:"Link partner accounts",text:"Connect your account and claim an available one-time link reward."},
+          {to:"/connected-services",title:"Connect X or YouTube",text:"Connect your own account. Identity linking is separate from social activity."},
+          {to:"/tasks",title:"Complete partner tasks",text:"Choose a supported task and complete it on the partner site."},
+          {to:"/games",title:"Play Perk Sphere games",text:"Earn from eligible game sessions, subject to each game's daily limit."}
+        ].map(item=><Link key={item.to} to={item.to} className="rounded-2xl border border-border bg-card p-4 shadow-sm hover:bg-secondary/50"><h2 className="font-semibold">{item.title}</h2><p className="mt-1 text-sm text-muted-foreground">{item.text}</p></Link>)}
+      </div>
+      {error && <p role="alert" className="mb-4 rounded-xl border p-4">The destination directory is temporarily unavailable. <button type="button" className="underline" onClick={load}>Retry</button></p>
       <div className="mb-6 flex items-start gap-3 rounded-2xl border border-indigo-100 bg-indigo-50 p-4 text-sm text-indigo-800 dark:border-indigo-900/50 dark:bg-indigo-950/20 dark:text-indigo-300">
         <Info className="mt-0.5 h-4 w-4 flex-shrink-0" />
-        <p>Earning is handled by the Perk Sphere browser extension and verified activity API. Install the extension and visit eligible sites to earn automatically. Manual point awards are not available from this page.</p>
+        <p>Rewards require a supported, enabled activity and verified completion. An allowed listing or a page visit alone does not guarantee Points or XP. Partner tasks use the partner’s own verification; the browser extension is only needed for activities that explicitly require it. YouTube viewing, likes and follows do not currently earn rewards.</p>
       </div>
 
       <h3 className="mb-3 flex items-center gap-2 text-sm font-semibold"><Globe className="h-4 w-4" /> Participating Websites</h3>
