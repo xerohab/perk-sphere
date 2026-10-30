@@ -22,6 +22,7 @@ const Home = lazy(() => import('@/pages/public/Home'));
 const PublicDestinations = lazy(() => import('@/pages/public/Destinations'));
 const DestinationDetail = lazy(() => import('@/pages/public/DestinationDetail'));
 const About = lazy(() => import('@/pages/public/About'));
+const Advertise = lazy(() => import('@/pages/public/Advertise'));
 const PrivacyPolicy = lazy(() => import('@/pages/public/PrivacyPolicy'));
 const TermsOfService = lazy(() => import('@/pages/public/TermsOfService'));
 const PartnerRegister = lazy(() => import('@/pages/public/PartnerRegister'));
@@ -66,6 +67,7 @@ const AdminSocialActivity = lazy(() => import('@/pages/admin/AdminSocialActivity
 const AdminActivities = lazy(() => import('@/pages/admin/AdminActivities'));
 const AdminRules = lazy(() => import('@/pages/admin/AdminRules'));
 const AdminCampaigns = lazy(() => import('@/pages/admin/AdminCampaigns'));
+const AdminSponsors = lazy(() => import('@/pages/admin/AdminSponsors'));
 const AdminAchievements = lazy(() => import('@/pages/admin/AdminAchievements'));
 const AdminRestrictions = lazy(() => import('@/pages/admin/AdminRestrictions'));
 const AdminFraud = lazy(() => import('@/pages/admin/AdminFraud'));
@@ -105,6 +107,7 @@ const AppRoutes = () => (
         <Route path="/destinations" element={<PublicDestinations />} />
         <Route path="/destinations/:id" element={<DestinationDetail />} />
         <Route path="/about" element={<About />} />
+        <Route path="/advertise" element={<Advertise />} />
         <Route path="/privacy-policy" element={<PrivacyPolicy />} />
         <Route path="/terms-of-service" element={<TermsOfService />} />
         <Route path="/partners/register" element={<PartnerRegister />} />
@@ -159,6 +162,7 @@ const AppRoutes = () => (
           <Route path="/admin/activities" element={<AdminActivities />} />
           <Route path="/admin/rules" element={<AdminRules />} />
           <Route path="/admin/campaigns" element={<AdminCampaigns />} />
+          <Route path="/admin/sponsors" element={<AdminSponsors />} />
           <Route path="/admin/achievements" element={<AdminAchievements />} />
           <Route path="/admin/restrictions" element={<AdminRestrictions />} />
           <Route path="/admin/fraud" element={<AdminFraud />} />

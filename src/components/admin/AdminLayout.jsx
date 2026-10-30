@@ -27,6 +27,7 @@ const navItems = [
   { label: "Activities", path: "/admin/activities", icon: ListChecks, permission: "activity.view" },
   { label: "Rules", path: "/admin/rules", icon: ScrollText, permission: "rules.view" },
   { label: "Campaigns", path: "/admin/campaigns", icon: Megaphone, permission: "campaigns.view" },
+  { label: "Sponsorships", path: "/admin/sponsors", icon: Megaphone, permission: "campaigns.manage" },
   { label: "Tasks", path: "/admin/tasks", icon: ClipboardList, permission: "tasks.view" },
   { label: "Quizzes", path: "/admin/quizzes", icon: HelpCircle, permission: "tasks.view" },
   { label: "Game Rewards", path: "/admin/games", icon: HelpCircle, permission: "tasks.edit" },

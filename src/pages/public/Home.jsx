@@ -9,6 +9,7 @@ import { useAuth } from "@/lib/AuthContext";
 import { Button } from "@/components/ui/button";
 import TaskCard from "@/components/perk/TaskCard";
 import EmptyState from "@/components/perk/EmptyState";
+import SponsorSlot from "@/components/perk/SponsorSlot";
 import {loadPublicHomeData} from "@/lib/public-home-data";
 
 const STEPS = [
@@ -75,6 +76,7 @@ export default function Home() {
         <Button variant="outline" size="sm" className="mt-2" disabled={loading} onClick={loadPreviews}>Retry previews</Button>
       </div>}
 
+      <div className="mx-auto max-w-6xl px-4 sm:px-6"><SponsorSlot slot="home" /></div>
       {/* How It Works */}
       <section id="how-it-works" className="mx-auto max-w-6xl px-4 py-16 sm:px-6 sm:py-20">
         <div className="text-center">

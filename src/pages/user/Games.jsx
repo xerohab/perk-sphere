@@ -4,6 +4,7 @@ import { useAuth } from '@/lib/AuthContext';
 import { NATIVE_GAMES } from '../../../base44/shared/nativeGames.ts';
 import PageHeader from '@/components/perk/PageHeader';
 import CardLadder from '@/components/perk/CardLadder';
+import SponsorSlot from '@/components/perk/SponsorSlot';
 import { Button } from '@/components/ui/button';
 
 export default function Games() {
@@ -84,6 +85,7 @@ export default function Games() {
   }
   return <div className="space-y-6">
     <PageHeader title="Games" description="Play on Perk Sphere and earn rewards from eligible game sessions." />
+    <SponsorSlot slot="games" />
     {catalogLoading ? <p role="status">Checking available games…</p> : catalogError ? <div role="alert"><p>{catalogError}</p><Button onClick={loadCatalog}>Retry</Button></div> : availableCatalog.length === 0 ? <p>No game rewards are currently enabled. Please check back later.</p> : <section className="max-w-xl rounded-2xl border bg-card p-6 space-y-4">
       <label htmlFor="game-type" className="block text-sm font-medium">Choose a game</label>
       <select id="game-type" className="w-full rounded-md border bg-background p-2" disabled={busy} value={game} onChange={event=>{setGame(event.target.value);setSession(null);setAnswer('');setMessage('');setError('');}}>

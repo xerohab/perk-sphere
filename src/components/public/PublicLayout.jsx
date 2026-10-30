@@ -120,6 +120,7 @@ export default function PublicLayout() {
                 <li><Link to="/#how-it-works" className="text-muted-foreground hover:text-foreground">How It Works</Link></li>
                 <li><Link to="/#rewards" className="text-muted-foreground hover:text-foreground">Rewards</Link></li>
                 <li><Link to="/about" className="text-muted-foreground hover:text-foreground">About</Link></li>
+                <li><Link to="/advertise" className="text-muted-foreground hover:text-foreground">Advertise with us</Link></li>
               </ul>
             </div>
             <div>

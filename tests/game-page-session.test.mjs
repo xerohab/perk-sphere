@@ -18,7 +18,7 @@ const runtime={
 };
 globalThis.__gamePage=runtime;
 globalThis.document={hidden:false,addEventListener(){},removeEventListener(){}};
-const prefix="const {React,useState,useRef,useCallback,useEffect,useAuth,base44,NATIVE_GAMES}=globalThis.__gamePage;const PageHeader='PageHeader',Button='Button';";
+const prefix="const {React,useState,useRef,useCallback,useEffect,useAuth,base44,NATIVE_GAMES}=globalThis.__gamePage;const PageHeader='PageHeader',Button='Button',SponsorSlot='SponsorSlot',CardLadder='CardLadder';";
 const compiled=ts.transpileModule(prefix+raw.replace(/^import .*;\r?\n/gm,''),{compilerOptions:{jsx:ts.JsxEmit.React,target:ts.ScriptTarget.ES2022,module:ts.ModuleKind.ESNext}}).outputText;
 const {default:Games}=await import('data:text/javascript;base64,'+Buffer.from(compiled).toString('base64'));
 function nodes(v){if(!v||typeof v!=='object')return [];if(Array.isArray(v))return v.flatMap(nodes);return [v,...nodes(v.props?.children)];}
