@@ -38,8 +38,10 @@ export default function TaskCard({ task, progress = undefined, onStart = undefin
   if (task.available_until) remaining = new Date(task.available_until).getTime() - now.getTime();
   else if (task.task_type === "live_stream" && task.event_end) remaining = new Date(task.event_end).getTime() - now.getTime();
   const isExpired = remaining !== null && remaining <= 0;
+  const isUpcoming = (task.available_from && new Date(task.available_from) > now) || (task.task_type === "live_stream" && task.event_start && new Date(task.event_start) > now);
+  const partnerVerified = task.reward_processing === "linux_partner";
 
-  const handleStart = () => (isAuthed ? onStart() : onSignIn?.());
+  const handleStart = () => (isAuthed ? onStart?.() : onSignIn?.());
 
   return (
     <div className={cn("flex flex-col overflow-hidden rounded-2xl border bg-card shadow-sm transition-shadow hover:shadow-md", isCompleted ? "border-emerald-200 dark:border-emerald-500/30" : "border-border")}>
@@ -117,12 +119,17 @@ export default function TaskCard({ task, progress = undefined, onStart = undefin
         <div className="mt-4">
           {isCompleted ? (
             <div className="flex items-center justify-center gap-1 text-sm font-medium text-emerald-600 dark:text-emerald-400"><Check className="h-4 w-4" /> Completed</div>
+          ) : isExpired ? (
+            <Button variant="outline" disabled className="w-full">Expired</Button>
+          ) : isUpcoming ? (
+            <Button variant="outline" disabled className="w-full">Not started yet</Button>
           ) : (task.verification_mode === "trusted_automatic") ? (
             <div className="space-y-2">
               {!isInProgress && (
                 <div className="flex items-center gap-1.5 rounded-lg bg-indigo-50 px-3 py-2 text-xs text-indigo-600 dark:bg-indigo-500/10 dark:text-indigo-400">
-                  <Puzzle className="h-3.5 w-3.5" /> Browser extension required
-                  <Link to="/dashboard" className="ml-auto font-medium underline hover:text-indigo-700 dark:hover:text-indigo-300">Install</Link>
+                  {partnerVerified ? <BadgeCheck className="h-3.5 w-3.5" /> : <Puzzle className="h-3.5 w-3.5" />}
+                  {partnerVerified ? "Verified partner activity required" : "Browser extension required"}
+                  <Link to={partnerVerified ? "/connections" : "/dashboard"} className="ml-auto font-medium underline hover:text-indigo-700 dark:hover:text-indigo-300">{partnerVerified ? "Accounts" : "Install"}</Link>
                 </div>
               )}
               {isInProgress && (
@@ -136,10 +143,10 @@ export default function TaskCard({ task, progress = undefined, onStart = undefin
                 </a>
               )}
             </div>
-          ) : isExpired ? (
-            <Button variant="outline" disabled className="w-full">Expired</Button>
           ) : !isAuthed ? (
             <Button className="w-full" onClick={handleStart}>Sign in to start</Button>
+          ) : (!isInProgress && typeof onStart !== "function") || (isInProgress && typeof onComplete !== "function") ? (
+            <Link to="/tasks" className="flex w-full items-center justify-center rounded-md border px-3 py-2 text-sm font-medium">View task</Link>
           ) : !isInProgress ? (
             <Button className="w-full" onClick={handleStart} disabled={starting}>
               {starting ? "Starting..." : "Start Task"}
