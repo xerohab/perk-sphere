@@ -20,7 +20,12 @@ async function handler(req){
   const actor={role:'member',user_reference:user.id};
   const request=validPolicy?{actor}:{actor,request_reference:body.request_reference,xp:body.xp,policy_version:body.policy_version};
   const result=await linuxTrustedPost('/v1/perk-sphere/xp-conversion/'+body.action,request);
-  if(!result.ok)return Response.json({error:'xp_conversion_unavailable'},{status:503,headers});
+  if(!result.ok){
+   // The engine serializes requests by member and checks stored receipts before
+   // policy versions. Only this definitive rollback permits a new request ID.
+   if(validConversion&&result.status===409&&result.code==='CONVERSION_POLICY_CHANGED')return Response.json({error:'conversion_policy_changed',retry_with_new_policy:true},{status:409,headers});
+   return Response.json({error:'xp_conversion_unavailable'},{status:503,headers});
+  }
   const data=result.data;
   if(validPolicy){if(!data||![data.version,data.input_xp,data.output_points].every(x=>Number.isSafeInteger(x)&&x>0))throw Error('INVALID_RESPONSE');return Response.json({data},{headers});}
   if(!data||typeof data.duplicate!=='boolean'||!uuid(data.operationUuid)||!/^\d+$/.test(data.xpSpent||'')||!/^\d+$/.test(data.pointsCredited||''))throw Error('INVALID_RESPONSE');
