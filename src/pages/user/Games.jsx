@@ -3,6 +3,7 @@ import { base44 } from '@/api/base44Client';
 import { useAuth } from '@/lib/AuthContext';
 import { NATIVE_GAMES } from '../../../base44/shared/nativeGames.ts';
 import PageHeader from '@/components/perk/PageHeader';
+import CardLadder from '@/components/perk/CardLadder';
 import { Button } from '@/components/ui/button';
 
 export default function Games() {
@@ -58,7 +59,7 @@ export default function Games() {
     const timer = setTimeout(() => setRevealed(false), 4000);
     return () => clearTimeout(timer);
   }, [revealed]);
-  async function send(action) {
+  async function send(action,submittedAnswer=answer) {
     if(requestLock.current || !visible.current || !selectedPolicy || !user?.id) return;
     if(action !== 'start' && (!session || sessionOwner !== user.id)) return;
     const member = user.id;
@@ -68,7 +69,7 @@ export default function Games() {
     setBusy(true); setError('');
     try {
       const body = action === 'start' ? {action,game_reference:game} : {
-        action,game_reference:game,session_uuid:session.session_uuid,round_number:session.round_number,answer
+        action,game_reference:game,session_uuid:session.session_uuid,round_number:session.round_number,answer:submittedAnswer
       };
       const result = await base44.functions.invoke('playGame', body);
       if (!isCurrent()) return;
@@ -97,12 +98,14 @@ export default function Games() {
         <progress className="w-full" value={session.eligible_seconds} max={session.required_seconds} aria-label="Eligible play time" />
         <p role="status" className="text-sm">{message}</p>
         {session.status === 'active' && <>
+          {game === 'card-ladder' ? <CardLadder challenge={session.challenge} selected={answer} disabled={busy} onChange={setAnswer} onSubmit={next=>send('round',next)} /> : <>
           <div className="rounded-xl bg-muted p-6 text-center text-3xl font-mono tracking-widest" aria-live="polite">{revealed || game !== 'number-memory' ? session.challenge : '••••••'}</div>
           <form className="flex gap-3" onSubmit={event => { event.preventDefault(); send('round'); }}>
             <label className="sr-only" htmlFor="memory-answer">Six-digit number</label>
             <input id="memory-answer" className="min-w-0 flex-1 rounded-md border bg-background px-3 py-2" inputMode="numeric" autoComplete="off" maxLength={6} value={answer} onChange={event => setAnswer(event.target.value.replace(/\D/g,''))} disabled={busy || revealed} />
             <Button type="submit" disabled={busy || revealed || answer.length !== 6}>Check</Button>
           </form>
+          </>}
         </>}
       </>}
     </section>}
