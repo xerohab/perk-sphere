@@ -5,10 +5,12 @@ import PageHeader from "@/components/perk/PageHeader";
 import EmptyState from "@/components/perk/EmptyState";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
+import { rewardReviewStatus } from "@/lib/reward-review-status";
 
 const STATUS_CONFIG = {
+  unknown: { label: "Status unavailable", icon: AlertCircle, className: "bg-slate-100 text-slate-700 dark:bg-slate-500/15 dark:text-slate-300" },
   pending: { label: "Pending Review", icon: Clock, className: "bg-amber-100 text-amber-700 dark:bg-amber-500/15 dark:text-amber-400" },
-  approved: { label: "Approved (not yet paid)", icon: CheckCircle2, className: "bg-blue-100 text-blue-700 dark:bg-blue-500/15 dark:text-blue-400" },
+  approved: { label: "Approved — awaiting credit", icon: CheckCircle2, className: "bg-blue-100 text-blue-700 dark:bg-blue-500/15 dark:text-blue-400" },
   denied: { label: "Denied", icon: XCircle, className: "bg-red-100 text-red-700 dark:bg-red-500/15 dark:text-red-400" },
   ledger_confirmed: { label: "Ledger Confirmed", icon: CheckCircle2, className: "bg-emerald-100 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-400" }
 };
@@ -17,7 +19,9 @@ function extractList(data) {
   if (!data) return [];
   if (data.ok === true && data.data !== undefined) return extractList(data.data);
   if (Array.isArray(data)) return data;
-  return data.requests || data.items || [];
+  const rows = data.requests || data.items || [];
+  if (!Array.isArray(rows)) throw Error("Invalid reward request response");
+  return rows;
 }
 
 export default function RewardReview() {
@@ -56,13 +60,13 @@ export default function RewardReview() {
 
   return (
     <div>
-      <PageHeader title="Reward Requests" description="Track the status of your reward requests. Approval does not mean a payout has been confirmed." />
+      <PageHeader title="Reward Requests" description="Track the status of your reward requests. Approval and wallet credit are separate steps." />
 
       {/* Important notice */}
       <div className="mt-4 flex items-start gap-3 rounded-xl border border-blue-200 bg-blue-50 p-4 dark:border-blue-800 dark:bg-blue-950/30">
         <AlertCircle className="mt-0.5 h-4 w-4 flex-shrink-0 text-blue-600 dark:text-blue-400" />
         <p className="text-xs text-blue-800 dark:text-blue-300">
-          Approved requests are acknowledged by Linux but are <strong>not confirmed payouts</strong>. A request is only ledger-confirmed when a Base44 Points or XP transaction exists. Disallowed activity does not automatically deduct Points or XP.
+          Approval does not add Points or XP by itself. Your wallet history shows confirmed credits. Disallowed activity does not automatically deduct Points or XP.
         </p>
       </div>
 
@@ -73,7 +77,7 @@ export default function RewardReview() {
             <div>
               <p className="text-sm font-medium text-blue-800 dark:text-blue-300">Reward requests are awaiting final activation.</p>
               <p className="mt-1 text-xs text-blue-700 dark:text-blue-400">
-                Reward request tracking requires an additional identity-verification step on the Linux API that is not yet enabled. Your weekly report preview remains available independently.
+                Reward request tracking is not currently available. Your weekly preview and wallet history remain accessible independently.
               </p>
             </div>
           </div>
@@ -95,7 +99,8 @@ export default function RewardReview() {
           ) : (
             <div className="space-y-3">
               {requests.map((r) => {
-                const status = STATUS_CONFIG[r.status] || STATUS_CONFIG.pending;
+                const state = rewardReviewStatus(r.status);
+                const status = STATUS_CONFIG[state];
                 const StatusIcon = status.icon;
                 return (
                   <Card key={r.id} className="p-5">
@@ -123,14 +128,14 @@ export default function RewardReview() {
                         <p className="text-xs font-medium">Review: {r.review_reason}</p>
                       </div>
                     )}
-                    {r.status === "approved" && (
+                    {state === "approved" && (
                       <p className="mt-3 text-xs text-blue-600 dark:text-blue-400">
                         This request has been approved but has not yet been confirmed in the ledger.
                       </p>
                     )}
-                    {r.status === "ledger_confirmed" && (
+                    {state === "ledger_confirmed" && (
                       <p className="mt-3 text-xs text-emerald-600 dark:text-emerald-400">
-                        This reward has been confirmed in the Base44 ledger.
+                        This reward has a confirmed ledger credit.
                       </p>
                     )}
                   </Card>
