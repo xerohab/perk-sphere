@@ -12,25 +12,32 @@ import { memberRequest, adminRequest, linuxResponse, PERK_SPHERE_ENDPOINTS } fro
 // Points/XP payouts. Reward settings are shown as disabled until the verified
 // backend capability exists. YouTube viewing awards ZERO Points and ZERO XP.
 
-async function perkSphereHandler(req) {
+async function handleQuizRequest(req) {
   try {
+    if (req.method !== 'POST') return Response.json({error:'method_not_allowed'}, {status:405, headers:{Allow:'POST'}});
     const base44 = createClientFromRequest(req);
-    const body = await req.json().catch(() => ({}));
+    const user = await base44.auth.me().catch(() => null);
+    if (!user?.id) return Response.json({error:'unauthorized'}, {status:401});
+    const body = await req.json().catch(() => null);
+    if (!body || typeof body !== 'object' || Array.isArray(body) ||
+        Object.keys(body).some(key => !['action','quiz','quizId','answers','filters','scope'].includes(key))) {
+      return Response.json({error:'invalid_request'}, {status:400});
+    }
     const { action, quiz, quizId, answers, filters, scope } = body;
 
     // ── Create quiz (admin) ────────────────────────────────────────────
     if (action === "create") {
-      if (!quiz || !quiz.title || !quiz.video_ref) {
+      if (!quiz || typeof quiz !== 'object' || Array.isArray(quiz) || typeof quiz.title !== 'string' || !quiz.title.trim() || quiz.title.length > 200 || typeof quiz.video_ref !== 'string' || !quiz.video_ref.trim()) {
         return Response.json({ error: "Quiz title and video reference are required" }, { status: 400 });
       }
-      if (!quiz.questions || !Array.isArray(quiz.questions) || quiz.questions.length === 0) {
+      if (!quiz.questions || !Array.isArray(quiz.questions) || quiz.questions.length === 0 || quiz.questions.length > 30) {
         return Response.json({ error: "At least one question is required" }, { status: 400 });
       }
       for (const q of quiz.questions) {
-        if (!q.text || !q.choices || !Array.isArray(q.choices) || q.choices.length < 2) {
+        if (!q || typeof q.text !== 'string' || !q.text.trim() || q.text.length > 2000 || !Array.isArray(q.choices) || q.choices.length < 2 || q.choices.length > 6 || q.choices.some(choice => typeof choice !== 'string' || !choice.trim() || choice.length > 1000)) {
           return Response.json({ error: "Each question needs text and at least 2 choices" }, { status: 400 });
         }
-        if (q.correct_choice === undefined || q.correct_choice === null) {
+        if (!Number.isInteger(q.correct_choice) || q.correct_choice < 0 || q.correct_choice >= q.choices.length) {
           return Response.json({ error: "Each question needs a correct answer (visible to admins only)" }, { status: 400 });
         }
       }
@@ -85,9 +92,14 @@ async function perkSphereHandler(req) {
     }
 
     return Response.json({ error: "Unknown action" }, { status: 400 });
-  } catch (error) {
-    return Response.json({ error: error.message }, { status: 500 });
+  } catch {
+    return Response.json({ error: 'Quiz service is temporarily unavailable. Please retry.' }, { status: 503 });
   }
+}
+async function perkSphereHandler(req) {
+  const response = await handleQuizRequest(req);
+  response.headers.set('Cache-Control', 'no-store');
+  return response;
 }
 export default perkSphereHandler;
 if (typeof Deno !== 'undefined') Deno.serve(perkSphereHandler);
