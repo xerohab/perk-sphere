@@ -27,7 +27,7 @@ export function isRestrictionActive(restriction, now = new Date()) {
 }
 
 export function assertAccountEligible(user, restrictions, operation, now = new Date()) {
-  if (!user || ['suspended', 'banned'].includes(user.account_status)) {
+  if (!user || ['suspended', 'banned', 'disabled'].includes(user.account_status)) {
     throw new Error('Account is not permitted to ' + operation + '.');
   }
   const blocking = operation === 'redeem rewards'

@@ -109,7 +109,7 @@ export async function memberRequest(base44, path, body) {
   let user = null;
   try { user = await base44.auth.me(); } catch { user = null; }
   if (!user) return { ok: false, status: 401, code: "unauthorized", error: "Authentication required" };
-  if (["suspended", "banned"].includes(user.account_status)) return { ok: false, status: 403, code: "account_restricted", error: "Account is restricted" };
+  if (["suspended", "banned", "disabled"].includes(user.account_status)) return { ok: false, status: 403, code: "account_restricted", error: "Account is restricted" };
   // A member page must never gain staff visibility merely because the
   // authenticated account also has Base44's admin flag. Drafts, other members'
   // requests and report archives require the permission-checked admin path.

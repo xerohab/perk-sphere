@@ -61,8 +61,8 @@ test('expired restrictions and earning-only pauses do not block redemption', () 
   assertAccountEligible(member, [{ type: 'points_earning_paused' }], 'redeem rewards', now);
   assert.equal(isRestrictionActive({ start_date: 'bad' }, now), true);
 });
-test('suspended and banned members cannot redeem', async () => {
-  for (const account_status of ['suspended', 'banned']) {
+test('suspended, banned and disabled members cannot redeem', async () => {
+  for (const account_status of ['suspended', 'banned', 'disabled']) {
     const f = fixture({ user: { account_status } });
     await assert.rejects(redeemReward(f.admin, { userId: 'member', rewardId: 'reward' })); assert.equal(f.writes.length, 0);
   }
