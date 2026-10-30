@@ -123,7 +123,7 @@ export default function TaskCard({ task, progress = undefined, onStart = undefin
             <Button variant="outline" disabled className="w-full">Expired</Button>
           ) : isUpcoming ? (
             <Button variant="outline" disabled className="w-full">Not started yet</Button>
-          ) : (task.verification_mode === "trusted_automatic") ? (
+          ) : (partnerVerified || task.verification_mode === "trusted_automatic") ? (
             <div className="space-y-2">
               {!isInProgress && (
                 <div className="flex items-center gap-1.5 rounded-lg bg-indigo-50 px-3 py-2 text-xs text-indigo-600 dark:bg-indigo-500/10 dark:text-indigo-400">
