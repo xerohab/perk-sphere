@@ -1,4 +1,5 @@
 import {ensureLinuxWallet} from '../../shared/memberWalletEnrollment.ts';
+import {NATIVE_GAME_IDS} from '../../shared/nativeGames.ts';
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.52';
 import { linuxTrustedPost } from '../../shared/linuxClient.ts';
 import { assertAccountEligible } from '../../shared/rewardPolicy.ts';
@@ -13,7 +14,7 @@ async function perkSphereHandler(req) {
   catch{return Response.json({error:'Account is restricted from earning game rewards'},{status:403});}
   const body=await req.json().catch(()=>null);
   const fields=body?.action==='start'?['action','game_reference']:['action','game_reference','session_uuid','round_number','answer'];
-  if(!body || typeof body!=='object' || Array.isArray(body) || !['start','round'].includes(body.action) || !['number-memory','quick-maths','reverse-code'].includes(body.game_reference) ||
+  if(!body || typeof body!=='object' || Array.isArray(body) || !['start','round'].includes(body.action) || !NATIVE_GAME_IDS.includes(body.game_reference) ||
      Object.keys(body).sort().join(',')!==fields.sort().join(','))return Response.json({error:'Invalid game request'},{status:400});
   // Browser cannot choose member identity, reward amounts or elapsed time.
   await ensureLinuxWallet(user.id);
