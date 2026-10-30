@@ -57,6 +57,23 @@ const MEMBER_SAFE_PATHS = new Set([
   PERK_SPHERE_ENDPOINTS.REWARD_REVIEW_MINE
 ]);
 
+// Bind each privileged path to its required permission. A missing or weaker
+// caller-supplied permission must never downgrade the administrative check.
+const ADMIN_PATH_PERMISSIONS = new Map([
+  [PERK_SPHERE_ENDPOINTS.DIRECTORY_LIST, 'destinations.view'],
+  [PERK_SPHERE_ENDPOINTS.DIRECTORY_UPSERT, 'destinations.manage'],
+  [PERK_SPHERE_ENDPOINTS.REQUESTS_LIST, 'destinations.manage'],
+  [PERK_SPHERE_ENDPOINTS.REQUESTS_REVIEW, 'destinations.manage'],
+  [PERK_SPHERE_ENDPOINTS.QUIZZES_CREATE, 'tasks.create'],
+  [PERK_SPHERE_ENDPOINTS.QUIZZES_LIST, 'tasks.view'],
+  [PERK_SPHERE_ENDPOINTS.QUIZZES_PUBLISH, 'tasks.publish'],
+  [PERK_SPHERE_ENDPOINTS.REPORTS_DETAIL, 'analytics.view'],
+  [PERK_SPHERE_ENDPOINTS.REPORTS_ARCHIVES, 'analytics.view'],
+  [PERK_SPHERE_ENDPOINTS.REPORTS_ARCHIVE, 'analytics.view'],
+  [PERK_SPHERE_ENDPOINTS.REWARD_REVIEW_QUEUE, 'rewards.manage'],
+  [PERK_SPHERE_ENDPOINTS.REWARD_REVIEW_DECISION, 'rewards.manage']
+]);
+
 // Strips undefined, null, and empty objects from a body before sending to Linux.
 // Linux rejects requests with unrecognised fields (returns trusted_actor_required),
 // so only send fields that have actual values.
@@ -106,6 +123,9 @@ export async function memberRequest(base44, path, body) {
 // and the applicable staff permission policy — never from browser input.
 // Returns { ok, status, data } or { ok: false, status, code, error }.
 export async function adminRequest(base44, path, body, permission) {
+  if (!ADMIN_PATH_PERMISSIONS.has(path) || ADMIN_PATH_PERMISSIONS.get(path) !== permission) {
+    return { ok: false, status: 403, code: 'forbidden', error: 'This operation requires its configured administrator permission.' };
+  }
   let user = null;
   try { user = await base44.auth.me(); } catch { user = null; }
   if (!user) return { ok: false, status: 401, code: "unauthorized", error: "Authentication required" };
