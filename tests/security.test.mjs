@@ -74,3 +74,10 @@ test('redemption returned statuses cannot reopen, and repeated status does not w
   assert.deepEqual(await (await updateRedemption(post({ redemptionId: 'redemption', status: 'refunded' }))).json(), { ok: true, unchanged: true });
   assert.equal(writes, 0);
 });
+
+test('partner-backed task cannot create browser-started watch progress', async () => {
+  globalThis.__testClient = { auth: { me: async () => ({ id: 'member', role: 'user' }) }, asServiceRole: { entities: { Task: { get: async () => ({ id: 'task', task_type: 'watch_video', active: true, publicly_visible: true, verification_mode: 'client_assisted', reward_processing: 'linux_partner' }) }, get TaskProgress() { throw Error('MUST_NOT_CREATE_PROGRESS'); }, get WatchSession() { throw Error('MUST_NOT_CREATE_SESSION'); } } } };
+  const response = await startTask(post({ taskId: 'task' }));
+  assert.equal(response.status, 409);
+  assert.equal((await response.json()).pending_verification, true);
+});
