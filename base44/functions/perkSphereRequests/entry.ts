@@ -8,10 +8,14 @@ import { memberRequest, adminRequest, linuxResponse, PERK_SPHERE_ENDPOINTS } fro
 // Approved requests update the directory entry through the Linux backend,
 // preserving the audit trail.
 
-async function handleRequest(req) {
+async function handleOperation(req) {
   try {
+    if (req.method !== 'POST') return Response.json({error:'method_not_allowed'}, {status:405, headers:{Allow:'POST'}});
     const base44 = createClientFromRequest(req);
-    const body = await req.json().catch(() => ({}));
+    const user = await base44.auth.me().catch(() => null);
+    if (!user?.id) return Response.json({error:'unauthorized'}, {status:401});
+    const body = await req.json().catch(() => null);
+    if (!body || typeof body !== 'object' || Array.isArray(body)) return Response.json({error:'invalid_request'}, {status:400});
     const { action, request, filters, requestId, decision, reason } = body;
 
     // ── Create a directory request (member) ───────────────────────────
@@ -56,9 +60,14 @@ async function handleRequest(req) {
     }
 
     return Response.json({ error: "Unknown action" }, { status: 400 });
-  } catch (error) {
-    return Response.json({ error: error.message }, { status: 500 });
+  } catch {
+    return Response.json({ error: 'Requests service is temporarily unavailable. Please retry.' }, { status: 503 });
   }
+}
+async function handleRequest(req) {
+  const response = await handleOperation(req);
+  response.headers.set('Cache-Control', 'no-store');
+  return response;
 }
 export default handleRequest;
 if (typeof Deno !== 'undefined') Deno.serve(handleRequest);
