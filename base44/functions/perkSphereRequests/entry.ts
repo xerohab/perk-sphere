@@ -27,7 +27,7 @@ async function handleOperation(req) {
       if (!validTypes.includes(request.request_type)) {
         return Response.json({ error: "Invalid request type" }, { status: 400 });
       }
-      if (!request.reason || request.reason.trim().length < 10) {
+      if (typeof request.reason !== 'string' || request.reason.trim().length < 10) {
         return Response.json({ error: "A reason of at least 10 characters is required" }, { status: 400 });
       }
       const result = await memberRequest(base44, PERK_SPHERE_ENDPOINTS.REQUESTS_CREATE, { request });
@@ -52,7 +52,7 @@ async function handleOperation(req) {
       if (!decision || !["approved", "denied"].includes(decision)) {
         return Response.json({ error: "Decision must be 'approved' or 'denied'" }, { status: 400 });
       }
-      if (!reason || reason.trim().length < 3) {
+      if (typeof reason !== 'string' || reason.trim().length < 3) {
         return Response.json({ error: "A reason is required" }, { status: 400 });
       }
       const result = await adminRequest(base44, PERK_SPHERE_ENDPOINTS.REQUESTS_REVIEW, { requestId, decision, reason }, "destinations.manage");
