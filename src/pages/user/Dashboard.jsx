@@ -1,5 +1,7 @@
 import { useMemberWallet, formatWalletInteger, rankXp } from "@/hooks/useMemberWallet";
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useRef, useCallback } from "react";
+import { loadDashboardData } from "@/lib/dashboard-data";
+import { memberTaskState } from "@/lib/member-task-state";
 import { Link } from "react-router-dom";
 import { Coins, TrendingUp, Flame, Gift, Award, ArrowRight, Shield, BookOpen, HelpCircle, BarChart3, ClipboardCheck } from "lucide-react";
 import { base44 } from "@/api/base44Client";
@@ -19,7 +21,7 @@ import VerifiedStreakBonuses from "@/components/perk/VerifiedStreakBonuses";
 
 function startOfDay(d = new Date()) {
   const x = new Date(d);
-  x.setHours(0, 0, 0, 0);
+  x.setUTCHours(0, 0, 0, 0);
   return x;
 }
 
@@ -35,34 +37,41 @@ export default function Dashboard() {
   const [taskProgress, setTaskProgress] = useState([]);
   const [loading, setLoading] = useState(true);
   const [dailyReward, setDailyReward] = useState(null);
+  const [sectionErrors, setSectionErrors] = useState([]);
+  const [clock, setClock] = useState(() => new Date());
+  const dataGeneration = useRef(0);
+  useEffect(() => { const timer = setInterval(() => setClock(new Date()), 30000); return () => clearInterval(timer); }, []);
   const { destinations } = usePublicDestinations();
 
   const allowedDestinations = destinations.filter((d) => d.eligibility === "allowed").slice(0, 6);
   const disallowedDestinations = destinations.filter((d) => d.eligibility === "disallowed").slice(0, 6);
 
-  const loadData = async () => {
+  const loadData = useCallback(async () => {
+    const current = ++dataGeneration.current;
+    if (!user?.id) { setLoading(false); return; }
     setLoading(true);
     try {
-      const [lv, a, r, ua, tk, tp] = await Promise.all([
-        base44.entities.LoyaltyLevel.list('-minimum_xp', 50),
-        base44.entities.Activity.list('-created_date', 6),
-        base44.entities.Reward.list('-created_date', 4),
-        base44.entities.UserAchievement.list('-created_date', 4),
-        base44.entities.Task.list('-created_date', 20),
-        base44.entities.TaskProgress.filter({ user_id: user?.id })
-      ]);
-      setLevels(lv || []);
-      setActivities(a || []);
-      setRewards((r || []).filter((x) => x.active !== false));
-      setAchievements(ua || []);
-      setTasks((tk || []).filter((x) => x.active !== false && !x.archived && x.publicly_visible !== false));
-      setTaskProgress(tp || []);
+      const {data, failed} = await loadDashboardData(base44, user.id);
+      if (current !== dataGeneration.current) return;
+      setLevels(data.levels);
+      setActivities(data.activities);
+      setRewards(data.rewards.filter((x) => x.active !== false));
+      setAchievements(data.achievements);
+      setTasks(data.tasks.filter((x) => x.active !== false && !x.archived && x.publicly_visible !== false));
+      setTaskProgress(data.taskProgress);
+      setSectionErrors(failed);
+    } catch {
+      if (current === dataGeneration.current) setSectionErrors(['dashboard']);
     } finally {
-      setLoading(false);
+      if (current === dataGeneration.current) setLoading(false);
     }
-  };
+  }, [user?.id]);
 
-  useEffect(() => { loadData(); }, []);
+  useEffect(() => {
+    setLevels([]); setActivities([]); setRewards([]); setAchievements([]); setTasks([]); setTaskProgress([]); setSectionErrors([]);
+    loadData();
+    return () => { dataGeneration.current++; };
+  }, [loadData]);
 
   useEffect(() => {
     if (!user?.id) return;
@@ -94,7 +103,7 @@ export default function Dashboard() {
   const progressBase = currentLevel?.minimum_xp || 0;
   const xpToNext = nextLevel ? nextLevel.minimum_xp - xp : 0;
 
-  const today = startOfDay().toISOString();
+  const today = startOfDay(clock).toISOString();
   const todayPoints = txns.filter((t) => new Date(t.created_date) >= new Date(today) && t.amount > 0).reduce((sum, t) => sum + BigInt(t.amount), 0n).toString();
 
   if (loading || walletLoading) {
@@ -109,6 +118,7 @@ export default function Dashboard() {
         {walletError && <div role="alert" className="mb-4 rounded-xl border p-4">{walletError} <button type="button" className="underline" onClick={refreshWallet}>Retry</button></div>}
         {dailyReward && <div role="status" className="mb-4 rounded-xl border p-4">Daily bonus: {dailyReward.duplicate ? '1 point already earned today' : '1 point added today'} (UTC).</div>}
         <VerifiedStreakBonuses userId={user?.id} tasks={tasks} refreshWallet={refreshWallet} />
+        {sectionErrors.length > 0 && <p role="status" className="mb-4 rounded-xl border p-4">Some dashboard sections are temporarily unavailable. <button type="button" className="underline" onClick={loadData}>Retry</button></p>}
         {/* Admin access */}
         {user?.role === "admin" && (
           <Link to="/admin" className="mt-4 flex items-center justify-between rounded-2xl border border-indigo-200 bg-gradient-to-r from-indigo-50 to-violet-50 p-4 shadow-sm transition-shadow hover:shadow-md dark:border-indigo-900 dark:from-indigo-950/30 dark:to-violet-950/30">
@@ -139,7 +149,7 @@ export default function Dashboard() {
               <TrendingUp className="h-4 w-4" /> Loyalty XP
             </div>
             <p className="mt-3 text-4xl font-bold tracking-tight text-amber-900 dark:text-amber-300">{formatWalletInteger(wallet?.loyalty_xp)} XP</p>
-            <p className="mt-1 text-xs text-amber-600/70">Not redeemable — builds your rank</p>
+            <p className="mt-1 text-xs text-amber-600/70">Builds your rank; conversion is available only when enabled</p>
           </div>
           <div className="rounded-2xl border border-border bg-gradient-to-br from-violet-50 to-white dark:from-violet-950/20 dark:to-background p-6 shadow-sm">
             <div className="flex items-center gap-2 text-xs font-medium uppercase tracking-wide text-violet-700 dark:text-violet-400">
@@ -168,7 +178,7 @@ export default function Dashboard() {
         }
         {/* Quick stats */}
         <div className="mt-4 grid gap-4 sm:grid-cols-3">
-          <StatCard label="Recent Points Today" value={wallet ? `+${todayPoints}` : "Unavailable"} icon={Coins} />
+          <StatCard label="Recent Points Today (UTC)" value={wallet ? `+${todayPoints}` : "Unavailable"} icon={Coins} />
           <StatCard label="Current Streak" value={`${user?.streak_current || 0} days`} icon={Flame} accent="text-orange-600" />
           <StatCard label="Longest Streak" value={`${user?.streak_longest || 0} days`} icon={Flame} />
         </div>
@@ -190,7 +200,7 @@ export default function Dashboard() {
             </div>
             <div>
               <p className="text-sm font-semibold">Video Quizzes</p>
-              <p className="text-xs text-muted-foreground">Watch and earn</p>
+              <p className="text-xs text-muted-foreground">Answer video quizzes</p>
             </div>
           </Link>
           <Link to="/weekly-reports" className="flex items-center gap-3 rounded-2xl border border-border bg-card p-4 shadow-sm transition-shadow hover:shadow-md">
@@ -298,10 +308,10 @@ export default function Dashboard() {
               </Link>
             </div>
             {(() => {
-              const pmap = {};
-              taskProgress.forEach((p) => { if (!pmap[p.task_id] || new Date(p.last_activity || p.created_date) > new Date(pmap[p.task_id].last_activity || pmap[p.task_id].created_date)) pmap[p.task_id] = p; });
-              const inProg = tasks.filter((t) => pmap[t.id]?.status === "in_progress");
-              const avail = tasks.filter((t) => !pmap[t.id]);
+              const states = Object.fromEntries(tasks.map(t => [t.id, memberTaskState(t, taskProgress, clock)]));
+              const pmap = Object.fromEntries(tasks.map(t => [t.id, states[t.id].progress]));
+              const inProg = tasks.filter(t => states[t.id].status === "in_progress");
+              const avail = tasks.filter(t => states[t.id].status === "available");
               const nearlyDone = inProg.filter((t) => (pmap[t.id]?.progress_percentage || 0) >= 75);
               const shown = [...nearlyDone, ...inProg.filter((t) => (pmap[t.id]?.progress_percentage || 0) < 75), ...avail].slice(0, 3);
               return shown.length === 0 ? <EmptyState title="No tasks available" /> : (
