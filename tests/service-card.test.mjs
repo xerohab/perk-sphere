@@ -22,4 +22,8 @@ test('shared action lock disables both reconnect and disconnect controls',()=>{
  const card=Card({name:'X',configured:true,isConnected:false,canDisconnect:true,needsReconnect:true,actionsDisabled:true});
  assert.ok(nodes(card).filter(n=>n.type==='Button').every(n=>n.props.disabled));
 });
+test('ambiguous connection records offer cleanup and review rather than an ineffective reconnect',()=>{
+ const card=Card({name:'X',configured:true,isConnected:false,canDisconnect:true,needsReconnect:true,requiresReview:true});
+ assert.deepEqual(nodes(card).filter(n=>n.type==='Button').map(text),['Disconnect']);assert.match(text(card),/contact support before reconnecting/);
+});
 test.after(()=>delete globalThis.__serviceCard);

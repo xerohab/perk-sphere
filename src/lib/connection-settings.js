@@ -16,5 +16,5 @@ export function connectionDisplayState(rows,provider,userId,now=Date.now()){
  const expired=connection?.token_expiry!=null&&(!Number.isFinite(Date.parse(connection.token_expiry))||Date.parse(connection.token_expiry)<=now);
  const canDisconnect=matches.some(row=>!row.revoked_at&&['connected','pending'].includes(row.status));
  const isConnected=!ambiguous&&connection?.status==='connected'&&!connection.revoked_at&&!expired;
- return {connection,isConnected,canDisconnect,needsReconnect:ambiguous||canDisconnect&&!isConnected};
+ return {connection,isConnected,canDisconnect,requiresReview:ambiguous,needsReconnect:ambiguous||canDisconnect&&!isConnected};
 }

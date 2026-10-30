@@ -147,7 +147,7 @@ export default function ConnectedServices() {
       {loadError && <div role="alert" className="mb-4 rounded-lg border p-4">{loadError} <Button variant="outline" onClick={load}>Retry</Button></div>}
       <div className="grid gap-4 sm:grid-cols-2">
         {SERVICES.map((s) => {
-          const {connection:conn,isConnected,canDisconnect,needsReconnect}=connectionDisplayState(connections,s.key,user?.id,clock);
+          const {connection:conn,isConnected,canDisconnect,needsReconnect,requiresReview}=connectionDisplayState(connections,s.key,user?.id,clock);
           const configured = config[s.key]?.configured === true;
           return (
             <div key={s.key} className="space-y-2"><ServiceCard
@@ -156,6 +156,7 @@ export default function ConnectedServices() {
               configured={configured}
               configurationUnavailable={configurationUnavailable}
               needsReconnect={needsReconnect}
+              requiresReview={requiresReview}
               canDisconnect={canDisconnect}
               actionsDisabled={claiming!==null || disconnecting!==null || connecting!==null}
               isConnected={isConnected}
