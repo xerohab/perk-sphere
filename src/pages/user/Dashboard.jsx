@@ -8,6 +8,7 @@ import { base44 } from "@/api/base44Client";
 import { useAuth } from "@/lib/AuthContext";
 import { usePublicDestinations } from "@/hooks/usePublicDestinations";
 import PageHeader from "@/components/perk/PageHeader";
+import DailyCheckIn from '@/components/perk/DailyCheckIn';
 import StatCard from "@/components/perk/StatCard";
 import ProgressBar from "@/components/perk/ProgressBar";
 import RankBadge from "@/components/perk/RankBadge";
@@ -36,7 +37,6 @@ export default function Dashboard() {
   const [tasks, setTasks] = useState([]);
   const [taskProgress, setTaskProgress] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [dailyReward, setDailyReward] = useState(null);
   const [sectionErrors, setSectionErrors] = useState([]);
   const [clock, setClock] = useState(() => new Date());
   const dataGeneration = useRef(0);
@@ -73,26 +73,6 @@ export default function Dashboard() {
     return () => { dataGeneration.current++; };
   }, [loadData]);
 
-  useEffect(() => {
-    if (!user?.id) return;
-    let active = true;
-    setDailyReward(null);
-    (async () => {
-      try {
-        const status = await base44.functions.invoke('dailyLoginStatus', {});
-        if (!active || status.data?.enabled !== true) return;
-        const result = await base44.functions.invoke('claimDailyLogin', {});
-        const data = result.data?.data;
-        if (!active || data?.points !== 1 || typeof data.duplicate !== 'boolean') return;
-        setDailyReward(data);
-        if (!data.duplicate) await refreshWallet();
-      } catch {
-        // A paused or unavailable bonus must not prevent dashboard use.
-      }
-    })();
-    return () => { active = false; };
-  }, [user?.id]);
-
   const xp = rankXp(wallet?.loyalty_xp);
   const points = wallet?.points_balance;
   const activeLevels = levels.filter((l) => l.active !== false).sort((a, b) => (a.minimum_xp || 0) - (b.minimum_xp || 0));
@@ -116,7 +96,7 @@ export default function Dashboard() {
         <PageHeader title={`Welcome back, ${user?.display_name || user?.username || user?.email?.split("@")[0] || "Member"}`} description="Your Perk Sphere rewards overview" />
 
         {walletError && <div role="alert" className="mb-4 rounded-xl border p-4">{walletError} <button type="button" className="underline" onClick={refreshWallet}>Retry</button></div>}
-        {dailyReward && <div role="status" className="mb-4 rounded-xl border p-4">Daily bonus: {dailyReward.duplicate ? '1 point already earned today' : '1 point added today'} (UTC).</div>}
+        <DailyCheckIn userId={user?.id} refreshWallet={refreshWallet} now={clock} />
         <VerifiedStreakBonuses userId={user?.id} tasks={tasks} refreshWallet={refreshWallet} />
         {sectionErrors.length > 0 && <p role="status" className="mb-4 rounded-xl border p-4">Some dashboard sections are temporarily unavailable. <button type="button" className="underline" onClick={loadData}>Retry</button></p>}
         {/* Admin access */}
