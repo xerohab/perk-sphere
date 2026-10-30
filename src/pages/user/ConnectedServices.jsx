@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback } from "react";
+import React, { useEffect, useState, useCallback, useRef } from "react";
 import { base44 } from "@/api/base44Client";
 import { useToast } from "@/components/ui/use-toast";
 import { useSearchParams } from "react-router-dom";
@@ -6,6 +6,7 @@ import PageHeader from "@/components/perk/PageHeader";
 import ServiceCard from "@/components/perk/ServiceCard";
 import {useAuth} from "@/lib/AuthContext";
 import {Button} from "@/components/ui/button";
+import {loadConnectionSettings,connectionDisplayState} from "@/lib/connection-settings";
 
 const SERVICES = [
   { key: "google", name: "Google", icon: "G" },
@@ -25,6 +26,7 @@ const ERROR_MESSAGES = {
   credential_encryption_failed: "Server encryption error. Please contact support.",
   credential_storage_failed: "Could not save your credentials. Please try again.",
   connection_storage_failed: "Could not save your connection. Please try again.",
+  account_unavailable: "This account cannot connect services. Please contact support if this is unexpected.",
   callback_failed: "Connection failed. Please try again."
 };
 
@@ -33,6 +35,10 @@ export default function ConnectedServices() {
   const {user} = useAuth();
   const [claiming,setClaiming] = useState(null);
   const [loadError,setLoadError] = useState("");
+  const [configurationUnavailable,setConfigurationUnavailable] = useState(false);
+  const generation=useRef(0),actionLock=useRef(null),currentMember=useRef(user?.id);
+  currentMember.current=user?.id;
+  const [clock,setClock]=useState(Date.now());
   const [searchParams] = useSearchParams();
   const [connections, setConnections] = useState([]);
   const [config, setConfig] = useState({});
@@ -41,26 +47,26 @@ export default function ConnectedServices() {
   const [disconnecting, setDisconnecting] = useState(null);
 
   const load = useCallback(async () => {
-    if(!user?.id){setConnections([]);setLoading(false);return;}
-    setLoadError("");
-    try {
-      const [c, cfgRes] = await Promise.all([
-        base44.entities.ConnectedService.filter({user_id:user.id},'-created_date', 50),
-        base44.functions.invoke("oauthConfig", {}).then(r => r.data || r).catch(() => ({ providers: {} }))
-      ]);
-      setConnections(c || []);
-      setConfig(cfgRes.providers || {});
-    } catch { setConnections([]);setConfig({});setLoadError("Could not load your connections. Please retry.");
-    } finally {
-      setLoading(false);
-    }
+    const request=++generation.current,member=user?.id;
+    if(!member){setConnections([]);setConfig({});setLoading(false);return;}
+    setLoading(true);setLoadError("");
+    const result=await loadConnectionSettings(base44,member);
+    if(request!==generation.current||member!==currentMember.current)return;
+    setConnections(result.connections);setConfig(result.config);setConfigurationUnavailable(result.configurationUnavailable);
+    const messages=[];
+    if(result.connectionsUnavailable)messages.push("Could not load your linked accounts.");
+    if(result.configurationUnavailable)messages.push("Provider availability could not be checked.");
+    setLoadError(messages.join(' '));setLoading(false);
   }, [user?.id]);
 
-  useEffect(() => { load(); }, [load]);
+  useEffect(() => {
+    actionLock.current=null;setConnecting(null);setDisconnecting(null);setClaiming(null);load();
+    return ()=>{generation.current++;actionLock.current=null;};
+  }, [load]);
+  useEffect(()=>{const timer=setInterval(()=>setClock(Date.now()),30000);return ()=>clearInterval(timer);},[]);
 
   useEffect(() => {
     const status = searchParams.get("status");
-    const provider = searchParams.get("provider");
     const reason = searchParams.get("reason");
     if (status === "connected") {
       toast({ title: "Service connected", description: "Your account is now linked." });
@@ -71,24 +77,33 @@ export default function ConnectedServices() {
     if (status) window.history.replaceState({}, "", "/connected-services");
   }, [searchParams, toast, load]);
 
-  const getConnection = (key) => connections.find((c) => c.service === key && c.user_id === user?.id);
+  const acquireAction=()=>{
+    if(actionLock.current||!user?.id)return null;
+    const token=Symbol('connection-action'),member=user.id;actionLock.current=token;
+    return {current:()=>actionLock.current===token&&currentMember.current===member,
+      release:()=>{if(actionLock.current===token){actionLock.current=null;setConnecting(null);setDisconnecting(null);setClaiming(null);}}};
+  };
   const claimReward = async provider => {
+    const action=acquireAction();if(!action)return;
     setClaiming(provider);
     try {
       const response=await base44.functions.invoke("claimSocialLinkReward",{provider});
+      if(!action.current())return;
       const body=response.data;
       if(body?.ok!==true)throw Error("Current ownership could not be verified. Please retry.");
       const result=body.data;
       const description=result?.issued ? `You earned ${result.points} Points and ${result.xp} XP.` : result?.duplicate ? "You have already received this linking reward." : result?.reason==="social_account_already_rewarded" ? "This account has already received its linking reward." : "Linking rewards are not available for this service yet.";
       toast({title:result?.issued?"Linking reward received":"Linking reward",description});
-    } catch { toast({title:"Reward unavailable",description:"Current ownership could not be verified. Please retry later.",variant:"destructive"}); }
-    finally { setClaiming(null); }
+    } catch { if(action.current())toast({title:"Reward unavailable",description:"Current ownership could not be verified. Please retry later.",variant:"destructive"}); }
+    finally { action.release(); }
   };
 
   const handleConnect = async (key) => {
+    const action=acquireAction();if(!action)return;
     setConnecting(key);
     try {
       const res = await base44.functions.invoke("oauthStart", { provider: key });
+      if(!action.current())return;
       const data = res.data || res;
       if (data.authorization_url) {
         window.location.href = data.authorization_url;
@@ -96,23 +111,28 @@ export default function ConnectedServices() {
         toast({ title: "Connection failed", description: data.error === "provider_not_configured" ? "This provider is not configured yet." : data.message || data.error, variant: "destructive" });
       }
     } catch (e) {
+      if(!action.current())return;
       const data = e?.response?.data || {};
       toast({ title: "Connection failed", description: data.error === "provider_not_configured" ? "This provider is not configured yet." : (data.error || e.message), variant: "destructive" });
     } finally {
-      setConnecting(null);
+      action.release();
     }
   };
 
   const handleDisconnect = async (key) => {
+    const action=acquireAction();if(!action)return;
     setDisconnecting(key);
     try {
-      await base44.functions.invoke("disconnectService", { provider: key });
+      const result=await base44.functions.invoke("disconnectService", { provider: key });
+      if(!action.current())return;
+      if(result.data?.ok!==true)throw Error("Disconnect could not be confirmed. Please retry.");
       toast({ title: "Disconnected", description: "Your account has been unlinked." });
       await load();
     } catch (e) {
+      if(!action.current())return;
       toast({ title: "Failed", description: e?.response?.data?.error || e.message, variant: "destructive" });
     } finally {
-      setDisconnecting(null);
+      action.release();
     }
   };
 
@@ -127,14 +147,17 @@ export default function ConnectedServices() {
       {loadError && <div role="alert" className="mb-4 rounded-lg border p-4">{loadError} <Button variant="outline" onClick={load}>Retry</Button></div>}
       <div className="grid gap-4 sm:grid-cols-2">
         {SERVICES.map((s) => {
-          const conn = getConnection(s.key);
+          const {connection:conn,isConnected,canDisconnect,needsReconnect}=connectionDisplayState(connections,s.key,user?.id,clock);
           const configured = config[s.key]?.configured === true;
-          const isConnected = conn && conn.status === "connected";
           return (
             <div key={s.key} className="space-y-2"><ServiceCard
               name={s.name}
               icon={s.icon}
               configured={configured}
+              configurationUnavailable={configurationUnavailable}
+              needsReconnect={needsReconnect}
+              canDisconnect={canDisconnect}
+              actionsDisabled={claiming!==null || disconnecting!==null || connecting!==null}
               isConnected={isConnected}
               connection={conn}
               connecting={connecting === s.key}
