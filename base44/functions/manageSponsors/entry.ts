@@ -5,8 +5,9 @@ async function handler(req){
  const headers={'Cache-Control':'no-store'};
  if(req.method!=='POST')return Response.json({error:'method_not_allowed'},{status:405,headers});
  try{
-  const client=createClientFromRequest(req),access=await authorize(client,'campaigns.manage');if(access.error)return access.error;
-  const body=await sponsorBody(req),admin=client.asServiceRole;
+  const client=createClientFromRequest(req),access=await authorize(client,'campaigns.manage');if(access.error){access.error.headers.set('Cache-Control','no-store');return access.error;}
+  let body;try{body=await sponsorBody(req);}catch{return Response.json({error:'invalid_request'},{status:400,headers});}
+  const admin=client.asServiceRole;
   if(body.action==='list'&&Object.keys(body).length===1){
    const [placements,inquiries]=await Promise.all([admin.entities.SponsorPlacement.list('-created_date',100),admin.entities.SponsorInquiry.list('-created_date',100)]);
    return Response.json({ok:true,placements,inquiries},{headers});
