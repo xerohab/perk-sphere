@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useRef, useCallback } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import {
   UserPlus, Coins, TrendingUp, Gift, Award,
@@ -9,10 +9,11 @@ import { useAuth } from "@/lib/AuthContext";
 import { Button } from "@/components/ui/button";
 import TaskCard from "@/components/perk/TaskCard";
 import EmptyState from "@/components/perk/EmptyState";
+import {loadPublicHomeData} from "@/lib/public-home-data";
 
 const STEPS = [
   { icon: UserPlus, title: "Create your account", body: "Sign up for free and set up your Perk Sphere profile in seconds." },
-  { icon: Globe, title: "Participate in eligible activities", body: "Connect a Perk Sphere client and take part in activities on participating destinations." },
+  { icon: Globe, title: "Participate in eligible activities", body: "Link your partner accounts and complete the eligible tasks or games shown in your dashboard." },
   { icon: Coins, title: "Earn Points & build Loyalty XP", body: "Eligible activities add Points to your redeemable balance and Loyalty XP to your rank progress." },
   { icon: Gift, title: "Redeem available rewards", body: "Spend your Points on available rewards from the Perk Sphere store." }
 ];
@@ -25,22 +26,20 @@ export default function Home() {
   const [featuredTasks, setFeaturedTasks] = useState([]);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    (async () => {
-      try {
-        const [r, l, ft] = await Promise.all([
-          base44.entities.Reward.list('-created_date', 8),
-          base44.entities.LoyaltyLevel.list('display_order', 50),
-          base44.entities.Task.list('-created_date', 8)
-        ]);
-        setRewards((r || []).filter((x) => x.active !== false));
-        setLevels((l || []).filter((x) => x.active !== false).sort((a, b) => (a.minimum_xp || 0) - (b.minimum_xp || 0)));
-        setFeaturedTasks((ft || []).filter((x) => x.active !== false && !x.archived && x.publicly_visible !== false && x.featured));
-      } finally {
-        setLoading(false);
-      }
-    })();
+  const [failedSections, setFailedSections] = useState([]);
+  const loadGeneration = useRef(0);
+  const loadPreviews = useCallback(async () => {
+    const generation = ++loadGeneration.current;
+    setLoading(true);
+    const {data, failed} = await loadPublicHomeData(base44);
+    if (generation !== loadGeneration.current) return;
+    setRewards(data.rewards); setLevels(data.levels); setFeaturedTasks(data.tasks);
+    setFailedSections(failed); setLoading(false);
   }, []);
+  useEffect(() => {
+    loadPreviews();
+    return () => { loadGeneration.current++; };
+  }, [loadPreviews]);
 
   return (
     <div>
@@ -70,6 +69,11 @@ export default function Home() {
           </div>
         </div>
       </section>
+
+      {failedSections.length > 0 && <div role="alert" className="mx-auto max-w-6xl px-4 pt-6 sm:px-6">
+        <p className="text-sm text-muted-foreground">Some previews could not be loaded: {failedSections.map(name => ({rewards:'rewards',levels:'loyalty levels',tasks:'featured tasks'}[name])).join(', ')}.</p>
+        <Button variant="outline" size="sm" className="mt-2" disabled={loading} onClick={loadPreviews}>Retry previews</Button>
+      </div>}
 
       {/* How It Works */}
       <section id="how-it-works" className="mx-auto max-w-6xl px-4 py-16 sm:px-6 sm:py-20">
