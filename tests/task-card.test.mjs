@@ -17,7 +17,7 @@ test('dashboard card without action callbacks navigates to tasks',()=>{
  let starts=0;const interactive=TaskCard({task,isAuthed:true,onStart:()=>starts++});const start=nodes(interactive).find(n=>n.type==='Button'&&text(n).includes('Start Task'));assert.ok(start);start.props.onClick();assert.equal(starts,1);
 });
 test('first-party verified tasks point to partner accounts rather than extension install',()=>{
- const card=TaskCard({task:{...task,reward_processing:'linux_partner',verification_mode:'trusted_automatic'},isAuthed:true});
+ const card=TaskCard({task:{...task,reward_processing:'linux_partner',verification_mode:'client_assisted'},isAuthed:true});
  assert.match(text(card),/Verified partner activity required/);assert.doesNotMatch(text(card),/Browser extension required/);assert.ok(nodes(card).some(n=>n.type==='Link'&&n.props.to==='/partner-accounts'));
 });
 test('future and expired tasks cannot open automatic content',()=>{
