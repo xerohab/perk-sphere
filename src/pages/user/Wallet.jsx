@@ -51,11 +51,12 @@ export default function Wallet(){
    if(!current())return;
    const data=response.data?.data;if(!confirmedConversion(data,request))throw Error('confirmation_unavailable');
    sessionStorage.removeItem(key);setPending(null);setInput('');
-   notify(member,data.points_credited+' points added for '+data.xp_spent+' XP.');await refresh();
+   notify(member,data.points_credited+' points added for '+data.xp_spent+' XP.');
+   try{await refresh();}catch{if(current())notify(member,'Conversion confirmed. The balance display could not refresh; check your points and XP history.');}
   }catch(error){
    if(!current())return;
    if(definitivePolicyChange(error)){
-    sessionStorage.removeItem(key);setPending(null);
+    try{sessionStorage.removeItem(key);}catch{setRecoveryBlocked(true);notify(member,'The rate changed, but recovery details could not be cleared. Contact support before starting another conversion.');return;}setPending(null);
     notify(member,'The previous request was rejected because the rate changed. Review the current rate before submitting again.');await loadPolicy();
    }else if(error.message==='recovery_record_invalid'){
     setRecoveryBlocked(true);notify(member,'The saved conversion recovery details could not be read. Contact support before starting another conversion.');
