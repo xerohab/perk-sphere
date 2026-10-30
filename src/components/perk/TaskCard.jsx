@@ -129,7 +129,7 @@ export default function TaskCard({ task, progress = undefined, onStart = undefin
                 <div className="flex items-center gap-1.5 rounded-lg bg-indigo-50 px-3 py-2 text-xs text-indigo-600 dark:bg-indigo-500/10 dark:text-indigo-400">
                   {partnerVerified ? <BadgeCheck className="h-3.5 w-3.5" /> : <Puzzle className="h-3.5 w-3.5" />}
                   {partnerVerified ? "Verified partner activity required" : "Browser extension required"}
-                  <Link to={partnerVerified ? "/connections" : "/dashboard"} className="ml-auto font-medium underline hover:text-indigo-700 dark:hover:text-indigo-300">{partnerVerified ? "Accounts" : "Install"}</Link>
+                  <Link to={partnerVerified ? "/partner-accounts" : "/dashboard"} className="ml-auto font-medium underline hover:text-indigo-700 dark:hover:text-indigo-300">{partnerVerified ? "Accounts" : "Install"}</Link>
                 </div>
               )}
               {isInProgress && (
