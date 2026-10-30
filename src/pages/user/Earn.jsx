@@ -39,7 +39,7 @@ export default function Earn() {
           {to:"/games",title:"Play Perk Sphere games",text:"Earn from eligible game sessions, subject to each game's daily limit."}
         ].map(item=><Link key={item.to} to={item.to} className="rounded-2xl border border-border bg-card p-4 shadow-sm hover:bg-secondary/50"><h2 className="font-semibold">{item.title}</h2><p className="mt-1 text-sm text-muted-foreground">{item.text}</p></Link>)}
       </div>
-      {error && <p role="alert" className="mb-4 rounded-xl border p-4">The destination directory is temporarily unavailable. <button type="button" className="underline" onClick={load}>Retry</button></p>
+      {error && <p role="alert" className="mb-4 rounded-xl border p-4">The destination directory is temporarily unavailable. <button type="button" className="underline" onClick={load}>Retry</button></p>}
       <div className="mb-6 flex items-start gap-3 rounded-2xl border border-indigo-100 bg-indigo-50 p-4 text-sm text-indigo-800 dark:border-indigo-900/50 dark:bg-indigo-950/20 dark:text-indigo-300">
         <Info className="mt-0.5 h-4 w-4 flex-shrink-0" />
         <p>Rewards require a supported, enabled activity and verified completion. An allowed listing or a page visit alone does not guarantee Points or XP. Partner tasks use the partner’s own verification; the browser extension is only needed for activities that explicitly require it. YouTube viewing, likes and follows do not currently earn rewards.</p>
