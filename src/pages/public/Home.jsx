@@ -140,6 +140,8 @@ export default function Home() {
             <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
               {[0, 1, 2, 3].map((i) => <div key={i} className="h-40 animate-pulse rounded-2xl border border-border bg-secondary/40" />)}
             </div>
+          ) : failedSections.includes("rewards") ? (
+            <EmptyState title="Rewards preview unavailable" description="Use Retry previews above to check again." />
           ) : rewards.length === 0 ? (
             <EmptyState title="No rewards available yet" description="Check back soon for new rewards added to the Perk Sphere store." />
           ) : (
@@ -192,11 +194,13 @@ export default function Home() {
           <div className="mt-10">
             {loading ? (
               <div className="flex justify-center"><div className="h-8 w-8 animate-spin rounded-full border-4 border-secondary border-t-foreground" /></div>
+            ) : failedSections.includes("levels") ? (
+              <EmptyState title="Loyalty preview unavailable" description="Use Retry previews above to check again." />
             ) : levels.length === 0 ? (
               <EmptyState title="No loyalty levels configured" description="Levels will appear here once an administrator adds them." />
             ) : (
               <div className="grid gap-4 sm:grid-cols-3 lg:grid-cols-5">
-                {levels.map((l, i) => (
+                {levels.map((l) => (
                   <div key={l.id} className="rounded-2xl border border-border bg-background p-6 text-center shadow-sm">
                     <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-gradient-to-br from-amber-400 to-orange-500 text-white">
                       <Award className="h-7 w-7" />
