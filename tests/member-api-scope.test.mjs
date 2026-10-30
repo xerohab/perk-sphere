@@ -9,7 +9,7 @@ const setup=()=>{globalThis.__testSecrets={PERKSPHERE_LINUX_KEY_ID:'synthetic-ke
 test('member-safe operations never inherit an admin actor or browser identity',async()=>{
  setup();const sent=[];globalThis.fetch=async(url,init)=>{sent.push({url:String(url),body:JSON.parse(init.body)});return Response.json({ok:true,data:[]});};
  for(const path of [E.DIRECTORY_LIST,E.REQUESTS_LIST,E.QUIZZES_LIST,E.QUIZZES_QUESTIONS,E.GRADING_SUBMIT,E.GRADING_HISTORY,E.REPORTS_PREVIEW,E.REPORTS_ARCHIVES,E.REPORTS_DETAIL,E.REWARD_REVIEW_MINE]){
-  const result=await memberRequest(sdk(),path,{actor:{role:'admin',user_reference:'OTHER'},quizId:'quiz',filters:{}});
+  const result=await memberRequest(sdk(),path,{actor:{role:'admin',user_reference:'OTHER'},quizId:'quiz',answers:[],filters:{}});
   assert.equal(result.ok,true);assert.deepEqual(sent.at(-1).body.actor,{user_reference:account.id,role:'member'});
  }
 });
