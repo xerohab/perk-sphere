@@ -7,7 +7,7 @@ async function handler(req){
  if(req.method!=='POST')return Response.json({error:'method_not_allowed'},{status:405,headers});
  try{
   if(secrets.get('PERKSPHERE_XP_CONVERSION_ADMIN_ENABLED')!=='true')return Response.json({error:'xp_conversion_admin_paused'},{status:503,headers});
-  const auth=await authorize(createClientFromRequest(req),'rules.manage');if(auth.error)return auth.error;
+  const auth=await authorize(createClientFromRequest(req),'rules.manage');if(auth.error){auth.error.headers.set('Cache-Control','no-store');return auth.error;}
   const b=await req.json().catch(()=>null);
   if(!b||typeof b!=='object'||Array.isArray(b)||!['read','update'].includes(b.action))return Response.json({error:'invalid_request'},{status:400,headers});
   if(b.action==='read'&&Object.keys(b).join(',')!=='action')return Response.json({error:'invalid_request'},{status:400,headers});
