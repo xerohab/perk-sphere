@@ -28,6 +28,13 @@ test('staff permission checks preserve legitimate admin access and block limited
  const noStaff=sdk();noStaff.asServiceRole.entities.StaffMember.filter=async()=>[];
  assert.equal((await adminRequest(noStaff,E.REQUESTS_LIST,{},'destinations.manage')).status,403);assert.equal(calls,1);
 });
+test('administrative paths reject missing, weaker or mismatched permission bindings',async()=>{
+ let calls=0;globalThis.fetch=async()=>{calls++;throw Error('unexpected');};
+ const admin=sdk('super_admin');
+ for(const [path,permission] of [[E.QUIZZES_PUBLISH,undefined],[E.QUIZZES_PUBLISH,'tasks.view'],[E.REQUESTS_REVIEW,'analytics.view'],[E.GRADING_SUBMIT,'tasks.publish'],['/v1/perk-sphere/unknown','tasks.view']]){
+  assert.equal((await adminRequest(admin,path,{},permission)).status,403);
+ }assert.equal(calls,0);
+});
 test('suspended accounts cannot use member or administrative API paths',async()=>{
  let calls=0;globalThis.fetch=async()=>{calls++;throw Error('unexpected');};
  const restricted=sdk('super_admin');restricted.auth.me=async()=>({...account,account_status:'suspended'});
