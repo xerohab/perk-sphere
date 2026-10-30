@@ -6,21 +6,12 @@ import EmptyState from "@/components/perk/EmptyState";
 import StatCard from "@/components/perk/StatCard";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-
-function getData(data, key) {
-  if (!data) return null;
-  return data[key] || data.data || data;
-}
-
-function getArray(data, key) {
-  if (!data) return [];
-  if (Array.isArray(data)) return data;
-  const v = data[key] || data.items || data.data;
-  return Array.isArray(v) ? v : [];
-}
+import { Link } from "react-router-dom";
+import { readWeeklyReport, readReportArchives, readReportArchive, summarizeWeeklyReport } from "@/lib/report-presentation";
 
 export default function WeeklyReports() {
   const [preview, setPreview] = useState(null);
+  const [summary, setSummary] = useState(() => summarizeWeeklyReport({activity:[],reward_requests:[]}));
   const [archives, setArchives] = useState([]);
   const [activeArchive, setActiveArchive] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -36,8 +27,10 @@ export default function WeeklyReports() {
       const data = res?.data || res;
       if (data?.ok === false) throw new Error(data.error);
       // Linux returns { ok, report: { week_start, activity, reward_requests, ... } }
-      const report = data.report || data.data?.report || getData(data, "preview") || data;
+      const report = readWeeklyReport(data);
+      const totals = summarizeWeeklyReport(report);
       setPreview(report);
+      setSummary(totals);
       setError(null);
     } catch (e) {
       const errData = e?.response?.data || {};
@@ -54,7 +47,7 @@ export default function WeeklyReports() {
       const res = await base44.functions.invoke("perkSphereReports", { action: "archives", filters: {} });
       const data = res?.data || res;
       if (data?.ok === false) throw new Error(data.error);
-      setArchives(getArray(data, "archives"));
+      setArchives(readReportArchives(data));
     } catch (e) {
       const errData = e?.response?.data || {};
       setArchivesError(errData.error || errData.code || e.message);
@@ -79,10 +72,10 @@ export default function WeeklyReports() {
       const res = await base44.functions.invoke("perkSphereReports", { action: "detail", archiveId: archive.id });
       const data = res?.data || res;
       if (data?.ok === false) throw new Error(data.error);
-      setActiveArchive(getData(data, "archive") || data);
+      setActiveArchive(readReportArchive(data));
     } catch (e) {
       const errData = e?.response?.data || {};
-      setError(errData.error || e.message);
+      setArchivesError(errData.error || e.message);
     } finally {
       setLoadingArchive(false);
     }
@@ -93,42 +86,12 @@ export default function WeeklyReports() {
   }
 
   const pv = preview || {};
-  const activities = pv.activity || pv.activities || [];
-  const rewardRequests = pv.reward_requests || [];
-  const acknowledged = pv.acknowledged_reward_requests || {};
-
-  // Compute stats from raw activity arrays returned by Linux.
-  const totalActivities = activities.length;
-  const verified = activities.filter(a => a.verification_status === "api_verified" || a.verification_status === "extension_detected" || a.verification_status === "admin_entered" || a.processing_state === "processed").length;
-  const pending = activities.filter(a => a.verification_status === "unverified" || a.processing_state === "pending").length;
-  const rejected = activities.filter(a => a.verification_status === "rejected" || a.processing_state === "rejected").length;
-
-  // Group activities by type and classification.
-  const byType = {};
-  activities.forEach(a => {
-    const t = a.activity_type || a.type || "unknown";
-    byType[t] = (byType[t] || 0) + 1;
-  });
-  const activitiesByType = Object.entries(byType).map(([type, count]) => ({ type, count }));
-
-  const byClass = {};
-  activities.forEach(a => {
-    const c = a.classification || a.eligibility || "neutral";
-    byClass[c] = (byClass[c] || 0) + 1;
-  });
-  const activitiesByClass = Object.entries(byClass).map(([classification, count]) => ({ classification, count }));
-
-  // Reward request counts — acknowledged requests are NOT confirmed payouts
-  // until the ledger has been reconciled.
-  const rewardPending = rewardRequests.filter(r => r.status === "pending" || r.review_status === "pending").length;
-  const rewardApproved = rewardRequests.filter(r => r.status === "approved" || r.status === "acknowledged" || r.review_status === "approved").length;
-  const rewardConfirmed = acknowledged.ledger_reconciled ? (acknowledged.points_delta_total || 0) : 0;
-
-  const isEmptyWeek = totalActivities === 0 && rewardRequests.length === 0;
+  const {totalActivities,verified,pending,rejected,activitiesByType,activitiesByClass,rewardPending,rewardApproved,isEmptyWeek} = summary;
 
   return (
     <div>
       <PageHeader title="Weekly Reports" description="Your activity summary using Monday-to-Sunday UTC weeks" />
+      <p className="mt-2 text-sm text-muted-foreground">This report may not include every reward. Your wallet history shows confirmed Points and XP.</p>
 
       {error && (
         <div className="mt-4 rounded-xl border border-amber-300 bg-amber-50 p-4 dark:border-amber-700 dark:bg-amber-950/30">
@@ -147,7 +110,7 @@ export default function WeeklyReports() {
               {pv.week_start && <span className="text-xs font-normal text-muted-foreground">{new Date(pv.week_start).toLocaleDateString("en-GB")} - {pv.week_end ? new Date(pv.week_end).toLocaleDateString("en-GB") : ""}</span>}
             </h3>
             <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-              <StatCard label="Total Activities" value={totalActivities} icon={Activity} />
+              <StatCard label="Recorded Activities" value={totalActivities} icon={Activity} />
               <StatCard label="Verified" value={verified} icon={TrendingUp} accent="text-emerald-600" />
               <StatCard label="Pending" value={pending} icon={Calendar} accent="text-amber-600" />
               <StatCard label="Rejected" value={rejected} icon={Activity} accent="text-red-600" />
@@ -216,8 +179,8 @@ export default function WeeklyReports() {
                 <p className="mt-1 text-lg font-semibold">{rewardApproved}</p>
               </div>
               <div className="rounded-lg bg-secondary/50 p-3">
-                <p className="text-xs text-muted-foreground">Ledger Confirmed</p>
-                <p className="mt-1 text-lg font-semibold">{rewardConfirmed}</p>
+                <p className="text-xs text-muted-foreground">Confirmed rewards</p>
+                <Link to="/points-history" className="mt-1 inline-block font-semibold underline">View wallet history</Link>
               </div>
             </div>
             <p className="mt-3 text-xs text-muted-foreground">
@@ -234,8 +197,9 @@ export default function WeeklyReports() {
               <div className="mt-4 rounded-xl border border-border bg-secondary/30 p-4">
                 <p className="text-sm font-medium text-muted-foreground">Archives unavailable</p>
                 <p className="mt-1 text-xs text-muted-foreground">
-                  Historical report archives require an additional identity-verification step that is not yet enabled. Your current-week preview above is unaffected.
+                  Historical reports are temporarily unavailable. Your current-week preview above is unaffected.
                 </p>
+                <Button variant="outline" size="sm" className="mt-3" onClick={loadArchives}>Retry archives</Button>
               </div>
             ) : loadingArchive ? (
               <div className="mt-4 flex h-20 items-center justify-center"><Loader2 className="h-6 w-6 animate-spin text-muted-foreground" /></div>
