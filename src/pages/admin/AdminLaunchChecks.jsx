@@ -4,7 +4,7 @@ import {base44} from '@/api/base44Client';
 import PageHeader from '@/components/perk/PageHeader';
 import {Button} from '@/components/ui/button';
 const CHECK_LABELS={ledger:'Authoritative wallet and frozen legacy writers',new_member_enrollment:'New-member zero-balance enrolment',game_rewards:'Six enabled game reward policies',daily_checkin:'Daily check-in API',core_tables:'Required wallet and game tables'};
-const FLAG_LABELS={ledger_read:'Wallet API',ledger_delivery:'Wallet history delivery',games:'Native games',daily_checkin:'Daily check-in',new_member_wallets:'New-member wallet creation',xp_conversion:'XP conversion',xp_conversion_admin:'XP conversion administration',verified_streaks:'Verified streak rewards'};
+const FLAG_LABELS={ledger_read:'Wallet API',ledger_delivery:'API delivery flag (worker has its own setting)',games:'Native games',daily_checkin:'Daily check-in',new_member_wallets:'New-member wallet creation',xp_conversion:'XP conversion',xp_conversion_admin:'XP conversion administration',verified_streaks:'Verified streak rewards'};
 const SOURCE_LABELS={wallet_authoritative:'Authoritative wallet mode',legacy_writers_frozen:'Legacy balance writers frozen',new_member_wallets_enabled:'Member wallet enrolment gateway',social_source_enabled:'Social ownership evidence source',social_claims_enabled:'Social linking reward claims',partner_tasks_enabled:'Partner task gateway',youtube_configuration_present:'YouTube configuration present',x_configuration_present:'X configuration present',token_encryption_configuration_present:'Token encryption configured'};
 export default function AdminLaunchChecks(){
  const [data,setData]=useState(null),[loading,setLoading]=useState(true),[error,setError]=useState(''),[checked,setChecked]=useState(null),generation=useRef(0);
@@ -26,7 +26,7 @@ export default function AdminLaunchChecks(){
     <p className="text-xs text-muted-foreground">Checked at {checked?.toLocaleString()}. No settings or balances were changed.</p>
    </section>
    <div className="grid gap-4 lg:grid-cols-2">
-    <section className="rounded-xl border bg-card p-5 space-y-2"><h2 className="font-semibold">API feature gates</h2>{Object.entries(data.flags).map(([key,value])=><p key={key} className="text-sm">{FLAG_LABELS[key]}: <strong>{value?'Enabled':'Paused'}</strong></p>)}</section>
+    <section className="rounded-xl border bg-card p-5 space-y-2"><h2 className="font-semibold">API feature gates</h2><p className="text-xs text-muted-foreground">These are API-process flags. Scheduled delivery workers have separate settings and monitoring.</p>{Object.entries(data.flags).map(([key,value])=><p key={key} className="text-sm">{FLAG_LABELS[key]}: <strong>{value?'Enabled':'Paused'}</strong></p>)}</section>
     <section className="rounded-xl border bg-card p-5 space-y-2"><h2 className="font-semibold">App and provider configuration</h2>{Object.entries(data.source_flags).map(([key,value])=><p key={key} className="text-sm">{SOURCE_LABELS[key]}: <strong>{value?'Present / enabled':'Not enabled'}</strong></p>)}</section>
    </div>
    <section className="rounded-xl border bg-card p-5 space-y-3"><h2 className="font-semibold">Game policies</h2>{data.games.map(game=><p key={game.game_reference} className="text-sm">{game.title}: {game.enabled?'enabled':'paused'} · {game.points} Points / {game.xp} XP · {game.required_seconds} eligible seconds</p>)}<Link className="text-sm underline" to="/admin/games">Manage game policies</Link></section>
