@@ -1,0 +1,110 @@
+{
+  "name": "SponsorPlacement",
+  "type": "object",
+  "properties": {
+    "advertiser_name": {
+      "type": "string"
+    },
+    "headline": {
+      "type": "string"
+    },
+    "body": {
+      "type": "string"
+    },
+    "target_url": {
+      "type": "string"
+    },
+    "slot": {
+      "type": "string",
+      "enum": [
+        "home",
+        "games"
+      ]
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "draft",
+        "active",
+        "paused"
+      ],
+      "default": "draft"
+    },
+    "start_date": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "end_date": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "pricing_model": {
+      "type": "string",
+      "enum": [
+        "fixed_fee"
+      ],
+      "default": "fixed_fee"
+    },
+    "booking_price_minor": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "currency": {
+      "type": "string",
+      "enum": [
+        "GBP",
+        "USD"
+      ]
+    },
+    "funding_state": {
+      "type": "string",
+      "enum": [
+        "unconfirmed",
+        "owner_confirmed"
+      ],
+      "default": "unconfirmed"
+    },
+    "invoice_reference": {
+      "type": "string"
+    },
+    "created_by": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "advertiser_name",
+    "headline",
+    "body",
+    "target_url",
+    "slot",
+    "status",
+    "start_date",
+    "end_date",
+    "pricing_model",
+    "booking_price_minor",
+    "currency",
+    "funding_state"
+  ],
+  "rls": {
+    "read": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "create": {
+      "user_condition": {
+        "role": "service_only"
+      }
+    },
+    "update": {
+      "user_condition": {
+        "role": "service_only"
+      }
+    },
+    "delete": {
+      "user_condition": {
+        "role": "service_only"
+      }
+    }
+  }
+}

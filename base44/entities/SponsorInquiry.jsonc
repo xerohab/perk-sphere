@@ -1,0 +1,59 @@
+{
+  "name": "SponsorInquiry",
+  "type": "object",
+  "properties": {
+    "user_id": {
+      "type": "string"
+    },
+    "contact_email": {
+      "type": "string"
+    },
+    "advertiser_name": {
+      "type": "string"
+    },
+    "website_url": {
+      "type": "string"
+    },
+    "message": {
+      "type": "string"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "new",
+        "closed"
+      ],
+      "default": "new"
+    }
+  },
+  "required": [
+    "user_id",
+    "contact_email",
+    "advertiser_name",
+    "website_url",
+    "message",
+    "status"
+  ],
+  "rls": {
+    "read": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "create": {
+      "user_condition": {
+        "role": "service_only"
+      }
+    },
+    "update": {
+      "user_condition": {
+        "role": "service_only"
+      }
+    },
+    "delete": {
+      "user_condition": {
+        "role": "service_only"
+      }
+    }
+  }
+}
