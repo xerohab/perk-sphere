@@ -17,14 +17,14 @@ export default function AdminLaunchChecks(){
  },[]);
  useEffect(()=>{load();return ()=>{generation.current++;};},[load]);
  return <div className="space-y-6">
-  <PageHeader title="Launch checks" description="Read-only configuration checks for member wallets, games and daily check-in"/>
+  <PageHeader title="Launch checks" description="Core configuration checks and separate XP policy administration"/>
   <div className="rounded-xl border bg-card p-4 space-y-2 text-sm"><p>Configuration checks are not launch approval. A new member must still register, earn a reward and see the correct wallet history in the bulk test session.</p><p>Provider configuration being present does not prove public approval, a successful OAuth connection or a verified payment. Paused financial features are not made available by this page.</p></div>
   <Button variant="outline" disabled={loading} onClick={load}>{loading?'Checking…':'Run checks again'}</Button>
   {error&&<p role="alert" className="rounded border p-4 text-sm">{error}</p>}
   {data&&<>
    <section className="rounded-xl border bg-card p-5 space-y-3"><h2 className="font-semibold">{data.configuration_complete?'Core configuration checks passed':'Core configuration needs attention'}</h2>{Object.entries(data.checks).map(([key,value])=><p key={key} className="text-sm"><span className={value?'text-emerald-700 dark:text-emerald-400':'text-amber-700 dark:text-amber-400'}>{value?'Pass':'Needs attention'}</span> · {CHECK_LABELS[key]}</p>)}
     <p className="text-sm">New-member cutoff: {data.enrollment_cutoff_valid?data.enrollment_cutoff_utc:'Missing or invalid — enrolment must remain blocked until reviewed.'}</p>
-    <p className="text-xs text-muted-foreground">Checked at {checked?.toLocaleString()}. No settings or balances were changed.</p>
+    <p className="text-xs text-muted-foreground">Checked at {checked?.toLocaleString()}. Running these checks does not change settings or balances.</p>
    </section>
    <div className="grid gap-4 lg:grid-cols-2">
     <section className="rounded-xl border bg-card p-5 space-y-2"><h2 className="font-semibold">API feature gates</h2><p className="text-xs text-muted-foreground">These are API-process flags. Scheduled delivery workers have separate settings and monitoring.</p>{Object.entries(data.flags).map(([key,value])=><p key={key} className="text-sm">{FLAG_LABELS[key]}: <strong>{value?'Enabled':'Paused'}</strong></p>)}</section>
