@@ -43,7 +43,7 @@ test('a timed-out conversion retains its identity and retry consumes the origina
 });
 test('policy rejection clears only the rejected identity and waits for explicit confirmation of the new rate',async()=>{
  let attempt=0;const h=fixture(async(request,context)=>{if(++attempt===1){context.policy={version:2,input_xp:200,output_points:10};throw {response:{status:409,data:{error:'conversion_policy_changed',retry_with_new_policy:true}}};}return receipt(request);});
- h.render();await h.flush();h.amount('100');await h.submit();assert.equal(h.requests.length,1);assert.equal(h.memory.has('perksphere-xp-conversion:A'),false);assert.match(text(h.render()),/Review the current rate/);assert.match(text(h.render()),/200 XP converts to 10 points/);
+ h.render();await h.flush();h.amount('100');await h.submit();assert.equal(h.requests.length,1);assert.equal(h.memory.has('perksphere-xp-conversion:A'),false);assert.match(text(h.render()),/Review the current rate/);assert.match(text(h.render()),/200\s+XP converts to\s+10\s+points/);
  h.amount('200');await h.submit();assert.notEqual(h.requests[0].request_reference,h.requests[1].request_reference);assert.equal(h.requests[1].policy_version,2);h.destroy();
 });
 test('a failed balance refresh never relabels a confirmed conversion as an uncertain debit',async()=>{
