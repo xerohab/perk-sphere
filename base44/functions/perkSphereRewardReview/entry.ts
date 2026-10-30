@@ -17,10 +17,14 @@ import { memberRequest, adminRequest, linuxResponse, PERK_SPHERE_ENDPOINTS } fro
 // a browser or extension reported it. The configured evidence and review policy
 // is required.
 
-async function perkSphereHandler(req) {
+async function handleOperation(req) {
   try {
+    if (req.method !== 'POST') return Response.json({error:'method_not_allowed'}, {status:405, headers:{Allow:'POST'}});
     const base44 = createClientFromRequest(req);
-    const body = await req.json().catch(() => ({}));
+    const user = await base44.auth.me().catch(() => null);
+    if (!user?.id) return Response.json({error:'unauthorized'}, {status:401});
+    const body = await req.json().catch(() => null);
+    if (!body || typeof body !== 'object' || Array.isArray(body)) return Response.json({error:'invalid_request'}, {status:400});
     const { action, filters, requestId, decision, reason, pointsValue, xpValue } = body;
 
     // ── Member: list own reward requests ───────────────────────────────
@@ -53,9 +57,14 @@ async function perkSphereHandler(req) {
     }
 
     return Response.json({ error: "Unknown action" }, { status: 400 });
-  } catch (error) {
-    return Response.json({ error: error.message }, { status: 500 });
+  } catch {
+    return Response.json({ error: 'Reward review service is temporarily unavailable. Please retry.' }, { status: 503 });
   }
+}
+async function perkSphereHandler(req) {
+  const response = await handleOperation(req);
+  response.headers.set('Cache-Control', 'no-store');
+  return response;
 }
 export default perkSphereHandler;
 if (typeof Deno !== 'undefined') Deno.serve(perkSphereHandler);
