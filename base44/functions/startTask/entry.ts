@@ -19,6 +19,9 @@ async function perkSphereHandler(req) {
     if (task.publicly_visible === false) return Response.json({ error: 'This task is not publicly available.' }, { status: 403 });
     const now = new Date();
     if (!isTaskAvailable(task, now)) return Response.json({ error: 'This task is not currently available.' }, { status: 400 });
+    if (task.reward_processing === 'linux_partner') {
+      return Response.json({ error: 'This task starts and completes through independent partner verification.', pending_verification: true }, { status: 409 });
+    }
     // Trusted-automatic tasks are started automatically by the trusted verification path,
     // not by user action through the UI.
     if ((task.verification_mode || 'client_assisted') === 'trusted_automatic') {
