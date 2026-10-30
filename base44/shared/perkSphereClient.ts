@@ -93,7 +93,10 @@ export async function memberRequest(base44, path, body) {
   try { user = await base44.auth.me(); } catch { user = null; }
   if (!user) return { ok: false, status: 401, code: "unauthorized", error: "Authentication required" };
   if (["suspended", "banned"].includes(user.account_status)) return { ok: false, status: 403, code: "account_restricted", error: "Account is restricted" };
-  const actor = deriveActor(user);
+  // A member page must never gain staff visibility merely because the
+  // authenticated account also has Base44's admin flag. Drafts, other members'
+  // requests and report archives require the permission-checked admin path.
+  const actor = { user_reference: String(user.id), role: 'member' };
   return linuxTrustedPost(path, { ...cleanBody(stage2Body(path, body)), actor });
 }
 
@@ -116,7 +119,7 @@ export async function adminRequest(base44, path, body, permission) {
 // Wraps a Linux API result into a Response.json call.
 export function linuxResponse(result) {
   if (!result.ok) {
-    return Response.json({ ok: false, error: result.error, code: result.code }, { status: result.status || 500 });
+    return Response.json({ ok: false, error: result.error, code: result.code }, { status: result.status || 500, headers: { 'Cache-Control': 'no-store' } });
   }
-  return Response.json({ ok: true, data: stage2Data(result.data) });
+  return Response.json({ ok: true, data: stage2Data(result.data) }, { headers: { 'Cache-Control': 'no-store' } });
 }
