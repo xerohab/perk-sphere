@@ -45,7 +45,7 @@ async function handleOperation(req) {
       if (!decision || !["approved", "denied"].includes(decision)) {
         return Response.json({ error: "Decision must be 'approved' or 'denied'" }, { status: 400 });
       }
-      if (!reason || reason.trim().length < 5) {
+      if (typeof reason !== 'string' || reason.trim().length < 5) {
         return Response.json({ error: "A reason is required" }, { status: 400 });
       }
       if (pointsValue !== undefined || xpValue !== undefined) {
