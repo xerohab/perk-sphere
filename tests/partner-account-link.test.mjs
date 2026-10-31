@@ -27,7 +27,7 @@ test('partner listing preserves saved connections during unavailable, malformed 
    globalThis.fetch=async(url,init)=>{calls++;assert.ok(url.endsWith('/v1/partner-links/status'));assert.deepEqual(JSON.parse(init.body),{partner_uuid:partner.linux_api_partner_id,user_reference:'member-current'});return Response.json(body,{status});};
    const response=await handler(post({action:'listLinks',user_reference:'forged-member'}));
    assert.equal(response.status,200);const data=await response.json();
-   assert.equal(data.verification[partner.id],expected);assert.equal(data.sync_unavailable,expected==='unavailable');
+   assert.equal(data.user_reference,'member-current');assert.equal(data.verification[partner.id],expected);assert.equal(data.sync_unavailable,expected==='unavailable');
    assert.equal(data.connected[0].status,'connected');assert.equal(f.writes.length,0);assert.equal(calls,1);
   }
  }finally{globalThis.fetch=original;}
