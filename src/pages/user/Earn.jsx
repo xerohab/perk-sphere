@@ -33,7 +33,7 @@ export default function Earn() {
       <PageHeader title="Earn Points" description="Choose an activity and check its reward and completion rules." />
       <div className="mb-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
         {[
-          {to:"/dashboard",title:"Daily check-in",text:"Use the dashboard’s check-in button. The current reward is 1 Point per UTC day, with no missed-day deduction."},
+          {to:"/dashboard",title:"Daily check-in",text:"Claim 1 Point per UTC day on the dashboard. Each full UTC day without a signed-in site visit deducts 1 Point when you return, down to zero. Tracking starts at your first visit under this policy; earlier absences are not charged."},
           {to:"/partner-accounts",title:"Link partner accounts",text:"Connect your account and claim an available one-time link reward."},
           {to:"/connected-services",title:"Connect X or YouTube",text:"Manage your account connection. Social linking reward claims are currently paused."},
           {to:"/tasks",title:"Complete partner tasks",text:"Choose a supported task and complete it on the partner site."},
