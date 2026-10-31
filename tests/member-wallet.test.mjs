@@ -19,6 +19,14 @@ test('authoritative wallet preserves precise balances and never reads legacy his
   const r=await wallet(post({}));assert.equal(r.status,200);const d=(await r.json()).data;assert.equal(d.source,'linux');assert.equal(d.user_reference,'member:1');assert.equal(d.points_balance,'9007199254740993');assert.equal(d.points[0].amount,'9007199254740993');assert.equal(d.xp[0].xp_amount,'5');assert.equal(d.points[0].balance_after,null);
  }finally{globalThis.fetch=original;}
 });
+test('missed-login debits have an explanatory wallet history reason',async()=>{
+ const original=globalThis.fetch;globalThis.__testSecrets={PERKSPHERE_LINUX_LEDGER_AUTHORITATIVE:'true',PERKSPHERE_LINUX_KEY_ID:'test',PERKSPHERE_LINUX_HMAC_SECRET:'test-only'};
+ globalThis.__testClient={auth:{me:async()=>({id:'member:1'})}};
+ try{
+  globalThis.fetch=async url=>Response.json({ok:true,data:url.endsWith('/balance')?{points_balance:'8',xp_balance:'10',version:'3'}:[{operation_uuid:randomUUID(),operation_type:'manual_adjustment',source_reference:'missed-login:2026-11-01:2026-11-02',status:'applied',applied_at:'2026-11-03T10:00:00Z',points_delta:'-2',xp_delta:'0'}]});
+  const data=(await(await wallet(post({}))).json()).data;assert.equal(data.points[0].amount,'-2');assert.match(data.points[0].reason,/Missed daily login: 2026-11-01 to 2026-11-02 UTC/);assert.equal(data.xp.length,0);
+ }finally{globalThis.fetch=original;}
+});
 test('unavailable authoritative reads cannot return cached Base44 balances',async()=>{
  const original=globalThis.fetch;globalThis.__testSecrets={PERKSPHERE_LINUX_LEDGER_AUTHORITATIVE:'true',PERKSPHERE_LINUX_KEY_ID:'test',PERKSPHERE_LINUX_HMAC_SECRET:'test-only'};globalThis.__testClient={auth:{me:async()=>({id:'member:1',points_balance:999})}};
  try{globalThis.fetch=async()=>Response.json({ok:false,error:'ledger_not_active'},{status:409});const r=await wallet(post({}));assert.equal(r.status,503);assert.deepEqual(await r.json(),{ok:false,error:'wallet_unavailable'});}finally{globalThis.fetch=original;}
