@@ -7,7 +7,7 @@ function CashPolicyForm(){
  const mounted=useRef(true),lock=useRef(false);
  useEffect(()=>{mounted.current=true;return()=>{mounted.current=false;};},[]);
  async function load(){
-  if(lock.current)return;lock.current=true;setBusy(true);setPolicy(null);setCanManage(false);setMessage('');
+  if(!mounted.current||lock.current)return;lock.current=true;setBusy(true);setPolicy(null);setCanManage(false);setMessage('');
   try{
    const r=await base44.functions.invoke('manageCashConversionPolicy',{action:'read'}),p=r.data?.data;
    if(!p||typeof p.configured!=='boolean'||typeof r.data.can_manage!=='boolean'||p.configured&&(typeof p.enabled!=='boolean'||p.currency!=='GBP'||![p.version,p.input_points,p.output_pence].every(n=>Number.isSafeInteger(n)&&n>0)))throw Error();
@@ -16,7 +16,7 @@ function CashPolicyForm(){
   finally{lock.current=false;if(mounted.current)setBusy(false);}
  }
  async function save(event){
-  event.preventDefault();if(lock.current||!policy||!canManage)return;
+  event.preventDefault();if(!mounted.current||lock.current||!policy||!canManage)return;
   const whole=v=>/^[1-9][0-9]{0,9}$/.test(v)&&Number(v)<=1000000000;
   if(!whole(input)||!whole(output)||reason.trim().length<5||reason.length>1000){setMessage('Enter whole positive Points and pence values up to 1,000,000,000, plus a reason of 5–1,000 characters.');return;}
   lock.current=true;setBusy(true);setMessage('');
