@@ -31,10 +31,11 @@ export default function Earn() {
   return (
     <div>
       <PageHeader title="Earn Points" description="Choose an activity and check its reward and completion rules." />
-      <div className="mb-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="mb-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
         {[
+          {to:"/dashboard",title:"Daily check-in",text:"Use the dashboard’s check-in button. The current reward is 1 Point per UTC day, with no missed-day deduction."},
           {to:"/partner-accounts",title:"Link partner accounts",text:"Connect your account and claim an available one-time link reward."},
-          {to:"/connected-services",title:"Connect X or YouTube",text:"Connect your own account. Identity linking is separate from social activity."},
+          {to:"/connected-services",title:"Connect X or YouTube",text:"Manage your account connection. Social linking reward claims are currently paused."},
           {to:"/tasks",title:"Complete partner tasks",text:"Choose a supported task and complete it on the partner site."},
           {to:"/games",title:"Play Perk Sphere games",text:"Earn from eligible game sessions, subject to each game's daily limit."}
         ].map(item=><Link key={item.to} to={item.to} className="rounded-2xl border border-border bg-card p-4 shadow-sm hover:bg-secondary/50"><h2 className="font-semibold">{item.title}</h2><p className="mt-1 text-sm text-muted-foreground">{item.text}</p></Link>)}
@@ -68,9 +69,9 @@ export default function Earn() {
         </div>
       )}
 
-      <h3 className="mb-3 mt-8 flex items-center gap-2 text-sm font-semibold"><Share2 className="h-4 w-4" /> Tracked Social Accounts</h3>
+      <h3 className="mb-3 mt-8 flex items-center gap-2 text-sm font-semibold"><Share2 className="h-4 w-4" /> Participating Social Accounts</h3>
       {accounts.length === 0 ? (
-        <EmptyState title="No tracked accounts" description="Social accounts tracked by Perk Sphere will appear here." />
+        <EmptyState title="No participating social accounts" description="Eligible social listings will appear here. A listing does not verify engagement or guarantee rewards." />
       ) : (
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {accounts.map((a) => (
