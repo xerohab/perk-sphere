@@ -9,10 +9,10 @@ function fixture(role='super_admin'){
  globalThis.__testSecrets={PERKSPHERE_LINUX_KEY_ID:'synthetic-key',PERKSPHERE_LINUX_HMAC_SECRET:'synthetic signing secret'};
  const bools=keys=>Object.fromEntries(keys.map(key=>[key,true]));
  const data={report_version:1,acceptance_verified:false,configuration_complete:true,enrollment_cutoff_valid:true,enrollment_cutoff_utc:'2026-10-11T00:00:00.000Z',
- flags:bools(['ledger_read','ledger_delivery','games','daily_checkin','new_member_wallets','xp_conversion','xp_conversion_admin','verified_streaks']),
+ flags:bools(['ledger_read','ledger_delivery','games','daily_checkin','missed_login','new_member_wallets','xp_conversion','xp_conversion_admin','verified_streaks']),
  source_flags:bools(['wallet_authoritative','legacy_writers_frozen','new_member_wallets_enabled','social_source_enabled','social_claims_enabled','partner_tasks_enabled','youtube_configuration_present','x_configuration_present','token_encryption_configuration_present']),
- checks:bools(['ledger','new_member_enrollment','game_rewards','daily_checkin','core_tables']),
- tables:bools(['ps_ledger_accounts','ps_ledger_operations','ps_ledger_entries','ps_ledger_sync_outbox','ps_game_policies','ps_game_sessions']),
+ checks:bools(['ledger','new_member_enrollment','game_rewards','daily_checkin','daily_presence','core_tables']),
+ tables:bools(['ps_ledger_accounts','ps_ledger_operations','ps_ledger_entries','ps_ledger_sync_outbox','ps_game_policies','ps_game_sessions','ps_daily_login_presence']),
  games:[{game_reference:'card-ladder',title:'Card Ladder',enabled:true,required_seconds:60,points:2,xp:5,version:2}],private_detail:'must-not-return'};
  globalThis.fetch=async(url,options)=>{assert.ok(String(url).endsWith('/games/launch-readiness'));assert.deepEqual(JSON.parse(options.body),{action:'read'});return Response.json({ok:true,data});};
  return data;
@@ -30,5 +30,11 @@ test('unavailable or malformed readiness cannot be displayed as a passed configu
  const source=fixture();source.checks.new_member_enrollment=false;let response=await readiness(post({}));assert.equal((await response.json()).data.configuration_complete,false);
  source.games[0].points=-1;assert.equal((await readiness(post({}))).status,503);
  fixture();globalThis.fetch=async()=>{throw Error('private error');};response=await readiness(post({}));assert.equal(response.status,503);assert.doesNotMatch(await response.text(),/private error/);
+});
+test('missing attendance policy metadata fails closed and a paused policy cannot pass',async()=>{
+ const source=fixture();delete source.flags.missed_login;assert.equal((await readiness(post({}))).status,503);
+ const missing=fixture();delete missing.tables.ps_daily_login_presence;assert.equal((await readiness(post({}))).status,503);
+ const paused=fixture();paused.flags.missed_login=false;paused.checks.daily_presence=false;
+ const data=(await(await readiness(post({}))).json()).data;assert.equal(data.configuration_complete,false);assert.equal(data.flags.missed_login,false);
 });
 test.after(()=>{globalThis.fetch=originalFetch;delete globalThis.__testClient;delete globalThis.__testSecrets;});
