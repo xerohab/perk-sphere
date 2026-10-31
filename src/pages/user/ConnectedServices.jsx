@@ -31,8 +31,13 @@ const ERROR_MESSAGES = {
 };
 
 export default function ConnectedServices() {
+  const {user}=useAuth();
+  return user?.id ? <MemberConnectedServices key={user.id} user={user} /> : null;
+}
+
+function MemberConnectedServices({user}) {
   const { toast } = useToast();
-  const {user} = useAuth();
+  const mounted=useRef(true);
   const [claiming,setClaiming] = useState(null);
   const [loadError,setLoadError] = useState("");
   const [configurationUnavailable,setConfigurationUnavailable] = useState(false);
@@ -47,11 +52,12 @@ export default function ConnectedServices() {
   const [disconnecting, setDisconnecting] = useState(null);
 
   const load = useCallback(async () => {
+    if(!mounted.current)return;
     const request=++generation.current,member=user?.id;
     if(!member){setConnections([]);setConfig({});setLoading(false);return;}
     setLoading(true);setLoadError("");
     const result=await loadConnectionSettings(base44,member);
-    if(request!==generation.current||member!==currentMember.current)return;
+    if(!mounted.current||request!==generation.current||member!==currentMember.current)return;
     setConnections(result.connections);setConfig(result.config);setConfigurationUnavailable(result.configurationUnavailable);
     const messages=[];
     if(result.connectionsUnavailable)messages.push("Could not load your linked accounts.");
@@ -60,8 +66,8 @@ export default function ConnectedServices() {
   }, [user?.id]);
 
   useEffect(() => {
-    actionLock.current=null;setConnecting(null);setDisconnecting(null);setClaiming(null);load();
-    return ()=>{generation.current++;actionLock.current=null;};
+    mounted.current=true;actionLock.current=null;setConnecting(null);setDisconnecting(null);setClaiming(null);load();
+    return ()=>{mounted.current=false;generation.current++;actionLock.current=null;};
   }, [load]);
   useEffect(()=>{const timer=setInterval(()=>setClock(Date.now()),30000);return ()=>clearInterval(timer);},[]);
 
@@ -78,9 +84,9 @@ export default function ConnectedServices() {
   }, [searchParams, toast, load]);
 
   const acquireAction=()=>{
-    if(actionLock.current||!user?.id)return null;
+    if(!mounted.current||actionLock.current||!user?.id||currentMember.current!==user.id)return null;
     const token=Symbol('connection-action'),member=user.id;actionLock.current=token;
-    return {current:()=>actionLock.current===token&&currentMember.current===member,
+    return {current:()=>mounted.current&&actionLock.current===token&&currentMember.current===member,
       release:()=>{if(actionLock.current===token){actionLock.current=null;setConnecting(null);setDisconnecting(null);setClaiming(null);}}};
   };
   const claimReward = async provider => {
