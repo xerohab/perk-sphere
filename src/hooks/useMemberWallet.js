@@ -23,7 +23,12 @@ export function useMemberWallet(){
    return false;
   }
  },[member]);
- useEffect(()=>{mounted.current=true;refresh();return()=>{mounted.current=false;generation.current++;};},[refresh]);
+ useEffect(()=>{
+  mounted.current=true;refresh();
+  const updated=event=>{if(event.detail?.member===member)refresh();};
+  if(typeof window!=='undefined')window.addEventListener('perksphere-wallet-refresh',updated);
+  return()=>{mounted.current=false;generation.current++;if(typeof window!=='undefined')window.removeEventListener('perksphere-wallet-refresh',updated);};
+ },[refresh,member]);
  const owned=!!member&&state.member===member;
  return {wallet:owned?state.wallet:null,error:owned?state.error:'',loading:!!member&&(!owned||state.loading),refresh};
 }
