@@ -2,10 +2,10 @@ import {createClientFromRequest} from 'npm:@base44/sdk@0.8.52';
 import {authorize} from '../../shared/permissions.ts';
 import {NATIVE_GAME_IDS} from '../../shared/nativeGames.ts';
 import {linuxTrustedPost} from '../../shared/linuxClient.ts';
-const FLAG_KEYS=['ledger_read','ledger_delivery','games','daily_checkin','new_member_wallets','xp_conversion','xp_conversion_admin','verified_streaks'];
+const FLAG_KEYS=['ledger_read','ledger_delivery','games','daily_checkin','missed_login','new_member_wallets','xp_conversion','xp_conversion_admin','verified_streaks'];
 const SOURCE_KEYS=['wallet_authoritative','legacy_writers_frozen','new_member_wallets_enabled','social_source_enabled','social_claims_enabled','partner_tasks_enabled','youtube_configuration_present','x_configuration_present','token_encryption_configuration_present'];
-const CHECK_KEYS=['ledger','new_member_enrollment','game_rewards','daily_checkin','core_tables'];
-const TABLE_KEYS=['ps_ledger_accounts','ps_ledger_operations','ps_ledger_entries','ps_ledger_sync_outbox','ps_game_policies','ps_game_sessions'];
+const CHECK_KEYS=['ledger','new_member_enrollment','game_rewards','daily_checkin','daily_presence','core_tables'];
+const TABLE_KEYS=['ps_ledger_accounts','ps_ledger_operations','ps_ledger_entries','ps_ledger_sync_outbox','ps_game_policies','ps_game_sessions','ps_daily_login_presence'];
 function booleans(value,keys){if(!value||keys.some(key=>typeof value[key]!=='boolean'))throw Error('INVALID_READINESS');return Object.fromEntries(keys.map(key=>[key,value[key]]));}
 async function handler(req){
  const headers={'Cache-Control':'no-store'};
