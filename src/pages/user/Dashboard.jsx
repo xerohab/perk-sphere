@@ -60,8 +60,8 @@ export default function Dashboard() {
         <PageHeader title={`Welcome back, ${user?.display_name || user?.username || user?.email?.split("@")[0] || "Member"}`} description="Your Perk Sphere rewards overview" />
 
         {walletError && <div role="alert" className="mb-4 rounded-xl border p-4">{walletError} <button type="button" className="underline" onClick={refreshWallet}>Retry</button></div>}
-        <DailyCheckIn key={user?.id || "signed-out"} userId={user?.id} refreshWallet={refreshWallet} now={clock} />
-        <VerifiedStreakBonuses key={user?.id || "signed-out"} userId={user?.id} tasks={tasks} refreshWallet={refreshWallet} />
+        <DailyCheckIn key={`daily-check-in:${user?.id || "signed-out"}`} userId={user?.id} refreshWallet={refreshWallet} now={clock} />
+        <VerifiedStreakBonuses key={`verified-streak:${user?.id || "signed-out"}`} userId={user?.id} tasks={tasks} refreshWallet={refreshWallet} />
         {sectionErrors.length > 0 && <p role="status" className="mb-4 rounded-xl border p-4">Some dashboard sections are temporarily unavailable. <button type="button" className="underline" onClick={loadData}>Retry</button></p>}
         {/* Admin access */}
         {user?.role === "admin" && (
