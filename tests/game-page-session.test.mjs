@@ -27,7 +27,12 @@ const catalog={data:{data:[{game_reference:'quick-maths',title:'Quick Maths',poi
 const awarded={data:{data:{status:'awarded',session_uuid:'PRIVATE-A',points:2,xp:5,eligible_seconds:60,required_seconds:60}}};
 function harness(invoke){
  const h={user:{id:'A'},invoke,slots:[],effects:[],cursor:0};
- h.render=(effects=true)=>{active=h;h.cursor=0;const view=Games();if(effects){const pending=h.effects.splice(0);pending.forEach(fn=>fn());}return view;};
+ h.render=(effects=true)=>{
+  active=h;const outer=Games();
+  if(h.key!==outer.props.key){h.slots.forEach(s=>s?.cleanup?.());h.slots=[];h.effects=[];h.key=outer.props.key;}
+  h.cursor=0;const view=outer.type(outer.props);
+  if(effects){const pending=h.effects.splice(0);pending.forEach(fn=>fn());}return view;
+ };
  h.flush=async()=>{await Promise.resolve();await Promise.resolve();return h.render();};
  h.start=view=>nodes(view).find(n=>n.type==='Button'&&text(n)==='Start / Resume').props.onClick();
  h.destroy=()=>h.slots.forEach(s=>s?.cleanup?.());
