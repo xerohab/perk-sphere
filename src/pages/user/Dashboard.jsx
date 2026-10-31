@@ -1,10 +1,9 @@
 import { useMemberWallet, formatWalletInteger, rankXp } from "@/hooks/useMemberWallet";
-import React, { useEffect, useState, useRef, useCallback } from "react";
-import { loadDashboardData } from "@/lib/dashboard-data";
+import React, { useEffect, useState } from "react";
+import { useDashboardData } from "@/hooks/useDashboardData";
 import { memberTaskState } from "@/lib/member-task-state";
 import { Link } from "react-router-dom";
 import { Coins, TrendingUp, Flame, Gift, Award, ArrowRight, Shield, BookOpen, HelpCircle, BarChart3, ClipboardCheck } from "lucide-react";
-import { base44 } from "@/api/base44Client";
 import { useAuth } from "@/lib/AuthContext";
 import { usePublicDestinations } from "@/hooks/usePublicDestinations";
 import PageHeader from "@/components/perk/PageHeader";
@@ -28,50 +27,15 @@ function startOfDay(d = new Date()) {
 
 export default function Dashboard() {
   const { user } = useAuth();
-  const [levels, setLevels] = useState([]);
+  const {levels,activities,rewards,achievements,tasks,taskProgress,loading,sectionErrors,loadData}=useDashboardData(user?.id);
   const { wallet, error: walletError, loading: walletLoading, refresh: refreshWallet } = useMemberWallet();
   const txns = wallet?.points?.slice(0, 6) || [];
-  const [activities, setActivities] = useState([]);
-  const [rewards, setRewards] = useState([]);
-  const [achievements, setAchievements] = useState([]);
-  const [tasks, setTasks] = useState([]);
-  const [taskProgress, setTaskProgress] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [sectionErrors, setSectionErrors] = useState([]);
   const [clock, setClock] = useState(() => new Date());
-  const dataGeneration = useRef(0);
   useEffect(() => { const timer = setInterval(() => setClock(new Date()), 30000); return () => clearInterval(timer); }, []);
   const { destinations } = usePublicDestinations();
 
   const allowedDestinations = destinations.filter((d) => d.eligibility === "allowed").slice(0, 6);
   const disallowedDestinations = destinations.filter((d) => d.eligibility === "disallowed").slice(0, 6);
-
-  const loadData = useCallback(async () => {
-    const current = ++dataGeneration.current;
-    if (!user?.id) { setLoading(false); return; }
-    setLoading(true);
-    try {
-      const {data, failed} = await loadDashboardData(base44, user.id);
-      if (current !== dataGeneration.current) return;
-      setLevels(data.levels);
-      setActivities(data.activities);
-      setRewards(data.rewards.filter((x) => x.active !== false));
-      setAchievements(data.achievements);
-      setTasks(data.tasks.filter((x) => x.active !== false && !x.archived && x.publicly_visible !== false));
-      setTaskProgress(data.taskProgress);
-      setSectionErrors(failed);
-    } catch {
-      if (current === dataGeneration.current) setSectionErrors(['dashboard']);
-    } finally {
-      if (current === dataGeneration.current) setLoading(false);
-    }
-  }, [user?.id]);
-
-  useEffect(() => {
-    setLevels([]); setActivities([]); setRewards([]); setAchievements([]); setTasks([]); setTaskProgress([]); setSectionErrors([]);
-    loadData();
-    return () => { dataGeneration.current++; };
-  }, [loadData]);
 
   const xp = rankXp(wallet?.loyalty_xp);
   const points = wallet?.points_balance;
@@ -96,8 +60,8 @@ export default function Dashboard() {
         <PageHeader title={`Welcome back, ${user?.display_name || user?.username || user?.email?.split("@")[0] || "Member"}`} description="Your Perk Sphere rewards overview" />
 
         {walletError && <div role="alert" className="mb-4 rounded-xl border p-4">{walletError} <button type="button" className="underline" onClick={refreshWallet}>Retry</button></div>}
-        <DailyCheckIn userId={user?.id} refreshWallet={refreshWallet} now={clock} />
-        <VerifiedStreakBonuses userId={user?.id} tasks={tasks} refreshWallet={refreshWallet} />
+        <DailyCheckIn key={user?.id || "signed-out"} userId={user?.id} refreshWallet={refreshWallet} now={clock} />
+        <VerifiedStreakBonuses key={user?.id || "signed-out"} userId={user?.id} tasks={tasks} refreshWallet={refreshWallet} />
         {sectionErrors.length > 0 && <p role="status" className="mb-4 rounded-xl border p-4">Some dashboard sections are temporarily unavailable. <button type="button" className="underline" onClick={loadData}>Retry</button></p>}
         {/* Admin access */}
         {user?.role === "admin" && (
