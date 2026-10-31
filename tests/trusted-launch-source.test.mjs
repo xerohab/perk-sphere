@@ -35,6 +35,17 @@ test('launch eligibility and enrollment stay paused until their exact gates are 
  globalThis.__testClient.asServiceRole.entities.Restriction.filter=async()=>[{active:true,type:'points_earning_paused'}];
  assert.equal((await(await source(request({action:'game_eligibility',user_reference:'member'}))).json()).data.eligible,false);
 });
+test('signed cash eligibility has its own gates, binds financial action and returns no member profile',async()=>{
+ fixture();
+ const body={action:'cash_eligibility',user_reference:'member',operation:'convert'};
+ let response=await source(request(body));assert.equal(response.status,200);assert.equal((await response.json()).data.eligible,false);
+ Object.assign(globalThis.__testSecrets,{PERKSPHERE_CASH_SOURCE_ENABLED:'true',PERKSPHERE_CASH_MEMBER_ENABLED:'true',PERKSPHERE_LINUX_LEDGER_AUTHORITATIVE:'true'});
+ response=await source(request(body));assert.deepEqual((await response.json()).data,{user_reference:'member',operation:'convert',eligible:true});
+ globalThis.__testClient.asServiceRole.entities.Restriction.filter=async()=>[{user_id:'member',type:'redemption_disabled',active:true}];
+ assert.equal((await(await source(request(body))).json()).data.eligible,false);
+ assert.equal((await source(request({...body,eligible:true}))).status,400);
+ assert.notEqual((await source(request(body,'/functions/trustedBrowserConfig'))).status,200);
+});
 test('launch source rejects unknown operations and never accepts browser reward evidence',async()=>{
  fixture();
  for(const body of [{action:'award',points:100},{action:'game_eligibility',user_reference:'member',eligible:true},{action:'social_link_evidence',user_reference:'member',provider:'x',account_reference:'123'}])assert.equal((await source(request(body))).status,400);
