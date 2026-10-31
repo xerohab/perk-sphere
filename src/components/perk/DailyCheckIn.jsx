@@ -6,6 +6,7 @@ export function isTodayCheckIn(receipt,userId,now=Date.now()){
 }
 export default function DailyCheckIn({userId,refreshWallet,now=Date.now()}){
  const [availability,setAvailability]=useState(null),[receipt,setReceipt]=useState(null),[error,setError]=useState(''),[busy,setBusy]=useState(false);
+ const [statusAttempt,setStatusAttempt]=useState(0);
  const member=useRef(userId),lock=useRef(null);member.current=userId;
  const today=new Date(now).toISOString().slice(0,10);
  useEffect(()=>{
@@ -18,9 +19,14 @@ export default function DailyCheckIn({userId,refreshWallet,now=Date.now()}){
    setAvailability({member:userId,enabled:true,penaltyEnabled:d.penalty_enabled===true});
    if(d.claimed)setReceipt({member:userId,day:d.day,duplicate:true});
    if(d.points_deducted>0)Promise.resolve(refreshWallet()).catch(()=>{});
-  }).catch(()=>{if(active&&member.current===userId)setAvailability({member:userId,enabled:false});});
+  }).catch(()=>{if(active&&member.current===userId)setAvailability({member:userId,unavailable:true});});
   return ()=>{active=false;lock.current=null;};
- },[userId,today]);
+ },[userId,today,statusAttempt]);
+ if(userId&&availability?.member===userId&&availability.unavailable)return <section className="mb-4 rounded-xl border bg-card p-4 space-y-2" aria-label="Daily check-in">
+  <h2 className="font-semibold">Daily check-in</h2>
+  <p role="status" className="text-sm">Your daily check-in status could not be checked. No new reward has been confirmed. Retry to check your current status.</p>
+  <Button type="button" variant="outline" onClick={()=>setStatusAttempt(value=>value+1)}>Retry check-in status</Button>
+ </section>;
  if(availability?.member!==userId||availability.enabled!==true)return null;
  const complete=isTodayCheckIn(receipt,userId,now);
  async function claim(){
