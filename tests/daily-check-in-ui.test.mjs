@@ -20,7 +20,7 @@ function text(v){if(v==null||typeof v==='boolean')return '';if(Array.isArray(v))
 function fixture(claim=async()=>({data:{data:{points:1,day:'2026-10-30',duplicate:false}}})){
  const h={userId:'A',now:Date.parse('2026-10-30T12:00:00Z'),slots:[],effects:[],cursor:0,calls:[],refreshes:0};
  h.invoke=async(name,body)=>{h.calls.push({name,body});return name==='dailyLoginStatus'?{data:{enabled:true}}:claim();};
- h.render=()=>{active=h;h.cursor=0;const view=CheckIn({userId:h.userId,now:h.now,refreshWallet:async()=>h.refreshes++});h.effects.splice(0).forEach(fn=>fn());return view;};
+ h.render=()=>{active=h;h.cursor=0;const view=CheckIn({userId:h.userId,now:h.now,refreshWallet:async()=>{h.refreshes++;return h.refresh?.();}});h.effects.splice(0).forEach(fn=>fn());return view;};
  h.flush=async()=>{await Promise.resolve();await Promise.resolve();return h.render();};h.destroy=()=>h.slots.forEach(s=>s?.cleanup?.());return h;
 }
 test('opening the dashboard checks availability but never automatically awards the daily point',async()=>{
@@ -37,5 +37,23 @@ test('UTC rollover and member identity determine whether a daily receipt is curr
 test('late claim response cannot publish another member receipt after account change',async()=>{
  let resolve;const pending=new Promise(r=>resolve=r),h=fixture(()=>pending);h.render();let view=await h.flush();const claim=nodes(view).find(n=>n.type==='Button').props.onClick();
  h.userId='B';h.render();await h.flush();resolve({data:{data:{points:1,day:'2026-10-30',duplicate:false}}});await claim;assert.doesNotMatch(text(h.render()),/1 point added for today/);assert.equal(h.refreshes,0);h.destroy();
+});
+test('timed-out daily claim retries recover the duplicate receipt and refresh the wallet',async()=>{
+ let attempts=0;const h=fixture(async()=>{if(++attempts===1)throw Error('timeout');return {data:{data:{points:1,day:'2026-10-30',duplicate:true}}};});
+ h.render();await h.flush();await nodes(h.render()).find(n=>n.type==='Button').props.onClick();
+ assert.match(text(h.render()),/could not be confirmed/);assert.equal(h.refreshes,0);
+ await nodes(h.render()).find(n=>n.type==='Button').props.onClick();
+ assert.match(text(h.render()),/already earned today/);assert.doesNotMatch(text(h.render()),/1 point added/);assert.equal(h.refreshes,1);assert.equal(h.calls.filter(c=>c.name==='claimDailyLogin').length,2);h.destroy();
+});
+test('both thrown and false wallet refresh failures preserve a confirmed check-in',async()=>{
+ for(const refresh of [async()=>false,async()=>{throw Error('offline');}]){
+  const h=fixture();h.refresh=refresh;h.render();await h.flush();await nodes(h.render()).find(n=>n.type==='Button').props.onClick();
+  assert.match(text(h.render()),/1 point added for today/);assert.match(text(h.render()),/Check-in confirmed. Refresh your wallet/);assert.doesNotMatch(text(h.render()),/could not be confirmed/);assert.equal(nodes(h.render()).filter(n=>n.type==='Button').length,0);h.destroy();
+ }
+});
+test('malformed claim receipts never refresh the wallet or announce credit',async()=>{
+ for(const data of [{points:2,day:'2026-10-30',duplicate:false},{points:1,day:'2026-10-30'},{points:1,day:42,duplicate:false}]){
+  const h=fixture(async()=>({data:{data}}));h.render();await h.flush();await nodes(h.render()).find(n=>n.type==='Button').props.onClick();assert.equal(h.refreshes,0);assert.match(text(h.render()),/could not be confirmed/);h.destroy();
+ }
 });
 test.after(()=>delete globalThis.__dailyCheckIn);
