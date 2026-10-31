@@ -289,6 +289,7 @@ async function perkSphereHandler(req) {
 
       return Response.json({
         ok: true,
+        user_reference: String(user.id),
         challenge_token: challenge,
         link_id: link.id,
         partner_name: partner.name,
@@ -363,6 +364,7 @@ async function perkSphereHandler(req) {
 
       return Response.json({
         ok: true,
+        user_reference: String(user.id),
         links: sanitizedLinks,
         connected: sanitizedConnected,
         sync_unavailable: syncUnavailable,
@@ -448,7 +450,7 @@ async function perkSphereHandler(req) {
         }
       }
 
-      return Response.json({ ok: true });
+      return Response.json({ ok: true, user_reference: String(user.id) });
     }
 
     if (action === 'listPartners') {
@@ -465,6 +467,7 @@ async function perkSphereHandler(req) {
 
       return Response.json({
         ok: true,
+        user_reference: String(user.id),
         partners: available.map(sanitizePartnerForUser)
       });
     }
