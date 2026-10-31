@@ -5,6 +5,7 @@ import {assertAccountEligible} from '../../shared/rewardPolicy.ts';
 import {isProviderConfigured} from '../../shared/oauth.ts';
 import {socialLinkEvidence} from '../../shared/socialEvidence.ts';
 import {readPartnerTaskPolicy} from '../../shared/partnerTaskPolicy.ts';
+import {readCashEligibility} from '../../shared/cashEligibility.ts';
 const PATH='/functions/trustedLaunchSource';
 const headers={'Cache-Control':'no-store'};
 const fail=(status,error)=>Response.json({ok:false,error},{status,headers});
@@ -42,6 +43,10 @@ async function handleRequest(req) {
   if(action==='social_link_evidence'){
    if(Object.keys(body).sort().join(',')!=='action,provider,user_reference')return fail(400,'invalid_request');
    return Response.json({ok:true,data:await socialLinkEvidence(admin,{provider:body.provider,userReference:body.user_reference})},{headers});
+  }
+  if(action==='cash_eligibility'){
+   if(Object.keys(body).sort().join(',')!=='action,operation,user_reference')return fail(400,'invalid_request');
+   return Response.json({ok:true,data:await readCashEligibility(admin,{userReference:body.user_reference,operation:body.operation},{getSecret:name=>secrets.get(name)})},{headers});
   }
   if(!['game_eligibility','wallet_enrollment'].includes(action)||Object.keys(body).sort().join(',')!=='action,user_reference'||
      typeof body.user_reference!=='string'||!/^[A-Za-z0-9_:@.-]{1,191}$/.test(body.user_reference))return fail(400,'invalid_request');
