@@ -19,7 +19,7 @@ function nodes(v){if(!v||typeof v!=='object')return [];if(Array.isArray(v))retur
 function text(v){if(v==null||typeof v==='boolean')return '';if(Array.isArray(v))return v.map(text).join(' ');return typeof v==='object'?text(v.props?.children):String(v);}
 function fixture(claim=async()=>({data:{data:{points:1,day:'2026-10-30',duplicate:false}}})){
  const h={userId:'A',now:Date.parse('2026-10-30T12:00:00Z'),slots:[],effects:[],cursor:0,calls:[],refreshes:0};
- h.invoke=async(name,body)=>{h.calls.push({name,body});return name==='dailyLoginStatus'?{data:{enabled:true}}:claim();};
+ h.invoke=async(name,body)=>{h.calls.push({name,body});return name==='dailyLoginStatus'?{data:{enabled:true,user_reference:h.userId,day:new Date(h.now).toISOString().slice(0,10),claimed:h.claimed===true,penalty_enabled:true}}:claim();};
  h.render=()=>{active=h;h.cursor=0;const view=CheckIn({userId:h.userId,now:h.now,refreshWallet:async()=>{h.refreshes++;return h.refresh?.();}});h.effects.splice(0).forEach(fn=>fn());return view;};
  h.flush=async()=>{await Promise.resolve();await Promise.resolve();return h.render();};h.destroy=()=>h.slots.forEach(s=>s?.cleanup?.());return h;
 }
@@ -55,5 +55,14 @@ test('malformed claim receipts never refresh the wallet or announce credit',asyn
  for(const data of [{points:2,day:'2026-10-30',duplicate:false},{points:1,day:'2026-10-30'},{points:1,day:42,duplicate:false}]){
   const h=fixture(async()=>({data:{data}}));h.render();await h.flush();await nodes(h.render()).find(n=>n.type==='Button').props.onClick();assert.equal(h.refreshes,0);assert.match(text(h.render()),/could not be confirmed/);h.destroy();
  }
+});
+test('page reload discovers an existing daily award without another claim',async()=>{
+ const h=fixture();h.claimed=true;h.render();const view=await h.flush();
+ assert.match(text(view),/already earned today/);assert.equal(nodes(view).filter(n=>n.type==='Button').length,0);
+ assert.deepEqual(h.calls.map(c=>c.name),['dailyLoginStatus']);assert.match(text(view),/deducts 1 Point/);h.destroy();
+});
+test('new UTC day reloads authoritative status and reopens the daily claim',async()=>{
+ const h=fixture();h.claimed=true;h.render();await h.flush();h.now=Date.parse('2026-10-31T00:00:01Z');h.claimed=false;h.render();const view=await h.flush();
+ assert.equal(h.calls.filter(c=>c.name==='dailyLoginStatus').length,2);assert.equal(nodes(view).filter(n=>n.type==='Button').length,1);h.destroy();
 });
 test.after(()=>delete globalThis.__dailyCheckIn);
