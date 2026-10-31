@@ -1,5 +1,5 @@
-import React, { useEffect, useState, useCallback } from "react";
-import { base44 } from "@/api/base44Client";
+import React from "react";
+import {usePartnerAccounts} from "@/hooks/usePartnerAccounts";
 import { useToast } from "@/components/ui/use-toast";
 import { Link2, Unlink, Copy, Check, Clock, ShieldCheck, ExternalLink, Loader2, XCircle, AlertTriangle, RefreshCw } from "lucide-react";
 import PageHeader from "@/components/perk/PageHeader";
@@ -24,90 +24,7 @@ const STATE_BADGE = {
 
 export default function PartnerAccounts() {
   const { toast } = useToast();
-  const [partners, setPartners] = useState([]);
-  const [links, setLinks] = useState([]);
-  const [connected, setConnected] = useState([]);
-  const [verification, setVerification] = useState({});
-  const [loadError, setLoadError] = useState(false);
-  const [refreshing, setRefreshing] = useState(false);
-  const [loading, setLoading] = useState(true);
-  const [challengeDialog, setChallengeDialog] = useState(null);
-  const [copied, setCopied] = useState(false);
-  const [linking, setLinking] = useState(null);
-
-  const load = useCallback(async () => {
-    setRefreshing(true);
-    try {
-      const [partnersRes, linksRes] = await Promise.all([
-        base44.functions.invoke("partnerAccountLink", { action: "listPartners" }),
-        base44.functions.invoke("partnerAccountLink", { action: "listLinks" })
-      ]);
-      const pData = partnersRes?.data || partnersRes;
-      const lData = linksRes?.data || linksRes;
-      setPartners(pData?.partners || []);
-      setLinks(lData?.links || []);
-      setConnected(lData?.connected || []);
-      setVerification(lData?.verification || {});
-      setLoadError(false);
-    } catch (e) {
-      setLoadError(true);
-      setVerification({});
-      toast({ title: "Failed to load", description: "Your saved connections have been kept. Please retry the connection check.", variant: "destructive" });
-    } finally {
-      setLoading(false);
-      setRefreshing(false);
-    }
-  }, [toast]);
-
-  useEffect(() => { load(); }, [load]);
-
-  const hasPending = links.some((l) => l.status === "pending" && (!l.expires_at || new Date(l.expires_at) > new Date()));
-  useEffect(() => {
-    if (!hasPending) return;
-    const interval = setInterval(load, 5000);
-    return () => clearInterval(interval);
-  }, [hasPending, load]);
-
-  const startLink = async (partner) => {
-    setLinking(partner.id);
-    try {
-      const res = await base44.functions.invoke("partnerAccountLink", { action: "createChallenge", partnerId: partner.id });
-      const data = res?.data || res;
-      if (data?.challenge_token) {
-        setChallengeDialog({ partner, challenge_token: data.challenge_token, expires_at: data.expires_at, instructions: data.instructions });
-        load();
-      }
-    } catch (e) {
-      toast({ title: "Failed", description: e?.response?.data?.error || e.message, variant: "destructive" });
-    } finally {
-      setLinking(null);
-    }
-  };
-
-  const unlink = async (connId) => {
-    try {
-      await base44.functions.invoke("partnerAccountLink", { action: "unlink", connectedServiceId: connId });
-      toast({ title: "Account unlinked" });
-      load();
-    } catch (e) {
-      const errData = e?.response?.data || {};
-      const isRetry = errData.retry || errData.code === "linux_unavailable";
-      toast({
-        title: isRetry ? "Unlinking temporarily unavailable" : "Failed",
-        description: errData.error || e.message,
-        variant: "destructive",
-        action: isRetry ? { label: "Retry", onClick: () => unlink(connId) } : undefined
-      });
-    }
-  };
-
-  const copyChallenge = async () => {
-    try {
-      await navigator.clipboard.writeText(challengeDialog.challenge_token);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
-    } catch (_e) { toast({ title: "Copy failed", variant: "destructive" }); }
-  };
+  const {partners,links,connected,verification,loadError,refreshing,loading,challengeDialog,copied,linking,actionsBusy,challengeExpired,load,startLink,unlink,copyChallenge,closeChallenge}=usePartnerAccounts(toast);
 
   if (loading) {
     return <div className="flex h-64 items-center justify-center"><div className="h-8 w-8 animate-spin rounded-full border-4 border-secondary border-t-foreground" /></div>;
@@ -157,32 +74,32 @@ export default function PartnerAccounts() {
 
                 <div className="mt-4 flex flex-wrap gap-2">
                   {state === "connect" && (
-                    <Button size="sm" onClick={() => startLink(p)} disabled={linking === p.id}>
+                    <Button size="sm" onClick={() => startLink(p)} disabled={actionsBusy}>
                       {linking === p.id ? <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" /> : <Link2 className="mr-1.5 h-3.5 w-3.5" />}
                       Connect
                     </Button>
                   )}
                   {state === "pending" && (
-                    <Button size="sm" variant="outline" onClick={() => startLink(p)} disabled={linking === p.id}>
+                    <Button size="sm" variant="outline" onClick={() => startLink(p)} disabled={actionsBusy}>
                       {linking === p.id ? <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" /> : <RefreshCw className="mr-1.5 h-3.5 w-3.5" />}
                       New challenge
                     </Button>
                   )}
                   {state === "expired" && (
-                    <Button size="sm" onClick={() => startLink(p)} disabled={linking === p.id}>
+                    <Button size="sm" onClick={() => startLink(p)} disabled={actionsBusy}>
                       {linking === p.id ? <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" /> : <RefreshCw className="mr-1.5 h-3.5 w-3.5" />}
                       Retry
                     </Button>
                   )}
                   {state === "disconnected" && (
-                    <Button size="sm" onClick={() => startLink(p)} disabled={linking === p.id}>
+                    <Button size="sm" onClick={() => startLink(p)} disabled={actionsBusy}>
                       {linking === p.id ? <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" /> : <Link2 className="mr-1.5 h-3.5 w-3.5" />}
                       Reconnect
                     </Button>
                   )}
                   {conn?.status === "connected" && (
                     <ConfirmDialog
-                      trigger={<Button variant="outline" size="sm" className="text-red-600"><Unlink className="mr-1.5 h-3.5 w-3.5" /> Disconnect</Button>}
+                      trigger={<Button variant="outline" size="sm" className="text-red-600" disabled={actionsBusy}><Unlink className="mr-1.5 h-3.5 w-3.5" /> Disconnect</Button>}
                       title={`Disconnect from ${p.name}?`}
                       description="You will stop earning rewards from this partner until you connect again."
                       confirmLabel="Disconnect"
@@ -198,14 +115,14 @@ export default function PartnerAccounts() {
       </div>
 
       {challengeDialog && (
-        <Dialog open={!!challengeDialog} onOpenChange={(o) => !o && setChallengeDialog(null)}>
+        <Dialog open={!!challengeDialog} onOpenChange={(o) => !o && closeChallenge()}>
           <DialogContent>
             <DialogHeader><DialogTitle>Connect to {challengeDialog.partner.name}</DialogTitle></DialogHeader>
             <div className="space-y-4">
               <div className="flex items-start gap-3 rounded-lg border border-blue-300 bg-blue-50 p-4 dark:border-blue-700 dark:bg-blue-950/30">
                 <Clock className="mt-0.5 h-5 w-5 flex-shrink-0 text-blue-600 dark:text-blue-400" />
                 <div>
-                  <p className="text-sm font-medium text-blue-800 dark:text-blue-300">Single-use challenge — expires in 10 minutes</p>
+                  <p className="text-sm font-medium text-blue-800 dark:text-blue-300">Single-use challenge — {challengeExpired ? "expired" : `expires ${new Date(challengeDialog.expires_at).toLocaleString()}`}</p>
                   <p className="mt-1 text-xs text-blue-700 dark:text-blue-400">{challengeDialog.instructions}</p>
                 </div>
               </div>
@@ -213,7 +130,7 @@ export default function PartnerAccounts() {
                 <p className="text-xs font-medium">Challenge token</p>
                 <div className="mt-1 flex gap-2">
                   <code className="flex-1 break-all rounded-lg bg-secondary p-2 font-mono text-xs">{challengeDialog.challenge_token}</code>
-                  <Button variant="outline" size="sm" onClick={copyChallenge}>{copied ? <Check className="h-3.5 w-3.5 text-emerald-600" /> : <Copy className="h-3.5 w-3.5" />}</Button>
+                  <Button variant="outline" size="sm" onClick={copyChallenge} disabled={challengeExpired}>{copied ? <Check className="h-3.5 w-3.5 text-emerald-600" /> : <Copy className="h-3.5 w-3.5" />}</Button>
                 </div>
               </div>
               <div className="rounded-lg bg-secondary p-3 text-xs text-muted-foreground">
