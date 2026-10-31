@@ -22,7 +22,7 @@ export default function DailyCheckIn({userId,refreshWallet,now=Date.now()}){
    if(!current())return;
    if(data?.points!==1||typeof data.duplicate!=='boolean'||typeof data.day!=='string'||!/^\d{4}-\d{2}-\d{2}$/.test(data.day))throw Error();
    setReceipt({member:userId,day:data.day,duplicate:data.duplicate});
-   if(!data.duplicate)try{await refreshWallet();}catch{if(current())setError('Check-in confirmed. Refresh your wallet to update the displayed balance.');}
+   try{if(await refreshWallet()===false&&current())setError('Check-in confirmed. Refresh your wallet to update the displayed balance.');}catch{if(current())setError('Check-in confirmed. Refresh your wallet to update the displayed balance.');}
   }catch{if(current())setError('Your check-in could not be confirmed. Retry to check the same daily reward.');}
   finally{if(current()){lock.current=null;setBusy(false);}}
  }
