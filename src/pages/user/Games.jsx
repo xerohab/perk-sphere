@@ -8,7 +8,12 @@ import SponsorSlot from '@/components/perk/SponsorSlot';
 import { Button } from '@/components/ui/button';
 
 export default function Games() {
-  const { user } = useAuth();
+  const {user}=useAuth();
+  return <MemberGames key={user?.id || 'signed-out'} user={user} />;
+}
+
+function MemberGames({user}) {
+  const mounted=useRef(true);
   const [catalog, setCatalog] = useState([]);
   const [catalogLoading, setCatalogLoading] = useState(true);
   const [catalogError, setCatalogError] = useState('');
@@ -26,6 +31,7 @@ export default function Games() {
   const [message, setMessage] = useState('');
   const visible = useRef(!document.hidden);
   const loadCatalog = useCallback(async () => {
+    if(!mounted.current)return;
     const current = ++catalogGeneration.current;
     const member = user?.id;
     if (!user?.id) { setCatalog([]); setCatalogLoading(false); return; }
@@ -33,7 +39,7 @@ export default function Games() {
     try {
       const result = await base44.functions.invoke('getGameCatalog', {});
       if (!Array.isArray(result.data?.data)) throw Error('unavailable');
-      if (current !== catalogGeneration.current || member !== currentMember.current) return;
+      if (!mounted.current || current !== catalogGeneration.current || member !== currentMember.current) return;
       const games = result.data.data;
       setCatalog(games); setCatalogOwner(member);
       setGame(previous => games.some(item => item.game_reference === previous) ? previous : games[0]?.game_reference || '');
@@ -42,10 +48,11 @@ export default function Games() {
     } finally { if (current === catalogGeneration.current) setCatalogLoading(false); }
   }, [user?.id]);
   useEffect(() => {
+    mounted.current=true;
     requestLock.current = null;
     setBusy(false); setError(''); setRevealed(false);
     setSession(null); setSessionOwner(null); setAnswer(''); setMessage(''); loadCatalog();
-    return () => { catalogGeneration.current++; requestLock.current = null; };
+    return () => { mounted.current=false; catalogGeneration.current++; requestLock.current = null; };
   }, [loadCatalog]);
   const availableCatalog = catalogOwner === user?.id ? catalog : [];
   const selectedPolicy = availableCatalog.find(item => item.game_reference === game);
@@ -61,12 +68,12 @@ export default function Games() {
     return () => clearTimeout(timer);
   }, [revealed]);
   async function send(action,submittedAnswer=answer) {
-    if(requestLock.current || !visible.current || !selectedPolicy || !user?.id) return;
+    if(!mounted.current || requestLock.current || !visible.current || !selectedPolicy || !user?.id) return;
     if(action !== 'start' && (!session || sessionOwner !== user.id)) return;
     const member = user.id;
     const request = Symbol('game-request');
     requestLock.current = request;
-    const isCurrent = () => currentMember.current === member && requestLock.current === request;
+    const isCurrent = () => mounted.current && currentMember.current === member && requestLock.current === request;
     setBusy(true); setError('');
     try {
       const body = action === 'start' ? {action,game_reference:game} : {
