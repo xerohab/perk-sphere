@@ -5,8 +5,8 @@ import { Button } from "@/components/ui/button";
 
 const VALUES = [
   { icon: Coins, title: "Transparent rewards", body: "Points and Loyalty XP are tracked through a clear ledger. You always know what you earned and why." },
-  { icon: TrendingUp, title: "Meaningful loyalty", body: "Loyalty XP builds your rank and unlocks achievements — separate from your redeemable Points." },
-  { icon: ShieldCheck, title: "Privacy by design", body: "Activity tracking requires a Perk Sphere client and your explicit consent. We do not silently monitor your browsing." },
+  { icon: TrendingUp, title: "Meaningful loyalty", body: "Loyalty XP builds your rank and unlocks achievements — separate from your Points balance." },
+  { icon: ShieldCheck, title: "Privacy by design", body: "Browser activity tracking requires a supported client and your explicit consent. Games and supported partner verification do not require an extension." },
   { icon: Globe, title: "Participating destinations", body: "A growing directory of websites and social destinations, each clearly classified as allowed, neutral or disallowed." }
 ];
 
@@ -44,10 +44,10 @@ export default function About() {
             <h2 className="text-lg font-semibold">How we handle your data</h2>
           </div>
           <p className="mt-3 text-sm text-muted-foreground">
-            Perk Sphere records activity only on participating destinations and only when you have connected a Perk Sphere client (such as the browser extension or mobile app). We do not collect your full browsing history, and external service connections are added only with your explicit consent. You can review your activity history and revoke access at any time.
+            Perk Sphere records eligible in-site activities and evidence from supported integrations. Partner tasks use your linked account and the partner’s verification. Browser tracking is separate, requires a supported client and your explicit consent, and does not make every page visit rewardable. External account connections are added only with your consent.
           </p>
           <p className="mt-3 text-sm text-muted-foreground">
-            Activity tracking integrations are still being developed. Where tracking is not yet available, Perk Sphere will not claim functionality that does not exist.
+            Some integrations are still being developed. Account connection alone does not verify views, likes, follows or comments. Store redemption, cash withdrawals, gift cards and XP conversion are currently unavailable.
           </p>
         </div>
 
