@@ -15,8 +15,8 @@ import {loadPublicHomeData} from "@/lib/public-home-data";
 const STEPS = [
   { icon: UserPlus, title: "Create your account", body: "Sign up for free and set up your Perk Sphere profile in seconds." },
   { icon: Globe, title: "Participate in eligible activities", body: "Link your partner accounts and complete the eligible tasks or games shown in your dashboard." },
-  { icon: Coins, title: "Earn Points & build Loyalty XP", body: "Eligible activities add Points to your redeemable balance and Loyalty XP to your rank progress." },
-  { icon: Gift, title: "Redeem available rewards", body: "Spend your Points on available rewards from the Perk Sphere store." }
+  { icon: Coins, title: "Earn Points & build Loyalty XP", body: "Eligible activities add Points to your wallet and Loyalty XP to your rank progress." },
+  { icon: Gift, title: "Review your rewards", body: "Check your wallet and reward rules. Store redemption is currently paused." }
 ];
 
 export default function Home() {
@@ -56,7 +56,7 @@ export default function Home() {
               Your activity. Your loyalty. Your rewards.
             </h1>
             <p className="mx-auto mt-6 max-w-2xl text-lg text-muted-foreground">
-              Perk Sphere brings rewards, loyalty and participating online destinations together in one place. Earn points from eligible activities, build Loyalty XP, unlock ranks and achievements, and redeem your points for available rewards.
+              Perk Sphere brings rewards, loyalty and participating online destinations together in one place. Earn Points from eligible games and partner tasks, build Loyalty XP, and track your progress in your wallet. Reward redemption is currently paused.
             </p>
             <div className="mt-8 flex flex-col items-center justify-center gap-3 sm:flex-row">
               <Button size="lg" onClick={() => navigate(isAuthenticated ? "/dashboard" : "/register")} className="w-full sm:w-auto">
@@ -77,6 +77,13 @@ export default function Home() {
       </div>}
 
       <div className="mx-auto max-w-6xl px-4 sm:px-6"><SponsorSlot slot="home" /></div>
+      <section className="mx-auto max-w-6xl px-4 pt-8 sm:px-6" aria-label="Launch availability">
+        <div className="rounded-2xl border border-border bg-card p-5 text-sm text-muted-foreground">
+          <h2 className="font-semibold text-foreground">Start with games, check-in and partner tasks</h2>
+          <p className="mt-2">Check each activity’s displayed reward and eligibility before taking part. Social account connections are available, but social linking reward claims are paused. XP conversion, withdrawals, top-ups and gift-card fulfilment are not available.</p>
+          <Link to={isAuthenticated ? "/earn" : "/register"} className="mt-3 inline-block font-medium text-indigo-600 underline dark:text-indigo-400">{isAuthenticated ? "See ways to earn" : "Create your account"}</Link>
+        </div>
+      </section>
       {/* How It Works */}
       <section id="how-it-works" className="mx-auto max-w-6xl px-4 py-16 sm:px-6 sm:py-20">
         <div className="text-center">
@@ -111,7 +118,7 @@ export default function Home() {
             </div>
             <h3 className="mt-4 text-2xl font-bold">Points</h3>
             <p className="mt-2 text-muted-foreground">
-              Perk Sphere Points are your redeemable balance. Earn them from eligible activities and spend them on available rewards in the Perk Sphere store. Points are separate from Loyalty XP.
+              Perk Sphere Points record what you earn from eligible activities. They are separate from Loyalty XP. Store redemption, cash withdrawals and gift cards are not available at this launch.
             </p>
           </div>
           <div className="rounded-2xl border border-border bg-gradient-to-br from-amber-50 to-background p-8 dark:from-amber-950/20 dark:to-background">
@@ -131,7 +138,7 @@ export default function Home() {
         <div className="flex items-end justify-between">
           <div>
             <h2 className="text-3xl font-bold tracking-tight">Rewards</h2>
-            <p className="mt-2 text-muted-foreground">A preview of currently available rewards.</p>
+            <p className="mt-2 text-muted-foreground">Explore the reward catalogue. Redemption is currently paused.</p>
           </div>
           {isAuthenticated && (
             <Link to="/rewards" className="hidden text-sm font-medium text-indigo-600 hover:underline dark:text-indigo-400 sm:inline">Browse store</Link>
@@ -222,7 +229,7 @@ export default function Home() {
         <div className="mx-auto flex max-w-6xl items-start gap-3 px-4 py-10 sm:px-6">
           <ShieldCheck className="mt-0.5 h-5 w-5 flex-shrink-0 text-emerald-600 dark:text-emerald-400" />
           <p className="text-sm text-muted-foreground">
-            Activity tracking requires a Perk Sphere client (such as the browser extension or mobile app) and your explicit consent. Perk Sphere does not silently monitor your browsing. Tracking integrations are added only when you connect them.
+            Play games and check in on Perk Sphere without a browser extension. Supported partner tasks use your linked account and the partner’s verification. Browser tracking requires a supported client and your explicit consent; Perk Sphere does not silently monitor your browsing.
           </p>
         </div>
       </section>
