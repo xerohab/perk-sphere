@@ -4,15 +4,15 @@ import {useAuth} from '@/lib/AuthContext';
 export function useMemberWallet(){
  const {user}=useAuth(),member=user?.id?String(user.id):null;
  const [state,setState]=useState({member:null,wallet:null,error:'',loading:false});
- const generation=useRef(0),currentMember=useRef(member);
+ const generation=useRef(0),currentMember=useRef(member),mounted=useRef(true);
  // Hide old state before effects run; invalidate even an A → B → A switch.
  if(currentMember.current!==member){currentMember.current=member;generation.current++;}
  const refresh=useCallback(async()=>{
-  if(currentMember.current!==member)return false;
+  if(!mounted.current||currentMember.current!==member)return false;
   const current=++generation.current;
   if(!member){setState({member:null,wallet:null,error:'',loading:false});return false;}
   setState({member,wallet:null,error:'',loading:true});
-  const active=()=>current===generation.current&&currentMember.current===member;
+  const active=()=>mounted.current&&current===generation.current&&currentMember.current===member;
   try{
    const result=await base44.functions.invoke('getMemberWallet',{}),data=result.data?.data;
    if(result.data?.ok!==true||!data||data.user_reference!==member||!['legacy','linux'].includes(data.source))throw Error('wallet_unavailable');
@@ -23,7 +23,7 @@ export function useMemberWallet(){
    return false;
   }
  },[member]);
- useEffect(()=>{refresh();return()=>{generation.current++;};},[refresh]);
+ useEffect(()=>{mounted.current=true;refresh();return()=>{mounted.current=false;generation.current++;};},[refresh]);
  const owned=!!member&&state.member===member;
  return {wallet:owned?state.wallet:null,error:owned?state.error:'',loading:!!member&&(!owned||state.loading),refresh};
 }

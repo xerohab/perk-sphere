@@ -53,4 +53,5 @@ test('A to B to A does not accept an earlier A-session response',async()=>{
  h.render();h.user={id:'B'};h.render(false);h.user={id:'A'};h.render();first.resolve(response('A','999'));await h.flush();assert.equal(h.render().wallet,null);
  newer.resolve(response('A','30'));assert.equal((await h.flush()).wallet.points_balance,'30');h.destroy();
 });
+test('unmounted refresh callbacks cannot make a new request',async()=>{const h=fixture();const refresh=h.render().refresh;await h.flush();h.destroy();const calls=h.calls.length;assert.equal(await refresh(),false);assert.equal(h.calls.length,calls);});
 test.after(()=>{delete globalThis.__walletHookFixture;});
