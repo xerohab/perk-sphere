@@ -11,9 +11,12 @@ async function handler(req){
  const headers={'Cache-Control':'no-store'};
  if(req.method!=='POST')return Response.json({error:'method_not_allowed'},{status:405,headers});
  try{
-  const access=await authorize(createClientFromRequest(req),'rules.view');if(access.error){access.error.headers.set('Cache-Control','no-store');return access.error;}
+  const client=createClientFromRequest(req),access=await authorize(client,'rules.view');if(access.error){access.error.headers.set('Cache-Control','no-store');return access.error;}
   const body=await req.json().catch(()=>null);if(!body||typeof body!=='object'||Array.isArray(body)||Object.keys(body).length)return Response.json({error:'invalid_request'},{status:400,headers});
+  const current=async()=>{const check=await authorize(client,'rules.view');if(check.error||check.user?.id!==access.user?.id||check.staff?.role!==access.staff?.role)throw Error('STAFF_CONTEXT_CHANGED');};
+  await current();
   const result=await linuxTrustedPost('/v1/perk-sphere/games/launch-readiness',{action:'read'});
+  await current();
   const data=result.data;
   if(!result.ok||data?.report_version!==1||data.acceptance_verified!==false||typeof data.enrollment_cutoff_valid!=='boolean'||!Array.isArray(data.games)||data.games.length>NATIVE_GAME_IDS.length)throw Error('INVALID_READINESS');
   const flags=booleans(data.flags,FLAG_KEYS),source_flags=booleans(data.source_flags,SOURCE_KEYS),checks=booleans(data.checks,CHECK_KEYS),tables=booleans(data.tables,TABLE_KEYS);

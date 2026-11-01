@@ -1,5 +1,7 @@
 import React,{useCallback,useEffect,useRef,useState} from 'react';
 import {Link} from 'react-router-dom';
+import {useAuth} from '@/lib/AuthContext';
+import {readLaunchReadiness} from '@/lib/launch-readiness-client';
 import {base44} from '@/api/base44Client';
 import PageHeader from '@/components/perk/PageHeader';
 import {Button} from '@/components/ui/button';
@@ -10,15 +12,15 @@ import CashBudgetControls from '@/components/admin/CashBudgetControls';
 const CHECK_LABELS={ledger:'Authoritative wallet and frozen legacy writers',new_member_enrollment:'New-member zero-balance enrolment',game_rewards:'Six enabled game reward policies',daily_checkin:'Daily check-in API',daily_presence:'Missed-login deduction policy and attendance table',core_tables:'Required wallet, game and attendance tables'};
 const FLAG_LABELS={ledger_read:'Wallet API',ledger_delivery:'API delivery flag (worker has its own setting)',games:'Native games',daily_checkin:'Daily check-in',missed_login:'Prospective missed-login deductions (1 Point per full UTC day, settled on return)',new_member_wallets:'New-member wallet creation',xp_conversion:'XP conversion',xp_conversion_admin:'XP conversion administration',verified_streaks:'Verified streak rewards'};
 const SOURCE_LABELS={wallet_authoritative:'Authoritative wallet mode',legacy_writers_frozen:'Legacy balance writers frozen',new_member_wallets_enabled:'Member wallet enrolment gateway',social_source_enabled:'Social ownership evidence source',social_claims_enabled:'Social linking reward claims',partner_tasks_enabled:'Partner task gateway',youtube_configuration_present:'YouTube configuration present',x_configuration_present:'X configuration present',token_encryption_configuration_present:'Token encryption configured'};
-export default function AdminLaunchChecks(){
+function LaunchChecks({user}){
  const [data,setData]=useState(null),[loading,setLoading]=useState(true),[error,setError]=useState(''),[checked,setChecked]=useState(null),generation=useRef(0);
  const load=useCallback(async()=>{
   const current=++generation.current;setLoading(true);setData(null);setError('');
-  try{const response=await base44.functions.invoke('getCoreLaunchReadiness',{});if(!response.data?.data)throw Error();if(current===generation.current){setData(response.data.data);setChecked(new Date());}}
+  try{const report=await readLaunchReadiness({base44,actorId:user.id,isCurrent:()=>current===generation.current});if(current===generation.current){setData(report);setChecked(new Date());}}
   catch{if(current===generation.current)setError('Launch checks could not be loaded. Rules-view permission and the authenticated API connection are required.');}
   finally{if(current===generation.current)setLoading(false);}
- },[]);
- useEffect(()=>{load();return ()=>{generation.current++;};},[load]);
+ },[user.id]);
+ useEffect(()=>{load();const clear=()=>{generation.current++;setData(null);setChecked(null);setLoading(false);setError('Run checks again to verify the current staff session and configuration.');};window.addEventListener('focus',clear);document.addEventListener('visibilitychange',clear);return ()=>{generation.current++;window.removeEventListener('focus',clear);document.removeEventListener('visibilitychange',clear);};},[load]);
  return <div className="space-y-6">
   <PageHeader title="Launch checks" description="Core configuration checks and separate XP policy administration"/>
   <div className="rounded-xl border bg-card p-4 space-y-2 text-sm"><p>Configuration checks are not launch approval. A new member must still register, earn a reward and see the correct wallet history in the bulk test session.</p><p>Provider configuration being present does not prove public approval, a successful OAuth connection or a verified payment. Paused financial features are not made available by this page.</p></div>
@@ -42,3 +44,5 @@ export default function AdminLaunchChecks(){
   <section className="rounded-xl border bg-card p-5 space-y-3"><h2 className="font-semibold">One core acceptance session</h2><ol className="list-decimal pl-5 space-y-2 text-sm"><li>Register one genuinely new Perk Sphere member. Confirm zero opening balances and wallet creation without changing existing accounts.</li><li>Complete an eligible game and claim the daily point. Reload/retry and confirm no duplicate credit.</li><li>Check partner links, a genuine eligible watch task, social ownership connections and wallet history.</li><li>Repeat the key member pages on mobile and switch accounts to check stale data is not displayed.</li><li>Review a sponsor enquiry and draft booking. Do not falsely confirm payment or activate a pretend paid placement.</li></ol><p className="text-sm text-muted-foreground">Cash, gift cards and paid-subscription rewards need their separate unfinished implementation/provider acceptance. This checklist cannot approve them.</p></section>
  </div>;
 }
+
+export default function AdminLaunchChecks(){const {user}=useAuth();if(!user?.id||user.role!=="admin"||["disabled","suspended","banned"].includes(user.account_status))return null;return <LaunchChecks key={JSON.stringify([user.id,user.role,user.account_status])} user={user}/>;}
