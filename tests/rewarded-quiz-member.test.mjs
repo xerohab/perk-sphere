@@ -8,7 +8,7 @@ const id='11111111-1111-4111-8111-111111111111',qid='22222222-2222-4222-8222-222
 const catalog={action:'catalog',after_quiz:null,limit:20}, submit={action:'submit',quiz_uuid:id,policy_version:1,answers:[{question_uuid:qid,selected_index:0}]};
 const req=b=>new Request('https://example.test',{method:'POST',body:JSON.stringify(b)});
 function fixture({user={id:'member'},flags={},post=async()=>{throw Error('unexpected');},auth}={}){
-let calls=0; const h=createRewardedQuizHandler({getClient:()=>({auth:{me:auth||async()=>user}}),getSecret:n=>flags[n],post:async(...a)=>{calls++;return post(...a);}});return {h,calls:()=>calls};}
+let calls=0; const h=createRewardedQuizHandler({getClient:()=>({auth:{me:auth||(async()=>user)}}),getSecret:n=>flags[n],post:async(...a)=>{calls++;return post(...a);}});return {h,calls:()=>calls};}
 test('paused catalog and history return no reward data without Linux calls',async()=>{const f=fixture();for(const b of [catalog,{action:'history',before:null,limit:20}]){const r=await f.h(req(b));assert.equal(r.status,200);assert.equal((await r.json()).data.enabled,false);assert.equal(r.headers.get('cache-control'),'no-store');}assert.equal(f.calls(),0);});
 test('paused submission cannot reach Linux',async()=>{const f=fixture();assert.equal((await f.h(req(submit))).status,503);assert.equal(f.calls(),0);});
 test('anonymous and restricted users fail before dispatch',async()=>{for(const [user,status] of [[null,401],[{id:'member',account_status:'suspended'},403]]){const f=fixture({user});assert.equal((await f.h(req(catalog))).status,status);assert.equal(f.calls(),0);}});
