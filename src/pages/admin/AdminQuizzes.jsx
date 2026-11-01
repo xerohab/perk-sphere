@@ -11,6 +11,7 @@ import { Card } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { useToast } from "@/components/ui/use-toast";
 import QuizRewardControls from "@/components/admin/QuizRewardControls";
+import {newQuizDraft,newQuizQuestion,quizDraftForCreate} from "@/lib/quiz-draft";
 
 function extractList(data) {
   if (!data) return [];
@@ -18,16 +19,6 @@ function extractList(data) {
   if (Array.isArray(data)) return data;
   return data.quizzes || data.items || [];
 }
-
-function extractVideoId(ref) {
-  if (!ref) return "";
-  if (ref.match(/^[a-zA-Z0-9_-]{11}$/)) return ref;
-  const m = ref.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/)([a-zA-Z0-9_-]{11})/);
-  return m ? m[1] : ref;
-}
-
-const emptyQuestion = { text: "", choices: ["", ""], correct_choice: 0 };
-const emptyQuiz = { title: "", description: "", video_ref: "", questions: [{ ...emptyQuestion }] };
 
 export default function AdminQuizzes() {
   const { toast } = useToast();
@@ -57,7 +48,7 @@ export default function AdminQuizzes() {
   useEffect(() => { load(); }, []);
 
   const addQuestion = () => {
-    setCreateDialog({ ...createDialog, quiz: { ...createDialog.quiz, questions: [...createDialog.quiz.questions, { ...emptyQuestion }] } });
+    setCreateDialog({ ...createDialog, quiz: { ...createDialog.quiz, questions: [...createDialog.quiz.questions, newQuizQuestion()] } });
   };
 
   const updateQuestion = (qi, field, value) => {
@@ -68,14 +59,14 @@ export default function AdminQuizzes() {
 
   const updateChoice = (qi, ci, value) => {
     const questions = [...createDialog.quiz.questions];
-    questions[qi].choices = [...questions[qi].choices];
+    questions[qi] = {...questions[qi], choices:[...questions[qi].choices]};
     questions[qi].choices[ci] = value;
     setCreateDialog({ ...createDialog, quiz: { ...createDialog.quiz, questions } });
   };
 
   const addChoice = (qi) => {
     const questions = [...createDialog.quiz.questions];
-    questions[qi].choices = [...questions[qi].choices, ""];
+    questions[qi] = {...questions[qi], choices:[...questions[qi].choices, ""]};
     setCreateDialog({ ...createDialog, quiz: { ...createDialog.quiz, questions } });
   };
 
@@ -94,11 +85,7 @@ export default function AdminQuizzes() {
     }
     setSaving(true);
     try {
-      const cleanQuiz = {
-        ...quiz,
-        video_ref: extractVideoId(quiz.video_ref),
-        questions: quiz.questions.map((q) => ({ ...q, choices: q.choices.filter((c) => c.trim()) }))
-      };
+      const cleanQuiz = quizDraftForCreate(quiz);
       const res = await base44.functions.invoke("perkSphereQuizzes", { action: "create", quiz: cleanQuiz });
       const data = res?.data || res;
       if (data?.ok === false) throw new Error(data.error);
@@ -107,7 +94,7 @@ export default function AdminQuizzes() {
       load();
     } catch (e) {
       const errData = e?.response?.data || {};
-      toast({ title: "Creation failed", description: errData.error || e.message, variant: "destructive" });
+      toast({ title: "Creation failed", description: e.message === "INVALID_QUIZ_DRAFT" ? "Check the provider reference, partner UUID, answer choices and correct-answer selection. Empty choices cannot be removed automatically." : errData.error || e.message, variant: "destructive" });
     } finally {
       setSaving(false);
     }
@@ -143,7 +130,7 @@ export default function AdminQuizzes() {
         <div className="rounded-xl border border-amber-200 bg-amber-50 p-3 dark:border-amber-800 dark:bg-amber-950/30">
           <p className="text-xs text-amber-800 dark:text-amber-300">Quiz reward settings are disabled. YouTube viewing awards zero Points and zero XP.</p>
         </div>
-        <Button onClick={() => setCreateDialog({ quiz: { ...emptyQuiz, questions: [{ ...emptyQuestion }] } })}>
+        <Button onClick={() => setCreateDialog({ quiz: newQuizDraft() })}>
           <Plus className="mr-2 h-4 w-4" /> Create Quiz
         </Button>
       </div>
@@ -204,7 +191,12 @@ export default function AdminQuizzes() {
                 <Textarea className="mt-1" rows={2} value={createDialog.quiz.description} onChange={(e) => setCreateDialog({ ...createDialog, quiz: { ...createDialog.quiz, description: e.target.value } })} />
               </div>
               <div>
-                <Label>YouTube Video URL or ID</Label>
+                <Label htmlFor="quiz-provider">Content provider</Label>
+                <select id="quiz-provider" value={createDialog.quiz.provider} onChange={e=>setCreateDialog({...createDialog,quiz:{...createDialog.quiz,provider:e.target.value}})} className="mt-1 w-full rounded border bg-background p-2"><option value="youtube">YouTube (non-rewarded)</option><option value="partner">Partner knowledge quiz</option></select>
+              </div>
+              {createDialog.quiz.provider==='partner'&&<div><Label htmlFor="quiz-partner">Partner UUID</Label><Input id="quiz-partner" className="mt-1" value={createDialog.quiz.partner_uuid} onChange={e=>setCreateDialog({...createDialog,quiz:{...createDialog.quiz,partner_uuid:e.target.value}})} placeholder="Public UUID from partner administration"/><p className="mt-1 text-xs text-muted-foreground">Use a verified partner and its HTTPS content URL. A UUID is not an API key or secret. Publishing a quiz does not enable rewards.</p></div>}
+              <div>
+                <Label>{createDialog.quiz.provider==='partner'?'Partner HTTPS content URL':'YouTube Video URL or ID'}</Label>
                 <Input className="mt-1" value={createDialog.quiz.video_ref} onChange={(e) => setCreateDialog({ ...createDialog, quiz: { ...createDialog.quiz, video_ref: e.target.value } })} placeholder="https://youtube.com/watch?v=... or video ID" />
               </div>
 
