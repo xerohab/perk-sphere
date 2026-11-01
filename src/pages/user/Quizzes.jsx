@@ -134,7 +134,7 @@ function QuizPage({user}) {
 
         <div className="mt-4 rounded-xl border border-amber-200 bg-amber-50 p-3 dark:border-amber-800 dark:bg-amber-950/30">
           <p className="text-xs text-amber-800 dark:text-amber-300">
-            YouTube viewing awards zero Points and zero XP. Quiz rewards are not yet available.
+            These practice quizzes award no Points or XP. YouTube viewing also awards none.
           </p>
         </div>
 
