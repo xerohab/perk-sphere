@@ -7,8 +7,11 @@ import EmptyState from "@/components/perk/EmptyState";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { useToast } from "@/components/ui/use-toast";
+import {useAuth} from "@/lib/AuthContext";
+import RewardedQuizzes from "@/components/perk/RewardedQuizzes";
+import {ordinaryQuizRequest} from "@/lib/ordinary-quiz-client";
 
-export default function Quizzes() {
+function QuizPage({user}) {
   const { toast } = useToast();
   const [quizzes, setQuizzes] = useState([]);
   const [history, setHistory] = useState([]);
@@ -22,6 +25,7 @@ export default function Quizzes() {
   const [grade, setGrade] = useState(null);
   const [tab, setTab] = useState("available");
   const quizGeneration = useRef(0), submitLock = useRef(false);
+  const invokeQuiz=body=>{const current=quizGeneration.current;return ordinaryQuizRequest({base44,actorId:user.id,body,isCurrent:()=>quizGeneration.current===current});};
   const closeQuiz = () => { quizGeneration.current++; setActiveQuiz(null); setGrade(null); setQuestions([]); setAnswers({}); };
 
   const load = async (silent = false) => {
@@ -29,8 +33,8 @@ export default function Quizzes() {
     setError(null);
     try {
       const [qRes, hRes] = await Promise.all([
-        base44.functions.invoke("perkSphereQuizzes", { action: "list", filters: {} }),
-        base44.functions.invoke("perkSphereQuizzes", { action: "history", filters: {} })
+        invokeQuiz({ action: "list", filters: {} }),
+        invokeQuiz({ action: "history", filters: {} })
       ]);
       const qData = qRes?.data || qRes;
       const hData = hRes?.data || hRes;
@@ -45,7 +49,7 @@ export default function Quizzes() {
     }
   };
 
-  useEffect(() => { load(); }, []);
+  useEffect(() => { load(); return()=>{quizGeneration.current++;}; }, []);
 
   const startQuiz = async (quiz) => {
     const current = ++quizGeneration.current;
@@ -55,7 +59,7 @@ export default function Quizzes() {
     setAnswers({});
     setLoadingQuestions(true);
     try {
-      const res = await base44.functions.invoke("perkSphereQuizzes", { action: "questions", quizId: quiz.id });
+      const res = await invokeQuiz({ action: "questions", quizId: quiz.id });
       const data = res?.data || res;
       if (data?.ok === false) throw new Error(data.error);
       if (current !== quizGeneration.current) return;
@@ -82,7 +86,7 @@ export default function Quizzes() {
     setSubmitting(true);
     try {
       const formattedAnswers = questions.map((q) => ({ question_id: q.id, choice_id: answers[q.id] }));
-      const res = await base44.functions.invoke("perkSphereQuizzes", { action: "submit", quizId: activeQuiz.id, answers: formattedAnswers });
+      const res = await invokeQuiz({ action: "submit", quizId: activeQuiz.id, answers: formattedAnswers });
       const data = res?.data || res;
       if (data?.ok === false) throw new Error(data.error);
       if (current !== quizGeneration.current) return;
@@ -189,6 +193,7 @@ export default function Quizzes() {
   // Quiz list view
   return (
     <div>
+      <RewardedQuizzes />
       <PageHeader title="Video Quizzes" description="Watch videos and test your knowledge. YouTube viewing awards zero Points and zero XP." />
 
       {error && (
@@ -264,4 +269,10 @@ export default function Quizzes() {
       )}
     </div>
   );
+}
+
+export default function Quizzes(){
+ const {user}=useAuth();
+ if(!user?.id||["disabled","suspended","banned"].includes(user.account_status))return null;
+ return <QuizPage key={JSON.stringify([user.id,user.role,user.account_status])} user={user}/>;
 }
