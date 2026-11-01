@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import {createMemberCashConversionHandler as create} from '../base44/shared/memberCashConversionHandler.ts';
 import {validCashConversionBody,projectCashConversionReceipt,projectCashConversionPolicy,quoteCashConversion} from '../base44/shared/cashConversionContract.ts';
 import {requestCashConversion} from '../src/lib/cash-conversion-client.js';
-import {cashRecoveryKey,pendingCashRecovery,parseCashRecovery,readCashRecovery,saveCashRecovery,submitCashRecovery,clearConfirmedCashRecovery} from '../src/lib/cash-conversion-recovery.js';
+import {cashRecoveryKey,pendingCashRecovery,parseCashRecovery,readCashRecovery,saveCashRecovery,submitCashRecovery,clearConfirmedCashRecovery,checkCashRecoveryReceipt} from '../src/lib/cash-conversion-recovery.js';
 const id='00000000-0000-4000-8000-000000000001',op='00000000-0000-4000-8000-000000000002',body={action:'convert',request_reference:id,points:100,policy_version:1},policy={enabled:true,version:1,input_points:100,output_pence:20};
 const flags={PERKSPHERE_CASH_MEMBER_ENABLED:'true',PERKSPHERE_CASH_SOURCE_ENABLED:'true',PERKSPHERE_LINUX_LEDGER_AUTHORITATIVE:'true',PERKSPHERE_CASH_WALLET_READ_ENABLED:'true'};
 const receipt=()=>({user_reference:'MEMBER',request_reference:id,policy_version:1,operation_uuid:op,points_spent:'100',credited_pence:'20',currency:'GBP',duplicate:false,payout_sent:false});
@@ -29,3 +29,18 @@ test('only a definitive policy rejection clears the original pending command',as
 test('storage readback failure blocks preparation without discarding prior evidence',()=>{const storage=store();storage.setItem=()=>{};assert.throws(()=>saveCashRecovery(storage,'MEMBER',pending()),/UNAVAILABLE/);assert.throws(()=>clearConfirmedCashRecovery(store(),'MEMBER'),/NOT_CONFIRMED/);});
 test('changed recovery during a network call cannot be overwritten by an old receipt',async()=>{const storage=store();saveCashRecovery(storage,'MEMBER',pending());await assert.rejects(submitCashRecovery({storage,actorId:'MEMBER',request:async()=>{saveCashRecovery(storage,'MEMBER',pendingCashRecovery({actorId:'MEMBER',points:200,policy,requestReference:op}));return projected();}}),/CASH_RECOVERY_CHANGED/);assert.equal(readCashRecovery(storage,'MEMBER').request.points,200);});
 test('browser client checks identity before accepting a definitive rejection or receipt',async()=>{let user={id:'MEMBER'},calls=0;const base44={auth:{me:async()=>user},functions:{invoke:async()=>{calls++;user={id:'OTHER'};throw {response:{status:409,data:{error:'cash_policy_changed',retry_with_new_policy:true}}};}}};await assert.rejects(requestCashConversion({base44,actorId:'MEMBER',body}),/UNCONFIRMED/);assert.equal(calls,1);});
+
+test('read-only cash receipt lookup can confirm the original credit while conversion is paused',async()=>{
+ const b={...body,action:'receipt'},f=fixture({settings:{...flags,PERKSPHERE_CASH_MEMBER_ENABLED:'false'},post:async(path,payload)=>{assert.equal(path,'/v1/perk-sphere/cash/conversion-receipt');assert.equal(payload.request_reference,id);return {ok:true,data:{...receipt(),read_only:true,found:true,duplicate:true}};}});
+ const r=await f.handler(req(b));assert.equal(r.status,200);const data=(await r.json()).data;assert.equal(data.read_only,true);assert.equal(data.found,true);assert.equal(data.duplicate,true);assert.equal(f.calls(),1);
+});
+test('missing read-only receipt remains pending and never clears or replaces the original command',async()=>{
+ const storage=store();saveCashRecovery(storage,'MEMBER',pending());const result=await checkCashRecoveryReceipt({storage,actorId:'MEMBER',request:async args=>{assert.equal(args.body.action,'receipt');return {read_only:true,found:false,request_reference:id,policy_version:1,points_spent:'100',currency:'GBP',payout_sent:false};}});
+ assert.equal(result.state,'pending');assert.deepEqual(readCashRecovery(storage,'MEMBER'),pending());
+});
+test('read-only original confirmation can clear recovery without a conversion request',async()=>{
+ const storage=store();saveCashRecovery(storage,'MEMBER',pending());let calls=0;const r=await checkCashRecoveryReceipt({storage,actorId:'MEMBER',request:async args=>{calls++;assert.equal(args.body.action,'receipt');return {read_only:true,found:true,...projected(),duplicate:true};}});assert.equal(r.state,'confirmed');assert.equal(readCashRecovery(storage,'MEMBER'),null);assert.equal(calls,1);
+});
+test('receipt lookup rejects claimed new credits and incorrect command scope',async()=>{
+ for(const patch of [{read_only:false},{duplicate:false},{policy_version:2},{points_spent:'200'},{payout_sent:true}]){const f=fixture({post:async()=>({ok:true,data:{...receipt(),read_only:true,found:true,duplicate:true,...patch}})});assert.equal((await f.handler(req({...body,action:'receipt'}))).status,503);}
+});
