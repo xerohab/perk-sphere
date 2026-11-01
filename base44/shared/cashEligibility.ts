@@ -4,7 +4,7 @@ const ref=value=>typeof value==='string'&&/^[A-Za-z0-9_:@.-]{1,191}$/.test(value
 export async function readCashEligibility(admin,{userReference,operation},{getSecret,clock=Date.now}){
  if(!ref(userReference)||!actions.includes(operation))throw Error('INVALID_CASH_ELIGIBILITY');
  const result={user_reference:userReference,operation,eligible:false};
- if(getSecret('PERKSPHERE_CASH_SOURCE_ENABLED')!=='true'||getSecret('PERKSPHERE_CASH_MEMBER_ENABLED')!=='true'||getSecret('PERKSPHERE_LINUX_LEDGER_AUTHORITATIVE')!=='true')return result;
+ if(getSecret('PERKSPHERE_CASH_SOURCE_ENABLED')!=='true'||getSecret(operation==='wallet'?'PERKSPHERE_CASH_WALLET_READ_ENABLED':'PERKSPHERE_CASH_MEMBER_ENABLED')!=='true'||getSecret('PERKSPHERE_LINUX_LEDGER_AUTHORITATIVE')!=='true')return result;
  const member=await admin.entities.User.get(userReference).catch(()=>null);
  if(!member||member.id!==userReference||['disabled','banned','suspended'].includes(member.account_status))return result;
  const now=clock();if(!Number.isSafeInteger(now))throw Error('INVALID_CASH_CLOCK');

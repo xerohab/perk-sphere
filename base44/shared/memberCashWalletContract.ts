@@ -1,0 +1,14 @@
+const MAX=9223372036854775807n,UUID=/^[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}$/i;
+const fail=()=>{throw Error('INVALID_CASH_WALLET_RESULT');};
+function units(v,signed=false){if(typeof v!=='string'||!(signed?/^(0|-?[1-9]\d{0,18})$/:/^(0|[1-9]\d{0,18})$/).test(v))return fail();const n=BigInt(v);if(n>MAX||n<(signed?-MAX:0n))return fail();return n;}
+export function validCashWalletRequest(b){return !!b&&typeof b==='object'&&!Array.isArray(b)&&Object.keys(b).sort().join(',')==='limit,offset'&&Number.isSafeInteger(b.limit)&&b.limit>=1&&b.limit<=25&&Number.isSafeInteger(b.offset)&&b.offset>=0&&b.offset<=10000;}
+export function projectMemberCashWallet(r,{actorId,body}){
+ if(!validCashWalletRequest(body)||typeof actorId!=='string'||!actorId)fail();
+ if(r?.enabled===false){if(r.read_only!==true||r.currency!=='GBP'||r.payouts_enabled!==false)fail();return {enabled:false,read_only:true,currency:'GBP',payouts_enabled:false};}
+ if(r?.user_reference!==actorId||r.currency!=='GBP'||r.payouts_enabled!==false||r.withdrawal_threshold_pence!=='5000'||r.limit!==body.limit||r.offset!==body.offset||typeof r.has_more!=='boolean'||typeof r.cash_actions_blocked!=='boolean'||!Array.isArray(r.history)||r.history.length>body.limit)fail();
+ const balance=units(r.balance_pence),reserved=units(r.reserved_pence),available=units(r.available_pence);if(reserved>balance||available!==balance-reserved)fail();
+ const history=r.history.map(row=>{if(!UUID.test(row?.operation_uuid||'')||!['points_conversion','withdrawal_hold','withdrawal_release'].includes(row.operation_type)||typeof row.created_at!=='string'||!/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/.test(row.created_at)||!Number.isFinite(Date.parse(row.created_at))||new Date(row.created_at).toISOString()!==row.created_at)fail();const delta=units(row.balance_delta_pence,true),reserve=units(row.reserve_delta_pence,true),points=units(row.points_spent);if(row.operation_type==='points_conversion'?(delta<=0n||reserve!==0n||points<=0n):(delta!==0n||points!==0n||(row.operation_type==='withdrawal_hold'?reserve<=0n:reserve>=0n)))fail();return {operation_uuid:row.operation_uuid,operation_type:row.operation_type,balance_delta_pence:row.balance_delta_pence,reserve_delta_pence:row.reserve_delta_pence,points_spent:row.points_spent,created_at:row.created_at};});
+ if(new Set(history.map(r=>r.operation_uuid.toLowerCase())).size!==history.length||r.has_more&&history.length!==body.limit)fail();
+ return {enabled:true,read_only:true,currency:'GBP',balance_pence:r.balance_pence,reserved_pence:r.reserved_pence,available_pence:r.available_pence,withdrawal_threshold_pence:'5000',history,limit:body.limit,offset:body.offset,has_more:r.has_more,cash_actions_blocked:r.cash_actions_blocked,payouts_enabled:false};
+}
+export function formatGbpPence(value){const n=units(value,true),abs=n<0n?-n:n;return (n<0n?'-':'')+'£'+(abs/100n).toLocaleString('en-GB')+'.'+String(abs%100n).padStart(2,'0');}
