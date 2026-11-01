@@ -10,6 +10,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Card } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { useToast } from "@/components/ui/use-toast";
+import QuizRewardControls from "@/components/admin/QuizRewardControls";
 
 function extractList(data) {
   if (!data) return [];
@@ -135,6 +136,8 @@ export default function AdminQuizzes() {
   return (
     <div>
       <PageHeader title="Quiz Manager" description="Create video quizzes with questions and correct answers. Reward payouts are not yet available." />
+
+      <QuizRewardControls quizzes={quizzes} />
 
       <div className="mt-4 flex items-center justify-between">
         <div className="rounded-xl border border-amber-200 bg-amber-50 p-3 dark:border-amber-800 dark:bg-amber-950/30">
