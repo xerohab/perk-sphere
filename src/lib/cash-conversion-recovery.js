@@ -30,6 +30,10 @@ export async function submitCashRecovery({base44,storage,actorId,isCurrent=()=>t
  let receipt;
  try{receipt=await request({base44,actorId,body:record.request,isCurrent});}
  catch(error){if(error.message==='CASH_POLICY_CHANGED_NO_CREDIT'&&isCurrent()){removeExact(storage,actorId,record);return {state:'policy_changed',recovery_cleared:true};}throw error;}
+ return finalizeCashRecovery({storage,actorId,record,receipt,isCurrent});
+}
+
+function finalizeCashRecovery({storage,actorId,record,receipt,isCurrent}){
  if(!isCurrent())throw Error('CASH_CONTEXT_CHANGED');
  receipt=projectCashConversionReceipt({...receipt,user_reference:actorId},{actorId,body:record.request});
  if(receipt.credited_pence!==record.credited_pence)throw Error('CASH_CONVERSION_UNCONFIRMED');
@@ -38,3 +42,5 @@ export async function submitCashRecovery({base44,storage,actorId,isCurrent=()=>t
  let cleared=false;try{clearConfirmedCashRecovery(storage,actorId);cleared=true;}catch{}
  return {state:'confirmed',receipt,recovery_cleared:cleared};
 }
+
+export async function checkCashRecoveryReceipt({base44,storage,actorId,isCurrent=()=>true,request=requestCashConversion}){if(!isCurrent())throw Error('CASH_CONTEXT_CHANGED');const record=readCashRecovery(storage,actorId);if(!record)throw Error('CASH_RECOVERY_MISSING');if(record.status==='confirmed')return {state:'confirmed',receipt:record.receipt,recovery_cleared:false};const result=await request({base44,actorId,body:{...record.request,action:'receipt'},isCurrent});if(!isCurrent())throw Error('CASH_CONTEXT_CHANGED');if(result?.read_only!==true||typeof result.found!=='boolean'||result.request_reference!==record.request.request_reference||result.policy_version!==record.request.policy_version||result.points_spent!==String(record.request.points)||result.currency!=='GBP'||result.payout_sent!==false)throw Error('CASH_CONVERSION_UNCONFIRMED');if(!result.found)return {state:'pending',recovery_cleared:false};return finalizeCashRecovery({storage,actorId,record,receipt:result,isCurrent});}
