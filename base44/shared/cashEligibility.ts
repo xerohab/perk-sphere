@@ -5,6 +5,7 @@ export async function readCashEligibility(admin,{userReference,operation},{getSe
  if(!ref(userReference)||!actions.includes(operation))throw Error('INVALID_CASH_ELIGIBILITY');
  const result={user_reference:userReference,operation,eligible:false};
  const keys=['PERKSPHERE_CASH_SOURCE_ENABLED',operation==='wallet'?'PERKSPHERE_CASH_WALLET_READ_ENABLED':'PERKSPHERE_CASH_MEMBER_ENABLED','PERKSPHERE_LINUX_LEDGER_AUTHORITATIVE'];
+ if(operation==='convert')keys.push('PERKSPHERE_CASH_WALLET_READ_ENABLED');
  const current=()=>keys.every(k=>getSecret(k)==='true');if(!current())return result;
  const member=await admin.entities.User.get(userReference).catch(()=>null);
  if(!current()||!member||member.id!==userReference||['disabled','banned','suspended'].includes(member.account_status))return result;

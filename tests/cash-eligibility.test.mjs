@@ -5,7 +5,7 @@ const flags={PERKSPHERE_CASH_SOURCE_ENABLED:'true',PERKSPHERE_CASH_MEMBER_ENABLE
 function fixture(restrictions=[]){return {entities:{User:{get:async()=>({id:'MEMBER',account_status:'active'})},Restriction:{filter:async()=>restrictions}}};}
 const options={getSecret:key=>flags[key],clock:()=>Date.parse('2026-10-31T12:00:00Z')};
 test('cash source stays off without all financial gates before private member reads',async()=>{
- for(const key of Object.keys(flags).filter(k=>k!=="PERKSPHERE_CASH_WALLET_READ_ENABLED")){const result=await read({entities:{User:{get:()=>{throw Error('MUST_NOT_READ');}}}},{userReference:'MEMBER',operation:'convert'},{...options,getSecret:name=>name===key?'false':flags[name]});assert.equal(result.eligible,false);}
+ for(const key of Object.keys(flags)){const result=await read({entities:{User:{get:()=>{throw Error('MUST_NOT_READ');}}}},{userReference:'MEMBER',operation:'convert'},{...options,getSecret:name=>name===key?'false':flags[name]});assert.equal(result.eligible,false);}
 });
 test('cash restriction policy separates conversion, withdrawal, read and release actions',async()=>{
  const restriction=type=>({user_id:'MEMBER',type,active:true});
