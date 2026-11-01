@@ -1,8 +1,7 @@
-import test from 'node:test';import assert from 'node:assert/strict';import {build} from 'esbuild';
+import test from 'node:test';import assert from 'node:assert/strict';
 import {requestQuizPolicy,quizPolicyInteger} from '../src/lib/quiz-policy-client.js';
 import {newQuizDraft,newQuizQuestion,quizDraftForCreate} from '../src/lib/quiz-draft.js';
-const bundle=await build({entryPoints:['base44/shared/quizPolicyAdminHandler.ts'],bundle:true,write:false,platform:'node',format:'esm'});
-const {createQuizPolicyAdminHandler:createHandler}=await import('data:text/javascript;base64,'+Buffer.from(bundle.outputFiles[0].text).toString('base64'));
+const {createQuizPolicyAdminHandler:createHandler}=await import('../base44/shared/quizPolicyAdminHandler.ts');
 const quiz='00000000-0000-4000-8000-000000000001';
 const request=b=>new Request('https://test.invalid',{method:'POST',body:JSON.stringify(b)});
 function fixture(){
