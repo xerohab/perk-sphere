@@ -26,3 +26,5 @@ test('expired restrictions no longer block cash; malformed dates remain blocked'
  assert.equal((await read(fixture([{...r,end_date:'invalid'}]),{userReference:'MEMBER',operation:'convert'},options)).eligible,false);
  await assert.rejects(read(fixture(),{userReference:'MEMBER',operation:'payout'},options),/INVALID_CASH_ELIGIBILITY/);
 });
+
+test('wallet read eligibility has a separate gate and cannot enable conversions',async()=>{const readOnly={...flags,PERKSPHERE_CASH_MEMBER_ENABLED:'false'};assert.equal((await read(fixture(),{userReference:'MEMBER',operation:'wallet'},{...options,getSecret:n=>readOnly[n]})).eligible,true);assert.equal((await read(fixture(),{userReference:'MEMBER',operation:'convert'},{...options,getSecret:n=>readOnly[n]})).eligible,false);const writeOnly={...flags,PERKSPHERE_CASH_WALLET_READ_ENABLED:'false'};assert.equal((await read(fixture(),{userReference:'MEMBER',operation:'wallet'},{...options,getSecret:n=>writeOnly[n]})).eligible,false);});

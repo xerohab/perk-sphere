@@ -3,6 +3,7 @@ import {base44} from '@/api/base44Client';
 import {useAuth} from '@/lib/AuthContext';
 import {useMemberWallet,formatWalletInteger} from '@/hooks/useMemberWallet';
 import {pendingConversion,conversionInput,confirmedConversion,definitivePolicyChange} from '@/lib/xp-conversion-client';
+import MemberCashWallet from '@/components/perk/MemberCashWallet';
 import PageHeader from '@/components/perk/PageHeader';
 import {Button} from '@/components/ui/button';
 
@@ -70,6 +71,7 @@ export default function Wallet(){
    {policyLoading?<p role="status">Checking conversion availability…</p>:!policy?<><p>XP conversion is currently unavailable.</p><Button variant="outline" disabled={busy} onClick={loadPolicy}>Check availability</Button></>:<><p>{policy.input_xp} XP converts to {policy.output_points} points.</p><form onSubmit={convert} className="flex flex-wrap items-center gap-3"><label htmlFor="xp-amount">XP amount</label><input id="xp-amount" inputMode="numeric" type="number" min={pending?1:policy.input_xp} step={pending?1:policy.input_xp} value={input} onChange={e=>setInput(e.target.value)} disabled={busy||!!pending||recoveryBlocked} className="rounded border bg-background px-2 py-2"/><Button disabled={busy||recoveryBlocked} type="submit">{busy?'Processing…':pending?'Retry previous conversion':'Convert XP'}</Button></form></>}
    {message&&<p role="status">{message}</p>}
   </section>
+  <MemberCashWallet/>
   <section className="rounded-2xl border p-5"><h2 className="font-semibold">Money and gift cards</h2><p>Cash conversion, withdrawals and gift-card redemption are not available yet.</p></section>
  </div>;
 }
