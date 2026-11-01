@@ -37,4 +37,15 @@ test('missing attendance policy metadata fails closed and a paused policy cannot
  const paused=fixture();paused.flags.missed_login=false;paused.checks.daily_presence=false;
  const data=(await(await readiness(post({}))).json()).data;assert.equal(data.configuration_complete,false);assert.equal(data.flags.missed_login,false);
 });
+
+test('readiness rejects staff session changes while Linux is reading',async()=>{
+ fixture();const fetch=globalThis.fetch;globalThis.fetch=async(...a)=>{const response=await fetch(...a);globalThis.__testClient.auth.me=async()=>({id:'OTHER',role:'admin'});return response;};const response=await readiness(post({}));assert.equal(response.status,503);assert.equal(response.headers.get('cache-control'),'no-store');assert.deepEqual(await response.json(),{error:'launch_checks_unavailable'});
+});
+test('readiness rejects revoked rules permission before disclosing Linux metadata',async()=>{
+ fixture();const fetch=globalThis.fetch;globalThis.fetch=async(...a)=>{const response=await fetch(...a);globalThis.__testClient.asServiceRole.entities.StaffMember.filter=async()=>[{active:true,staff_role:'support'}];return response;};assert.equal((await readiness(post({}))).status,503);
+});
+test('readiness rechecks staff permission after body parsing before Linux dispatch',async()=>{
+ fixture();let calls=0;globalThis.fetch=async()=>{calls++;throw Error('unexpected');};const request=post({});request.json=async()=>{globalThis.__testClient.auth.me=async()=>null;return {};};assert.equal((await readiness(request)).status,503);assert.equal(calls,0);
+});
+
 test.after(()=>{globalThis.fetch=originalFetch;delete globalThis.__testClient;delete globalThis.__testSecrets;});
