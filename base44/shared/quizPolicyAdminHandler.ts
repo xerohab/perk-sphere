@@ -7,13 +7,13 @@ export function createQuizPolicyAdminHandler({getClient,getSecret,authorize,post
   try{
    const client=getClient(req),auth=await authorize(client,'rules.manage');
    if(auth.error){auth.error.headers.set('Cache-Control','no-store');return auth.error;}
-   if(!auth.user?.id||auth.user.role!=='admin')return reply(403,{error:'forbidden'});
+   if(!auth.user?.id||auth.user.role!=='admin'||['disabled','suspended','banned'].includes(auth.user.account_status))return reply(403,{error:'forbidden'});
    if(getSecret('PERKSPHERE_QUIZ_ADMIN_ENABLED')!=='true')return reply(503,{error:'quiz_admin_paused'});
    const reader=req.body?.getReader();if(!reader)return reply(400,{error:'invalid_request'});let size=0,text='';const decoder=new TextDecoder('utf-8',{fatal:true});
    try{while(true){const {done,value}=await reader.read();if(done)break;size+=value.byteLength;if(size>4096)throw Error('INVALID_REQUEST');text+=decoder.decode(value,{stream:true});}text+=decoder.decode();}finally{await reader.cancel().catch(()=>{});}
    let body;try{body=JSON.parse(text);}catch{return reply(400,{error:'invalid_request'});}
    if(!validQuizPolicyBody(body))return reply(400,{error:'invalid_request'});
-   const check=async()=>{const latest=await authorize(client,'rules.manage');if(latest.error||latest.user?.id!==auth.user.id||latest.user?.role!=='admin'||getSecret('PERKSPHERE_QUIZ_ADMIN_ENABLED')!=='true')throw Error('UNAVAILABLE');};
+   const check=async()=>{const latest=await authorize(client,'rules.manage');if(latest.error||latest.user?.id!==auth.user.id||latest.user?.role!=='admin'||['disabled','suspended','banned'].includes(latest.user?.account_status)||getSecret('PERKSPHERE_QUIZ_ADMIN_ENABLED')!=='true')throw Error('UNAVAILABLE');};
    await check();dispatched=body.action.startsWith('update_');
    const result=await post('/v1/perk-sphere/quiz-rewards/admin',{...body,actor:{role:'admin',user_reference:auth.user.id}});
    await check();

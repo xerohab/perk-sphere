@@ -197,7 +197,7 @@ export default function AdminQuizzes() {
               {createDialog.quiz.provider==='partner'&&<div><Label htmlFor="quiz-partner">Partner UUID</Label><Input id="quiz-partner" className="mt-1" value={createDialog.quiz.partner_uuid} onChange={e=>setCreateDialog({...createDialog,quiz:{...createDialog.quiz,partner_uuid:e.target.value}})} placeholder="Public UUID from partner administration"/><p className="mt-1 text-xs text-muted-foreground">Use a verified partner and its HTTPS content URL. A UUID is not an API key or secret. Publishing a quiz does not enable rewards.</p></div>}
               <div>
                 <Label>{createDialog.quiz.provider==='partner'?'Partner HTTPS content URL':'YouTube Video URL or ID'}</Label>
-                <Input className="mt-1" value={createDialog.quiz.video_ref} onChange={(e) => setCreateDialog({ ...createDialog, quiz: { ...createDialog.quiz, video_ref: e.target.value } })} placeholder="https://youtube.com/watch?v=... or video ID" />
+                <Input className="mt-1" value={createDialog.quiz.video_ref} onChange={(e) => setCreateDialog({ ...createDialog, quiz: { ...createDialog.quiz, video_ref: e.target.value } })} placeholder={createDialog.quiz.provider==='partner'?'https://partner.example/content':'https://youtube.com/watch?v=... or video ID'} />
               </div>
 
               <div className="border-t border-border pt-4">
