@@ -3,6 +3,7 @@ import {base44} from '@/api/base44Client';
 import {useAuth} from '@/lib/AuthContext';
 import {useMemberWallet,formatWalletInteger} from '@/hooks/useMemberWallet';
 import {pendingConversion,conversionInput,confirmedConversion,definitivePolicyChange} from '@/lib/xp-conversion-client';
+import CashConversionPanel from '@/components/perk/CashConversionPanel';
 import MemberCashWallet from '@/components/perk/MemberCashWallet';
 import PageHeader from '@/components/perk/PageHeader';
 import {Button} from '@/components/ui/button';
@@ -72,6 +73,7 @@ export default function Wallet(){
    {message&&<p role="status">{message}</p>}
   </section>
   <MemberCashWallet/>
-  <section className="rounded-2xl border p-5"><h2 className="font-semibold">Money and gift cards</h2><p>Cash conversion, withdrawals and gift-card redemption are not available yet.</p></section>
+  <CashConversionPanel onConfirmed={refresh}/>
+  <section className="rounded-2xl border p-5"><h2 className="font-semibold">Money and gift cards</h2><p>Withdrawals, gift-card redemption and Points top-ups are not available yet. Cash conversion requires the separately enabled reviewed policy.</p></section>
  </div>;
 }

@@ -19,7 +19,7 @@ const runtime={
 };
 globalThis.__walletRecovery=runtime;
 const raw=await readFile(new URL('../src/pages/user/Wallet.jsx',import.meta.url),'utf8');
-const prefix="const {React,useState,useRef,useCallback,useEffect,useAuth,useMemberWallet,formatWalletInteger,base44,pendingConversion,conversionInput,confirmedConversion,definitivePolicyChange}=globalThis.__walletRecovery;const PageHeader='PageHeader',Button='Button',MemberCashWallet='MemberCashWallet';";
+const prefix="const {React,useState,useRef,useCallback,useEffect,useAuth,useMemberWallet,formatWalletInteger,base44,pendingConversion,conversionInput,confirmedConversion,definitivePolicyChange}=globalThis.__walletRecovery;const PageHeader='PageHeader',Button='Button',MemberCashWallet='MemberCashWallet',CashConversionPanel='CashConversionPanel';";
 const output=ts.transpileModule(prefix+raw.replace(/^import .*;\r?\n/gm,''),{compilerOptions:{jsx:ts.JsxEmit.React,target:ts.ScriptTarget.ES2022,module:ts.ModuleKind.ESNext}}).outputText;
 const {default:Wallet}=await import('data:text/javascript;base64,'+Buffer.from(output).toString('base64'));
 function nodes(v){if(!v||typeof v!=='object')return [];if(Array.isArray(v))return v.flatMap(nodes);return [v,...nodes(v.props?.children)];}
