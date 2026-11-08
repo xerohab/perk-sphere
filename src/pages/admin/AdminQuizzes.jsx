@@ -122,13 +122,13 @@ export default function AdminQuizzes() {
 
   return (
     <div>
-      <PageHeader title="Quiz Manager" description="Create video quizzes with questions and correct answers. Reward payouts are not yet available." />
+      <PageHeader title="Quiz Manager" description="Create practice quizzes and review eligible partner quiz reward policies." />
 
       <QuizRewardControls quizzes={quizzes} />
 
       <div className="mt-4 flex items-center justify-between">
         <div className="rounded-xl border border-amber-200 bg-amber-50 p-3 dark:border-amber-800 dark:bg-amber-950/30">
-          <p className="text-xs text-amber-800 dark:text-amber-300">Quiz reward settings are disabled. YouTube viewing awards zero Points and zero XP.</p>
+          <p className="text-xs text-amber-800 dark:text-amber-300">Review availability in Quiz reward policies below. Publishing a quiz does not enable rewards. YouTube viewing earns no Points or XP.</p>
         </div>
         <Button onClick={() => setCreateDialog({ quiz: newQuizDraft() })}>
           <Plus className="mr-2 h-4 w-4" /> Create Quiz
