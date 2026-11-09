@@ -18,8 +18,9 @@ export default function Rewards() {
   const { user, checkUserAuth } = useAuth();
   const { toast } = useToast();
   const { wallet, error: walletError, loading: walletLoading, refresh: refreshWallet } = useMemberWallet();
-  // The current redemption handler supports the legacy wallet only.
-  const redemptionAvailable = wallet?.source === "legacy" && !walletError && !walletLoading;
+  // Catalogue-only launch. Do not offer the legacy mutation while the reviewed
+  // authoritative-wallet redemption path is unavailable. Backend gates remain mandatory.
+  const redemptionAvailable = false;
   const [rewards, setRewards] = useState([]);
   const [loading, setLoading] = useState(true);
   const [selected, setSelected] = useState(null);
@@ -85,9 +86,9 @@ export default function Rewards() {
   return (
     <PullToRefresh onRefresh={() => Promise.all([load(true), refreshWallet()])}>
       <div>
-        <PageHeader title="Rewards Store" description={wallet ? `Your balance: ${formatWalletInteger(displayPoints)} points` : "Your balance is temporarily unavailable"} />
+        <PageHeader title="Rewards Catalogue" description={wallet ? `Your balance: ${formatWalletInteger(displayPoints)} points` : "Your balance is temporarily unavailable"} />
         {walletError && <div role="alert" className="mb-4 rounded-lg border p-4">{walletError} <Button variant="outline" onClick={refreshWallet}>Retry balance</Button></div>}
-        {wallet?.source === "linux" && <p role="status" className="mb-4 rounded-lg border p-4">Your points are safe. Reward redemption is temporarily unavailable.</p>}
+        <p role="status" className="mb-4 rounded-lg border p-4">Catalogue preview only. Your Points remain in your wallet. Redemption, cash withdrawals and gift-card fulfilment are not available at this launch.</p>
         {error && <div role="alert" className="mb-4 rounded-lg border border-destructive p-4"><p>{error}</p><Button variant="outline" onClick={() => load()}>Retry</Button></div>}
         {rewards.length === 0 ? (
           <EmptyState title="No rewards available" description="New rewards will appear here when published by administrators." />
