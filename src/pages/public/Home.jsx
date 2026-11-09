@@ -50,7 +50,7 @@ export default function Home() {
           <div className="mx-auto max-w-3xl text-center">
             <div className="mb-5 inline-flex items-center gap-2 rounded-full border border-border bg-card px-4 py-1.5 text-xs font-medium text-muted-foreground shadow-sm">
               <Sparkles className="h-3.5 w-3.5 text-indigo-500" />
-              Rewards, loyalty & destinations — in one place
+              Perk Sphere — Points & XP launch
             </div>
             <h1 className="text-4xl font-bold tracking-tight sm:text-6xl">
               Your activity. Your loyalty. Your rewards.
