@@ -57,7 +57,7 @@ export default function Dashboard() {
   return (
     <PullToRefresh onRefresh={() => Promise.all([loadData(), refreshWallet()])}>
       <div>
-        <PageHeader title={`Welcome back, ${user?.display_name || user?.username || user?.email?.split("@")[0] || "Member"}`} description="Your Perk Sphere rewards overview" />
+        <PageHeader title={`Welcome back, ${user?.display_name || user?.username || user?.email?.split("@")[0] || "Member"}`} description="Earn Points and XP through games, check-in and verified partner activities." />
 
         {walletError && <div role="alert" className="mb-4 rounded-xl border p-4">{walletError} <button type="button" className="underline" onClick={refreshWallet}>Retry</button></div>}
         <DailyCheckIn key={`daily-check-in:${user?.id || "signed-out"}`} userId={user?.id} refreshWallet={refreshWallet} now={clock} />
@@ -86,7 +86,7 @@ export default function Dashboard() {
               <Coins className="h-4 w-4" /> Points Balance
             </div>
             <p className="mt-3 text-4xl font-bold tracking-tight text-indigo-900 dark:text-indigo-300">{formatWalletInteger(points)}</p>
-            <p className="mt-1 text-xs text-indigo-600/70">Redeemable for rewards</p>
+            <p className="mt-1 text-xs text-indigo-600/70">Earned from eligible activities; redemption is paused</p>
           </div>
           <div className="rounded-2xl border border-border bg-gradient-to-br from-amber-50 to-white dark:from-amber-950/20 dark:to-background p-6 shadow-sm">
             <div className="flex items-center gap-2 text-xs font-medium uppercase tracking-wide text-amber-700 dark:text-amber-400">
@@ -220,11 +220,12 @@ export default function Dashboard() {
         {/* Available rewards */}
         <div className="mt-6">
           <div className="mb-4 flex items-center justify-between">
-            <h3 className="text-sm font-semibold">Available Rewards</h3>
+            <h3 className="text-sm font-semibold">Rewards Catalogue</h3>
             <Link to="/rewards" className="flex items-center gap-1 text-xs text-indigo-600 hover:underline">
-              Browse store <ArrowRight className="h-3 w-3" />
+              View catalogue <ArrowRight className="h-3 w-3" />
             </Link>
           </div>
+          <p className="mb-4 text-sm text-muted-foreground">Catalogue preview only. Redemption, cash withdrawals and gift-card fulfilment are not available at this launch.</p>
           {rewards.length === 0 ? (
             <EmptyState title="No rewards available" description="Check back soon for new rewards." />
           ) : (
