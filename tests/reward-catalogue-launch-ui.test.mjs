@@ -1,0 +1,20 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import {readFile} from 'node:fs/promises';
+import React from 'react';
+import TestRenderer,{act} from 'react-test-renderer';
+import ts from 'typescript';
+const state={source:'linux',loading:false,error:'',requests:[],eligibility:0};
+const runtime={React,...React,useAuth:()=>({user:{id:'synthetic-member'},checkUserAuth:async()=>{}}),useMemberWallet:()=>({wallet:{source:state.source,points_balance:'9007199254740993'},loading:state.loading,error:state.error,refresh:async()=>{}}),formatWalletInteger:v=>String(v),useToast:()=>({toast(){}}),rewardEligibility:()=>{state.eligibility++;return {ok:true};},base44:{entities:{Reward:{list:async()=>[{id:'synthetic-reward',name:'Catalogue item',active:true,points_cost:10}]}},functions:{invoke:async(...args)=>{state.requests.push(args);return {data:{ok:true}};}}}};
+globalThis.__catalogueLaunch=runtime;
+const raw=await readFile(new URL('../src/pages/user/Rewards.jsx',import.meta.url),'utf8');
+const stripped=raw.replace(/^import\s[\s\S]*?from\s+["'][^"']+["'];?\r?\n/gm,'');
+const names=['Gift','Lock','Check','PageHeader','RankBadge','EmptyState','PullToRefresh','Dialog','DialogContent','DialogHeader','DialogTitle','DialogDescription','DialogFooter','DialogClose'];
+const prefix="const {React,useEffect,useRef,useState,useMemberWallet,formatWalletInteger,rewardEligibility,base44,useAuth,useToast}=globalThis.__catalogueLaunch;const Button='button',"+names.map(n=>n+"='"+n+"'").join(',')+';';
+const code=ts.transpileModule(prefix+stripped,{compilerOptions:{jsx:ts.JsxEmit.React,target:ts.ScriptTarget.ES2022,module:ts.ModuleKind.ESNext}}).outputText;
+const Rewards=(await import('data:text/javascript;base64,'+Buffer.from(code).toString('base64'))).default;
+const text=node=>JSON.stringify(node.toJSON());
+async function exercise(){let root;try{await act(async()=>{root=TestRenderer.create(React.createElement(Rewards));});assert.match(text(root),/Catalogue preview only/);assert.match(text(root),/not available at this launch/);assert.match(root.root.findByType('PageHeader').props.description,/9007199254740993/);const choice=root.root.findAllByType('button').find(n=>n.children.includes('Redemption unavailable')||n.children.includes('Loading balance'));assert.ok(choice);assert.equal(choice.props.disabled,true);await act(async()=>choice.props.onClick());const confirm=root.root.findAllByType('button').find(n=>n.children.some(c=>typeof c==='object'&&c?.children?.includes(' Confirm Redemption')))||root.root.findAllByType('button').at(-1);assert.equal(confirm.props.disabled,true);await act(async()=>confirm.props.onClick());assert.equal(state.requests.length,0);assert.equal(state.eligibility,0);}finally{if(root)await act(async()=>root.unmount());}}
+test('catalogue launch never submits redemption for either authoritative or legacy wallet',async()=>{for(const source of ['linux','legacy']){Object.assign(state,{source,loading:false,error:'',requests:[],eligibility:0});await exercise();}});
+test('loading/error wallet states cannot enable catalogue redemption or mutate an exact balance',async()=>{for(const patch of [{loading:true,error:''},{loading:false,error:'Temporary balance failure'}]){Object.assign(state,{source:'legacy',requests:[],eligibility:0,...patch});await exercise();}});
+test.after(()=>delete globalThis.__catalogueLaunch);
