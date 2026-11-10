@@ -1,5 +1,5 @@
 import test from 'node:test';import assert from 'node:assert/strict';
-import {createGiftCheckoutRecoveryAuthorityHandler:create} from '../base44/shared/giftCheckoutRecoveryAuthorityHandler.ts';
+import {createGiftCheckoutRecoveryAuthorityHandler as create} from '../base44/shared/giftCheckoutRecoveryAuthorityHandler.ts';
 const body={userReference:'operator',permission:'gift_checkout_recovery:read',requestReference:'request1234567890',scope:{userReference:'member',checkoutUuid:'12345678-1234-4234-8234-123456789012'},expiresAt:new Date(2000).toISOString()};
 const request=()=>new Request('https://test.invalid',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
 test('recovery authority evaluates actual staff catalog and echoes exact scope',async()=>{
