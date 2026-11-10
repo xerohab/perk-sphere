@@ -39,7 +39,7 @@ const MANAGE = [
 ];
 
 export const ROLE_PERMISSIONS = {
-  super_admin: [...VIEW, ...MANAGE, 'settings.manage', 'staff.manage', 'staff.grant_limited', 'gift_notification_sources:read', 'gift_notification_sources:manage'],
+  super_admin: [...VIEW, ...MANAGE, 'settings.manage', 'staff.manage', 'staff.grant_limited', 'gift_notification_sources:read', 'gift_notification_sources:manage', 'gift_checkout_recovery:read'],
   admin: [...VIEW, ...MANAGE, 'staff.grant_limited'],
   rewards_manager: [
     'dashboard.view', 'users.view', 'ledger.view', 'rewards.view', 'rewards.manage',
