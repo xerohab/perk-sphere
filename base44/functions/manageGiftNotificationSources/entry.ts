@@ -5,5 +5,5 @@ import {linuxTrustedPost} from '../../shared/linuxClient.ts';
 import {createGiftSourceAdminHandler} from '../../shared/giftSourceAdminHandler.ts';
 // The Linux service-auth bridge must preserve the handler envelope, validate
 // this signed actor and supply real authorization/rate adapters before enabling.
-const handler=createGiftSourceAdminHandler({getClient:createClientFromRequest,getSecret:name=>secrets.get(name),authorize,post:linuxTrustedPost});
+const handler=createGiftSourceAdminHandler({getClient:createClientFromRequest,getSecret:name=>secrets.get(name),authorize,post:(path,body)=>linuxTrustedPost(path,body,undefined,true)});
 export default handler;if(typeof Deno!=='undefined')Deno.serve(handler);
