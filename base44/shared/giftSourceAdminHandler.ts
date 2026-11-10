@@ -12,7 +12,7 @@ export function createGiftSourceAdminHandler({getClient,getSecret,authorize,post
    const enabled=()=>getSecret('PERKSPHERE_GIFT_SOURCE_ADMIN_ENABLED')==='true';
    if(!enabled())return reply(503,{error:'gift_source_admin_paused'});
    // Browser requests must carry the SDK bearer header, not ambient cookies alone.
-   if(!/^Bearer [^\\s]+$/i.test(req.headers.get('authorization')||''))return reply(403,{error:'request_denied'});
+   if(!/^Bearer [^\s]+$/i.test(req.headers.get('authorization')||''))return reply(403,{error:'request_denied'});
    if(new URL(req.url).search)return reply(400,{error:'invalid_request'});
    if(!/^application\/json(?:\s*;|$)/i.test(req.headers.get('content-type')||'')||req.headers.has('content-encoding'))return reply(415,{error:'unsupported_media_type'});
    const reader=req.body?.getReader();if(!reader)return reply(400,{error:'invalid_request'});
