@@ -19,7 +19,7 @@ export function createGiftSourceAdminHandler({getClient,getSecret,authorize,post
    let text='',size=0;const decoder=new TextDecoder('utf-8',{fatal:true});
    try{while(true){const {done,value}=await reader.read();if(done)break;size+=value.byteLength;if(size>16384)return reply(413,{error:'request_too_large'});text+=decoder.decode(value,{stream:true});}text+=decoder.decode();}catch{return reply(400,{error:'invalid_request'});}finally{await reader.cancel().catch(()=>{});}
    let command;try{command=giftSourceCommand(JSON.parse(text));}catch{return reply(400,{error:'invalid_request'});}
-   const permission=command.action==='read'?'gift_notification_sources:read':'gift_notification_sources:manage';
+   const permission=command.action!=='revise'?'gift_notification_sources:read':'gift_notification_sources:manage';
    const check=async()=>{const latest=await authorize(client,permission);return !latest.error&&latest.user?.id===actor&&latest.user?.role==='admin'&&!['disabled','banned','suspended'].includes(latest.user?.account_status)&&enabled();};
    if(!await check())return reply(403,{error:'request_denied'});
    dispatched=command.action==='revise';
