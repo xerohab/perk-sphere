@@ -42,3 +42,19 @@ test('account switches clear source metadata and ignore late or retained callbac
  await act(async()=>{read.resolve(report());await pending;});assert.equal(view.root.findAllByType('form').length,1);assert.doesNotMatch(text(view),/Version 1|intake/);
  await act(async()=>{await old({preventDefault(){}});});assert.equal(calls.length,1);await act(async()=>view.unmount());
 });
+function operationsSnapshot(available=true){
+ return {data:{production_ready:false,data:{source:scope,readOnly:true,schemaAvailable:available,scopeIntegrityChecked:available,counts:available?{total:'1',pending:'0',processing:'1',retry:'0',processed:'0',dead:'0',unknownStates:'0',expiredLeases:'1',overdueUnresolved:'0',integrityMismatches:'0'}:null,issues:available?['expiredLeases']:['notification_schema_unavailable'],cases:available?[{notificationHash:'b'.repeat(64),state:'processing',version:2,attempts:1,availableAt:'2026-11-10T00:00:00.000Z',leaseUntil:'2026-11-10T00:01:00.000Z',leaseExpired:true,recoveryAction:'review_expired_lease'}]:[],hasMoreCases:false,workerRunningVerified:false,providerCalls:0,financial_clearance_verified:false,production_ready:false}}};
+}
+const inspectButton=view=>view.root.findAllByType('button').find(b=>b.props.children==='Check queue and recovery');
+test('source operations UI distinguishes unavailable storage from a validated recovery snapshot',async()=>{
+ let available=false;const {view,calls}=await fixture(async(_,b)=>b.action==='read'?report():operationsSnapshot(available));await load(view);
+ await act(async()=>{await inspectButton(view).props.onClick();});assert.match(text(view),/missing or inaccessible/);assert.doesNotMatch(text(view),/No issues detected/);
+ available=true;await act(async()=>{await inspectButton(view).props.onClick();});assert.match(text(view),/expired original lease/);assert.match(text(view),/Worker uptime has not been verified/);assert.ok(calls.every(c=>['read','operations'].includes(c[1].action)));assert.ok(!view.root.findAllByType('button').some(b=>/retry|release/i.test(String(b.props.children))));
+ await act(async()=>view.root.findAllByType('input')[0].props.onChange({target:{value:'OTHER'}}));assert.doesNotMatch(text(view),/bbbbbbbb|expired original lease/);await act(async()=>view.unmount());
+});
+test('source operations UI locks duplicate reads and ignores late results after account switch',async()=>{
+ const pending=deferred(),{view,calls}=await fixture(async(_,b)=>b.action==='read'?report():pending.promise);await load(view);const old=inspectButton(view).props.onClick;let request;
+ await act(async()=>{request=old();old();});assert.equal(calls.filter(c=>c[1].action==='operations').length,1);
+ currentUser='STAFF-B';await act(async()=>view.update(React.createElement(Page)));await act(async()=>{pending.resolve(operationsSnapshot());await request;});assert.doesNotMatch(text(view),/bbbbbbbb|expired original lease/);
+ await act(async()=>{await old();});assert.equal(calls.filter(c=>c[1].action==='operations').length,1);await act(async()=>view.unmount());
+});
