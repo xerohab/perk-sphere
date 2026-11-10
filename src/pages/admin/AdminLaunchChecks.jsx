@@ -7,6 +7,7 @@ import PageHeader from '@/components/perk/PageHeader';
 import {Button} from '@/components/ui/button';
 import XpConversionPolicyControls from '@/components/admin/XpConversionPolicyControls';
 import LaunchSetupGuide from '@/components/admin/LaunchSetupGuide';
+import LaunchRemainingWork from '@/components/admin/LaunchRemainingWork';
 import CashPolicyControls from '@/components/admin/CashPolicyControls';
 import CashBudgetControls from '@/components/admin/CashBudgetControls';
 const CHECK_LABELS={ledger:'Authoritative wallet and frozen legacy writers',new_member_enrollment:'New-member zero-balance enrolment',game_rewards:'Six enabled game reward policies',daily_checkin:'Daily check-in API',daily_presence:'Missed-login deduction policy and attendance table',core_tables:'Required wallet, game and attendance tables'};
@@ -22,7 +23,8 @@ function LaunchChecks({user}){
  },[user.id]);
  useEffect(()=>{load();const clear=()=>{generation.current++;setData(null);setChecked(null);setLoading(false);setError('Run checks again to verify the current staff session and configuration.');};window.addEventListener('focus',clear);document.addEventListener('visibilitychange',clear);return ()=>{generation.current++;window.removeEventListener('focus',clear);document.removeEventListener('visibilitychange',clear);};},[load]);
  return <div className="space-y-6">
-  <PageHeader title="Launch checks" description="Core configuration checks and separate XP policy administration"/>
+  <PageHeader title="Launch checks" description="Remaining launch work, core configuration checks and policy administration"/>
+  <LaunchRemainingWork/>
   <div className="rounded-xl border bg-card p-4 space-y-2 text-sm"><p>Configuration checks are not launch approval. A new member must still register, earn a reward and see the correct wallet history in the bulk test session.</p><p>Provider configuration being present does not prove public approval, a successful OAuth connection or a verified payment. Paused financial features are not made available by this page.</p></div>
   <Button variant="outline" disabled={loading} onClick={load}>{loading?'Checking…':'Run checks again'}</Button>
   {error&&<p role="alert" className="rounded border p-4 text-sm">{error}</p>}
