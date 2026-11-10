@@ -40,7 +40,7 @@ export function projectGiftSourceOperations(r,command){
  if(r.issues.includes('notification_schema_unavailable'))throw Error('INVALID_OPERATIONS_REPORT');
  const counts={};for(const k of operationCounts){const value=r.counts?.[k];if(k==='integrityMismatches'&&value===null&&!r.scopeIntegrityChecked)counts[k]=null;else if(integerCount(value))counts[k]=value;else throw Error('INVALID_OPERATIONS_REPORT');}
  const total=BigInt(counts.total),unresolved=total-BigInt(counts.processed);
- if(['pending','processing','retry','processed','dead','unknownStates'].reduce((n,k)=>n+BigInt(counts[k]),0n)!==total||BigInt(counts.expiredLeases)>BigInt(counts.processing)||BigInt(counts.overdueUnresolved)>unresolved||r.scopeIntegrityChecked!==(total<=1000n))throw Error('INVALID_OPERATIONS_REPORT');
+ if(['pending','processing','retry','processed','dead','unknownStates'].reduce((n,k)=>n+BigInt(counts[k]),0n)!==total||BigInt(counts.expiredLeases)>BigInt(counts.processing)||BigInt(counts.overdueUnresolved)>unresolved||r.scopeIntegrityChecked!==(total<=1000n)||counts.integrityMismatches!==null&&BigInt(counts.integrityMismatches)>total)throw Error('INVALID_OPERATIONS_REPORT');
  const expected=['unknownStates','expiredLeases','overdueUnresolved','dead'].filter(k=>BigInt(counts[k])>0n);
  if(total>1000n){if(counts.integrityMismatches!==null||r.cases.length||r.hasMoreCases)throw Error('INVALID_OPERATIONS_REPORT');expected.push('capacity_review_required');}
  else if(BigInt(counts.integrityMismatches)>0n)expected.push('integrity_mismatches');
@@ -49,7 +49,7 @@ export function projectGiftSourceOperations(r,command){
  const seen=new Set(),caseCounts={pending:0n,processing:0n,retry:0n,dead:0n};
  const cases=r.cases.map(c=>{
   if(!c||typeof c.notificationHash!=='string'||!/^[a-f0-9]{64}$/.test(c.notificationHash)||seen.has(c.notificationHash)||!Object.hasOwn(caseCounts,c.state)||!Number.isSafeInteger(c.version)||c.version<1||c.version>11||!Number.isSafeInteger(c.attempts)||c.attempts<0||c.attempts>5||!timestamp(c.availableAt)||typeof c.leaseExpired!=='boolean'||(c.state==='processing'?!timestamp(c.leaseUntil):c.leaseUntil!==null))throw Error('INVALID_RECOVERY_CASE');
-  if(c.state!=='processing'&&c.leaseExpired||c.state==='pending'&&c.attempts!==0||c.state==='dead'&&c.attempts!==5||['processing','retry'].includes(c.state)&&c.attempts<1)throw Error('INVALID_RECOVERY_CASE');
+  if(c.state!=='processing'&&c.leaseExpired||c.state==='pending'&&c.attempts!==0||c.state==='dead'&&c.attempts!==5||['processing','retry'].includes(c.state)&&c.attempts<1||c.state==='retry'&&c.attempts>=5||c.state==='pending'&&c.version!==1)throw Error('INVALID_RECOVERY_CASE');
   const recoveryAction=c.state==='dead'?'operator_reconciliation':c.state==='processing'?(c.leaseExpired?'review_expired_lease':'await_current_lease'):'await_worker';
   if(c.recoveryAction!==recoveryAction)throw Error('INVALID_RECOVERY_CASE');
   seen.add(c.notificationHash);caseCounts[c.state]++;
