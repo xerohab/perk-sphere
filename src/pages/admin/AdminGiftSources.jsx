@@ -11,7 +11,7 @@ function SourceForm(){
  useEffect(()=>{mounted.current=true;return()=>{mounted.current=false;};},[]);
  const editScope=(key,value)=>{setScope(s=>({...s,[key]:value}));setSnapshot(null);setForm(null);setMessage('');};
  async function load(event){
-  event.preventDefault();if(lock.current)return;
+  event.preventDefault();if(!mounted.current||lock.current)return;
   let command;try{command=giftSourceCommand({action:'read',source:scope});}catch{setMessage('Enter a merchant ID and webhook ID in the displayed format.');return;}
   lock.current=true;setBusy(true);setSnapshot(null);setForm(null);setMessage('');
   try{
@@ -21,7 +21,7 @@ function SourceForm(){
   finally{lock.current=false;if(mounted.current)setBusy(false);}
  }
  async function save(event){
-  event.preventDefault();if(lock.current||!snapshot||!form)return;
+  event.preventDefault();if(!mounted.current||lock.current||!snapshot||!form)return;
   let command;try{command=giftSourceCommand({action:'revise',expectedVersion:snapshot.version,source:{...form,state:'paused'}});}catch{setMessage('Complete the source metadata and choose at least one event type.');return;}
   lock.current=true;setBusy(true);setMessage('');
   try{
