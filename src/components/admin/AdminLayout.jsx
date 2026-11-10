@@ -42,6 +42,7 @@ const navItems = [
   { label: "Reports", path: "/admin/reports", icon: FileText, permission: "analytics.view" },
   { label: "Audit Log", path: "/admin/audit", icon: History, permission: "audit.view" },
   { label: "Roles & Permissions", path: "/admin/roles", icon: Lock, permission: "staff.view" },
+  { label: "Gift checkout recovery", path: "/admin/gift-checkout-recovery", icon: ClipboardCheck, permission: "gift_checkout_recovery:read" },
   { label: "Gift notification sources", path: "/admin/gift-sources", icon: Plug, permission: "gift_notification_sources:manage" },
   { label: "Settings", path: "/admin/settings", icon: Settings, permission: "settings.view" }
 ];

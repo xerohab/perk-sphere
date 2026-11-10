@@ -78,6 +78,7 @@ const AdminAuditLog = lazy(() => import('@/pages/admin/AdminAuditLog'));
 const AdminRoles = lazy(() => import('@/pages/admin/AdminRoles'));
 const AdminSettings = lazy(() => import('@/pages/admin/AdminSettings'));
 const AdminGiftSources = lazy(() => import('@/pages/admin/AdminGiftSources'));
+const AdminGiftCheckoutRecovery = lazy(() => import('@/pages/admin/AdminGiftCheckoutRecovery'));
 const AdminDestinations = lazy(() => import('@/pages/admin/AdminDestinations'));
 const AdminTasks = lazy(() => import('@/pages/admin/AdminTasks'));
 const AdminPartners = lazy(() => import('@/pages/admin/AdminPartners'));
@@ -175,6 +176,7 @@ const AppRoutes = () => (
           <Route path="/admin/roles" element={<AdminRoles />} />
           <Route path="/admin/settings" element={<AdminSettings />} />
           <Route path="/admin/gift-sources" element={<AdminGiftSources />} />
+          <Route path="/admin/gift-checkout-recovery" element={<AdminGiftCheckoutRecovery />} />
         </Route>
       </Route>
 
