@@ -42,7 +42,7 @@ async function hmacSha256Hex(secret, text) {
 // Signs and sends a trusted POST to the Linux API.
 // Returns { ok: true, status, data } on success or
 // { ok: false, status, code, error } on failure.
-export async function linuxTrustedPost(path, body, extraHeaders) {
+export async function linuxTrustedPost(path, body, extraHeaders, preserveEnvelope = false) {
   if (!isValidLinuxPath(path)) {
     return { ok: false, status: 400, code: "invalid_path", error: "Invalid or unrecognised endpoint path." };
   }
@@ -108,7 +108,7 @@ export async function linuxTrustedPost(path, body, extraHeaders) {
     };
   }
   console.log(`[linuxClient] req=${requestId} path=${path} status=${res.status} ok=true`);
-  return { ok: true, status: res.status, data: (data && data.data) || data };
+  return { ok: true, status: res.status, data: preserveEnvelope ? data : (data && data.data) || data };
 }
 
 // ─── Partner Management Endpoints ──────────────────────────────────────────
