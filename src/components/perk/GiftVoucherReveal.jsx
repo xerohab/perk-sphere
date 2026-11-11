@@ -30,6 +30,7 @@ export default function GiftVoucherReveal({intentUuid}){
   }catch{if(mounted.current&&epoch.current===current)setMessage('The voucher could not be revealed. Retry or contact support.');}
   finally{if(lock.current===current)lock.current=null;if(mounted.current&&epoch.current===current)setBusy(false);}
  }
+ if(!user?.id||['disabled','banned','suspended'].includes(user.account_status))return <p role="status">Voucher unavailable.</p>;
  const amount=receipt?((BigInt(receipt.faceValueMinor)/100n).toString()+'.'+(BigInt(receipt.faceValueMinor)%100n).toString().padStart(2,'0')):null;
  return <section className="space-y-4 rounded-xl border bg-card p-5" aria-label="Gift voucher">
   <h2 className="font-semibold">Your gift voucher</h2>

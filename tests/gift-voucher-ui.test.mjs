@@ -41,6 +41,6 @@ test('voucher UI discards late account-switch responses, old callbacks and dupli
 test('voucher and member-state changes clear the current reveal and refuse stale requests',async()=>{
  const f=await fixture();try{await act(async()=>f.view.root.findByType('button').props.onClick());const old=f.view.root.findAllByType('button')[0].props.onClick;
   await act(async()=>f.view.update(React.createElement(Component,{intentUuid:other})));assert.doesNotMatch(text(f.view),/SYNTHETIC-CODE/);
-  user={id:'owner',role:'user',account_status:'banned'};await act(async()=>f.view.update(React.createElement(Component,{intentUuid:other})));await f.view.root.findByType('button').props.onClick();assert.equal(f.calls.length,1);await old();
+  user={id:'owner',role:'user',account_status:'banned'};await act(async()=>f.view.update(React.createElement(Component,{intentUuid:other})));assert.equal(f.view.root.findAllByType('button').length,0);assert.equal(f.calls.length,1);await old();
  }finally{await f.cleanup();}
 });
