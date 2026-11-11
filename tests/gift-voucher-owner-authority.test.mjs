@@ -14,5 +14,6 @@ test('voucher authority rejects unverified, expired, oversized and injected requ
  assert.equal((await handler(null,{verify:async()=>({ok:false,status:401})})(request())).status,401);
  assert.equal((await handler(null)(request({...body,expiresAt:new Date(1000).toISOString()}))).status,403);
  assert.equal((await handler(null)(request({...body,scope:{...body.scope,userReference:'other'}}))).status,503);
+ const oversized=new Request('https://test.invalid',{method:'POST',headers:{'content-type':'application/json'},body:'x'.repeat(4097)});assert.equal((await handler(null)(oversized)).status,413);
  const paused=handler(null,{getSecret:()=> 'false'});assert.equal((await paused(request())).status,503);
 });
