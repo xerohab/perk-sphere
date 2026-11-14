@@ -121,7 +121,7 @@ export function canCompleteAgain(task, completedRecords, now = new Date()) {
 
 export function isInCooldown(lastCompletedAt, cooldownSeconds, now = new Date()) {
   if (!lastCompletedAt || !cooldownSeconds) return false;
-  const elapsed = (now - new Date(lastCompletedAt)) / 1000;
+  const elapsed = (now.getTime() - new Date(lastCompletedAt).getTime()) / 1000;
   return elapsed < cooldownSeconds;
 }
 
@@ -135,12 +135,12 @@ export function progressPercentage(progress, task) {
 
 export function timeRemaining(task, now = new Date()) {
   if (task.available_until) {
-    const ms = new Date(task.available_until) - now;
+    const ms = new Date(task.available_until).getTime() - now.getTime();
     if (ms <= 0) return null;
     return ms;
   }
   if (isLiveStreamTask(task) && task.event_end) {
-    const ms = new Date(task.event_end) - now;
+    const ms = new Date(task.event_end).getTime() - now.getTime();
     if (ms <= 0) return null;
     return ms;
   }

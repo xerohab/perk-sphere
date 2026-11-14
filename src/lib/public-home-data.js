@@ -5,6 +5,7 @@ function inWindow(row,start,end,now){
 }
 export async function loadPublicHomeData(client,now=new Date()){
  const timestamp=now.getTime();
+ /** @type {Array<[string, () => Promise<unknown>, (rows: any[]) => any[]]>} */
  const sections=[
   ['rewards',()=>client.entities.Reward.filter({active:true},'-created_date',50),rows=>rows.filter(row=>row&&row.active!==false&&inWindow(row,'start_date','end_date',timestamp)&&(row.unlimited_stock||Number.isSafeInteger(row.stock_available)&&row.stock_available>0)).slice(0,8)],
   ['levels',()=>client.entities.LoyaltyLevel.list('display_order',50),rows=>rows.filter(row=>row&&row.active!==false).sort((a,b)=>(a.minimum_xp||0)-(b.minimum_xp||0))],

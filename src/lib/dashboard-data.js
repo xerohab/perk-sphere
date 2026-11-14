@@ -1,6 +1,7 @@
 // Optional dashboard sections fail independently; wallet data has its own authority.
 export async function loadDashboardData(client,userId){
  if(typeof userId!=='string'||!userId)throw Error('Authenticated member required');
+ /** @type {Array<[string, () => Promise<unknown>]>} */
  const sources=[
   ['levels',()=>client.entities.LoyaltyLevel.list('-minimum_xp',50)],
   ['activities',()=>client.entities.Activity.filter({user_id:userId},'-created_date',6)],

@@ -1,7 +1,7 @@
 import {useState,useRef,useEffect,useCallback} from 'react';
 import {base44} from '@/api/base44Client';
 import {useAuth} from '@/lib/AuthContext';
-const EMPTY={partners:[],links:[],connected:[],verification:{},loadError:false,loading:true,refreshing:false};
+const EMPTY={session:null,partners:[],links:[],connected:[],verification:{},loadError:false,loading:true,refreshing:false};
 const object=value=>!!value&&typeof value==='object'&&!Array.isArray(value);
 const rows=value=>Array.isArray(value)&&value.every(row=>object(row)&&typeof row.id==='string');
 export function usePartnerAccounts(toast,{writeClipboard=text=>navigator.clipboard.writeText(text)}={}){

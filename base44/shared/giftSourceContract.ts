@@ -38,7 +38,7 @@ export function projectGiftSourceOperations(r,command){
  const out={source,readOnly:true,schemaAvailable:r.schemaAvailable,scopeIntegrityChecked:r.scopeIntegrityChecked,counts:null,issues:[...r.issues],cases:[],hasMoreCases:r.hasMoreCases,workerRunningVerified:false,providerCalls:0,financial_clearance_verified:false,production_ready:false};
  if(!r.schemaAvailable){if(r.counts!==null||r.scopeIntegrityChecked||r.hasMoreCases||r.cases.length||r.issues.join(',')!=='notification_schema_unavailable')throw Error('INVALID_OPERATIONS_REPORT');return out;}
  if(r.issues.includes('notification_schema_unavailable'))throw Error('INVALID_OPERATIONS_REPORT');
- const counts={};for(const k of operationCounts){const value=r.counts?.[k];if(k==='integrityMismatches'&&value===null&&!r.scopeIntegrityChecked)counts[k]=null;else if(integerCount(value))counts[k]=value;else throw Error('INVALID_OPERATIONS_REPORT');}
+ const counts: Record<string,string|null>={};for(const k of operationCounts){const value=r.counts?.[k];if(k==='integrityMismatches'&&value===null&&!r.scopeIntegrityChecked)counts[k]=null;else if(integerCount(value))counts[k]=value;else throw Error('INVALID_OPERATIONS_REPORT');}
  const total=BigInt(counts.total),unresolved=total-BigInt(counts.processed);
  if(['pending','processing','retry','processed','dead','unknownStates'].reduce((n,k)=>n+BigInt(counts[k]),0n)!==total||BigInt(counts.expiredLeases)>BigInt(counts.processing)||BigInt(counts.overdueUnresolved)>unresolved||r.scopeIntegrityChecked!==(total<=1000n)||counts.integrityMismatches!==null&&BigInt(counts.integrityMismatches)>total)throw Error('INVALID_OPERATIONS_REPORT');
  const expected=['unknownStates','expiredLeases','overdueUnresolved','dead'].filter(k=>BigInt(counts[k])>0n);
