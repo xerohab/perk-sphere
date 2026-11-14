@@ -6,6 +6,13 @@ This is a Base44 app repository. Treat it as user-owned application code, keep c
 
 Start with `README.md` for local setup, environment variables, and publish workflow.
 
+## Source and publishing workflow
+
+- GitHub is the source of truth. Make code changes in a Git checkout, run the repository checks, and commit and push through GitHub.
+- Use Base44 only to publish the GitHub-synced app. Do not use the Base44 builder or sandbox tools to edit source files.
+- Preserve existing local changes and inspect the branch before updating it. Never replace repository files with an older sandbox copy.
+- Run `npm test`, `npm run lint`, `npm run typecheck`, `npm run check:backend`, and `npm run build` before publishing.
+
 ## Base44 References
 
 - CLI overview: https://docs.base44.com/developers/references/cli/get-started/overview.md

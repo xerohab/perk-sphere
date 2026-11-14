@@ -4,6 +4,10 @@ Use this repository to run and edit the app locally, then publish changes back t
 
 Any change pushed to the repo will also be reflected in the Base44 Builder.
 
+GitHub is the source of truth for PerkSphere code. Edit and validate a Git checkout, then commit and push the changes. Use Base44 only to publish the GitHub-synced app; do not edit source through its builder or sandbox.
+
+The launch checks run for pushes to `main` and the existing launch-readiness branch, for pull requests, and on manual dispatch. Before publishing, confirm tests, lint, typecheck, backend syntax checks and the production build pass for the commit being published.
+
 ## Prerequisites
 
 1. Clone the repository using the project's Git URL.
