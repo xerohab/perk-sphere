@@ -33,6 +33,7 @@ const UserLayout = lazy(() => import('@/components/user/UserLayout'));
 const Dashboard = lazy(() => import('@/pages/user/Dashboard'));
 const Earn = lazy(() => import('@/pages/user/Earn'));
 const Rewards = lazy(() => import('@/pages/user/Rewards'));
+const GiftVoucher = lazy(() => import('@/pages/user/GiftVoucher'));
 const Activity = lazy(() => import('@/pages/user/Activity'));
 const Achievements = lazy(() => import('@/pages/user/Achievements'));
 const PointsHistory = lazy(() => import('@/pages/user/PointsHistory'));
@@ -129,6 +130,7 @@ const AppRoutes = () => (
           <Route path="/weekly-reports" element={<WeeklyReports />} />
           <Route path="/reward-review" element={<RewardReview />} />
           <Route path="/rewards" element={<Rewards />} />
+          <Route path="/vouchers/:intentUuid" element={<GiftVoucher />} />
           <Route path="/activity" element={<Activity />} />
           <Route path="/achievements" element={<Achievements />} />
           <Route path="/points-history" element={<PointsHistory />} />
