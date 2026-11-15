@@ -2,7 +2,7 @@ const uuid=v=>typeof v==='string'&&/^[a-f0-9]{8}(?:-[a-f0-9]{4}){3}-[a-f0-9]{12}
 const ref=v=>typeof v==='string'&&/^[A-Za-z0-9_:@.-]{1,191}$/.test(v);
 const exact=(v,k)=>v&&Object.getPrototypeOf(v)===Object.prototype&&Object.keys(v).sort().join(',')===k;
 const fail=()=>{throw Error('INVALID_PAYOUT');};
-const pence=v=>typeof v==='string'&&/^[1-9][0-9]{3,12}$/.test(v)&&BigInt(v)>=5000n&&BigInt(v)<=1000000000000n;
+const pence=v=>typeof v==='string'&&/^[1-9][0-9]{3,12}$/.test(v)&&BigInt(v)>=2000n&&BigInt(v)<=1000000000000n;
 const email=v=>typeof v==='string'&&v.length<=254&&v===v.toLowerCase()&&!v.includes('..')&&/^[A-Za-z0-9.!#$%&'*+/=?^_`{|}~-]+@[A-Za-z0-9](?:[A-Za-z0-9-]*[A-Za-z0-9])?(?:\.[A-Za-z0-9](?:[A-Za-z0-9-]*[A-Za-z0-9])?)+$/.test(v);
 const utc=v=>typeof v==='string'&&Number.isFinite(Date.parse(v))&&new Date(v).toISOString()===v;
 export function paypalPayoutCommand(b,admin=false){
@@ -17,7 +17,7 @@ export function projectPaypalPayout(r,admin=false){
 }
 export function projectPaypalPayoutResponse(r,command,admin=false){
  if(command.action==='list'){
-  if(!exact(r,'automatic_payments,has_more,items,limit,minimum_pence,offset,target_hours')||!Array.isArray(r.items)||r.items.length>command.limit||r.limit!==command.limit||r.offset!==command.offset||typeof r.has_more!=='boolean'||r.has_more&&r.items.length!==r.limit||r.minimum_pence!=='5000'||r.target_hours!==24||r.automatic_payments!==false)fail();const items=r.items.map(x=>projectPaypalPayout(x,admin));if(new Set(items.map(x=>x.payout_uuid)).size!==items.length)fail();return {...r,items};
+  if(!exact(r,'automatic_payments,has_more,items,limit,minimum_pence,offset,target_hours')||!Array.isArray(r.items)||r.items.length>command.limit||r.limit!==command.limit||r.offset!==command.offset||typeof r.has_more!=='boolean'||r.has_more&&r.items.length!==r.limit||r.minimum_pence!=='2000'||r.target_hours!==24||r.automatic_payments!==false)fail();const items=r.items.map(x=>projectPaypalPayout(x,admin));if(new Set(items.map(x=>x.payout_uuid)).size!==items.length)fail();return {...r,items};
  }
  if(!exact(r,'duplicate,request')||typeof r.duplicate!=='boolean')fail();const v=projectPaypalPayout(r.request,admin);
  if(command.action==='submit'?(v.amount_pence!==command.amount_pence||v.paypal_email!==command.paypal_email):(v.payout_uuid!==command.payout_uuid||v.version!==command.expected_version+1||v.status!==({claim:'processing',cancel:'cancelled',reject:'rejected',sent:'sent'})[command.action]||admin&&v.user_reference!==command.user_reference||command.action==='sent'&&(v.amount_pence!==command.amount_pence||v.paypal_email!==command.paypal_email||v.paypal_transaction_id!==command.paypal_transaction_id)))fail();return {duplicate:r.duplicate,request:v};

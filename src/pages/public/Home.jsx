@@ -80,7 +80,7 @@ export default function Home() {
       <section className="mx-auto max-w-6xl px-4 pt-8 sm:px-6" aria-label="Launch availability">
         <div className="rounded-2xl border border-border bg-card p-5 text-sm text-muted-foreground">
           <h2 className="font-semibold text-foreground">Start with games, check-in and partner tasks</h2>
-          <p className="mt-2">Check each activity’s displayed reward and eligibility before taking part. Social account connections are available, but social linking reward claims are paused. PayPal withdrawals have a £50 minimum and are available only when the request form is enabled in your Wallet. XP conversion and top-ups remain unavailable.</p>
+          <p className="mt-2">Check each activity’s displayed reward and eligibility before taking part. Social account connections are available, but social linking reward claims are paused. PayPal withdrawals have a £20 minimum and are available only when the request form is enabled in your Wallet. XP conversion and top-ups remain unavailable.</p>
           <Link to={isAuthenticated ? "/earn" : "/register"} className="mt-3 inline-block font-medium text-indigo-600 underline dark:text-indigo-400">{isAuthenticated ? "See ways to earn" : "Create your account"}</Link>
         </div>
       </section>

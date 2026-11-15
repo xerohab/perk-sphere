@@ -2,12 +2,12 @@
 
 Gift cards are deferred at the owner's request. Member voucher URLs redirect to the Wallet. Historical provider modules and staff recovery pages are retained for audit; this change does not delete records or rotate credentials. Current source and recovery screens remain paused, and are not launch requirements for the new payout method.
 
-The owner selected the existing planned £50 minimum and the administrator-configured Points-to-GBP rate. There is no invented conversion rate. The manual request workflow below is implemented and database-tested. Actual Points-to-GBP conversion still requires an explicitly configured, enabled rate and approved funding budget. No conversion rate or funding amount is supplied automatically.
+The owner approved a £20 minimum and a rate of 200 Points = £1 (200 Points for 100 GBP pence). The rate remains disabled until a funded payout budget is confirmed. The manual request workflow below is implemented and database-tested. Actual Points-to-GBP conversion still requires an explicitly configured, enabled rate and approved funding budget. No conversion rate or funding amount is supplied automatically.
 
 ## Manual workflow requirements
 
 - Authenticate and recheck current member eligibility and approved conversion policy. Use exact GBP pence, not floating point. Verify approved funding capacity.
-- Submit an immutable amount and PayPal destination using one durable request UUID. In one database transaction reserve the available GBP balance and create the payout request, deadline and audit. Enforce £50 per request. A retry cannot create a second hold or change the original destination.
+- Submit an immutable amount and PayPal destination using one durable request UUID. In one database transaction reserve the available GBP balance and create the payout request, deadline and audit. Enforce £20 per request. A retry cannot create a second hold or change the original destination.
 - Member sees pending review, processing, sent, rejected or cancelled. Pending is never described as paid. Store destinations privately and exclude them from general logs, analytics and public responses.
 - Staff use an authorized, audited queue with optimistic versions and an exclusive processing claim. Show the exact recipient and amount for manual PayPal sending. The target is to send approved requests within 24 hours, with overdue requests visible. PayPal receipt timing is separate.
 - Staff record the real, unique PayPal transaction ID and payment evidence after sending. Settlement debits the cash liability and releases its reserve exactly once; marking sent must not merely release a hold and leave the money spendable. A failed/uncertain send stays in processing for reconciliation, not automatic refund or resend.
@@ -24,7 +24,7 @@ Official reference: https://www.paypal.com/uk/cshelp/article/what-is-the-payouts
 
 The member Wallet now mounts `PaypalPayoutPanel`; staff with `payouts.manage` have `/admin/paypal-payouts`. The new permission belongs to Super Admin only. Gateway entries are `paypalPayouts` and `managePaypalPayouts`; SDK identity and permission are rechecked before and after dispatch. The signed source callback separately revalidates the staff account and permission for the requested action/payout. Member bodies cannot choose ownership.
 
-The Linux `/v1/perk-sphere/paypal-payouts/member` and `/admin` routes use service HMAC and nonce authentication, rate limits, strict commands and redacted failures. Requests reserve an existing GBP cash balance atomically. Each original request ID binds its amount and PayPal email. A £50 minimum applies to every request. Member cancellation and staff rejection release an unpaid hold exactly once. The generic hold-release endpoint refuses payout-managed holds.
+The Linux `/v1/perk-sphere/paypal-payouts/member` and `/admin` routes use service HMAC and nonce authentication, rate limits, strict commands and redacted failures. Requests reserve an existing GBP cash balance atomically. Each original request ID binds its amount and PayPal email. A £20 minimum applies to every request. Member cancellation and staff rejection release an unpaid hold exactly once. The generic hold-release endpoint refuses payout-managed holds.
 
 Staff claim transitions `requested` to `processing`; only the claiming staff account can record the completed PayPal transaction. Processing cannot be cancelled or rejected. A unique completed PayPal transaction ID, original email/amount and staff evidence note are required to record `sent`. Settlement reduces both GBP balance and reserved balance once, with cash journal, hold, payout state and immutable audit in one transaction. Cumulative budget allocation remains consumed after payment. This records staff attestation of a manual payment; the app does not independently verify or send it through PayPal.
 
@@ -40,3 +40,5 @@ Automatic PayPal Payouts remains outside this manual-send release. No automated 
 
 
 Release verification: API commit `9d300443885ec7432dab4a41cdf268e7984a7502` passed the PayPal, ledger and gift GitHub checks, including real isolated MariaDB tests. The six cash/payout migrations and selected modules were installed on the live API with its existing source overlays preserved. Source and database backups were created before installation. The API and database health checks passed; unsigned payout requests return 401. No real member conversion, payout request or PayPal transfer was created as a test. Browser member acceptance remains separate from this server verification.
+
+The £20 withdrawal minimum corresponds to 4,000 Points at the approved rate. Rates are configured through the audited policy service; existing Points and XP balances are not reset or revalued.

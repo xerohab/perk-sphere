@@ -8,7 +8,7 @@ export default function PaypalPayoutPanel({admin=false}){
  const {user}=useAuth(),allowed=!!user?.id&&['user','admin'].includes(user.role)&&!['disabled','banned','suspended'].includes(user.account_status)&&(!admin||user.role==='admin');
  const scope=JSON.stringify([user?.id,user?.role,user?.account_status,admin,allowed]),current=useRef(scope);current.current=scope;
  const mounted=useRef(true),token=useRef(null),saved=useRef(null),generation=useRef(0);
- const [report,setReport]=useState(null),[busy,setBusy]=useState(false),[notice,setNotice]=useState(''),[pending,setPending]=useState(null),[blocked,setBlocked]=useState(false),[amount,setAmount]=useState('50.00'),[email,setEmail]=useState(''),[consent,setConsent]=useState(false),[reason,setReason]=useState(''),[transaction,setTransaction]=useState('');
+ const [report,setReport]=useState(null),[busy,setBusy]=useState(false),[notice,setNotice]=useState(''),[pending,setPending]=useState(null),[blocked,setBlocked]=useState(false),[amount,setAmount]=useState('20.00'),[email,setEmail]=useState(''),[consent,setConsent]=useState(false),[reason,setReason]=useState(''),[transaction,setTransaction]=useState('');
  const storageKey='perksphere-paypal-payout:'+user?.id+':'+(admin?'staff':'member');
  useEffect(()=>{mounted.current=true;return()=>{mounted.current=false;generation.current++;};},[]);
  useEffect(()=>{generation.current++;token.current=null;saved.current=null;setReport(null);setNotice('');setPending(null);setBlocked(false);setBusy(false);setEmail('');setConsent(false);setReason('');setTransaction('');
@@ -46,14 +46,14 @@ export default function PaypalPayoutPanel({admin=false}){
  }
  const data=report?.scope===scope?report:null,locked=busy||!!pending||blocked;
  if(!allowed)return null;
- function submit(e){e.preventDefault();if(!consent)return;try{run({action:'submit',request_reference:crypto.randomUUID(),amount_pence:payoutPence(amount),paypal_email:email.trim().toLowerCase()});}catch{setNotice('Enter a valid amount of at least £50.');}}
+ function submit(e){e.preventDefault();if(!consent)return;try{run({action:'submit',request_reference:crypto.randomUUID(),amount_pence:payoutPence(amount),paypal_email:email.trim().toLowerCase()});}catch{setNotice('Enter a valid amount of at least £20.');}}
  function change(row,action){if(!admin&&action==='cancel'&&!window.confirm('Cancel this unpaid request and release its reserved balance?'))return;
   if(action==='sent'&&!window.confirm('Confirm you have already sent the exact amount to this PayPal email and checked its completed PayPal transaction. This records payment; it does not send one.'))return;
   run({action,payout_uuid:row.payout_uuid,expected_version:row.version,reason:action==='cancel'?'Member cancelled unpaid request':reason,...(admin?{user_reference:row.user_reference}:{}),...(action==='sent'?{amount_pence:row.amount_pence,paypal_email:row.paypal_email,paypal_transaction_id:transaction.trim().toUpperCase()}:{})});
  }
  return <section className="space-y-4 rounded-xl border bg-card p-5" aria-label={admin?'PayPal payout queue':'PayPal withdrawals'}>
   <h2 className="font-semibold">{admin?'PayPal payout queue':'PayPal withdrawals'}</h2>
-  <p className="text-sm">Minimum £50. We aim to send approved requests within 24 hours of submission. PayPal processing and account checks may delay receipt. Payments are processed manually.</p>
+  <p className="text-sm">Minimum £20. We aim to send approved requests within 24 hours of submission. PayPal processing and account checks may delay receipt. Payments are processed manually.</p>
   <button className="rounded border px-3 py-2" disabled={busy} onClick={()=>run({action:'list',limit:25,offset:0})}>Check requests</button>
   {data?.enabled===false&&<p role="status">PayPal withdrawal requests are not open yet.</p>}
   {pending&&<div className="rounded border p-3"><p>An earlier {pending.action} request is awaiting confirmation. Its original amount and destination are locked.</p><button disabled={busy||blocked} onClick={()=>run(pending)}>Retry original request</button></div>}
