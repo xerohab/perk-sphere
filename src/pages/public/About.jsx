@@ -47,7 +47,7 @@ export default function About() {
             Perk Sphere records eligible in-site activities and evidence from supported integrations. Partner tasks use your linked account and the partner’s verification. Browser tracking is separate, requires a supported client and your explicit consent, and does not make every page visit rewardable. External account connections are added only with your consent.
           </p>
           <p className="mt-3 text-sm text-muted-foreground">
-            Some integrations are still being developed. Account connection alone does not verify views, likes, follows or comments. Store redemption and XP conversion are currently unavailable. PayPal is the withdrawal method, with a £20 minimum; check your Wallet for request availability.
+            Some integrations are still being developed. Account connection alone does not verify views, likes, follows or comments. Store redemption and XP conversion are currently unavailable. PayPal is the withdrawal method, in £20 blocks; check your Wallet for request availability.
           </p>
         </div>
 

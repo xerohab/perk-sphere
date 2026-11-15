@@ -42,3 +42,5 @@ Automatic PayPal Payouts remains outside this manual-send release. No automated 
 Release verification: API commit `9d300443885ec7432dab4a41cdf268e7984a7502` passed the PayPal, ledger and gift GitHub checks, including real isolated MariaDB tests. The six cash/payout migrations and selected modules were installed on the live API with its existing source overlays preserved. Source and database backups were created before installation. The API and database health checks passed; unsigned payout requests return 401. No real member conversion, payout request or PayPal transfer was created as a test. Browser member acceptance remains separate from this server verification.
 
 The £20 withdrawal minimum corresponds to 4,000 Points at the approved rate. Rates are configured through the audited policy service; existing Points and XP balances are not reset or revalued.
+
+Withdrawals must be whole £20 blocks (2,000 pence): £20, £40, £60, etc. The member form, command contract, server submission and database constraint enforce the increment. At the approved rate, each block requires 4,000 Points. Funding and request gates remain unchanged.
