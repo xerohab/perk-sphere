@@ -74,6 +74,6 @@ export default function Wallet(){
   </section>
   <MemberCashWallet/>
   <CashConversionPanel onConfirmed={refresh}/>
-  <section className="rounded-2xl border p-5"><h2 className="font-semibold">Money and gift cards</h2><p>Withdrawals, gift-card redemption and Points top-ups are not available yet. Cash conversion requires the separately enabled reviewed policy.</p></section>
+  <section className="rounded-2xl border p-5"><h2 className="font-semibold">PayPal withdrawals</h2><p>PayPal will be the withdrawal method, with a £50 minimum and a target to send approved requests within 24 hours. Request submission is not open yet. Your Points remain in your wallet until the conversion and payout service is enabled.</p><p className="mt-2 text-sm text-muted-foreground">PayPal processing or account checks may delay receipt. Gift cards have been removed from the current offering.</p></section>
  </div>;
 }

@@ -88,7 +88,7 @@ export default function Rewards() {
       <div>
         <PageHeader title="Rewards Catalogue" description={wallet ? `Your balance: ${formatWalletInteger(displayPoints)} points` : "Your balance is temporarily unavailable"} />
         {walletError && <div role="alert" className="mb-4 rounded-lg border p-4">{walletError} <Button variant="outline" onClick={refreshWallet}>Retry balance</Button></div>}
-        <p role="status" className="mb-4 rounded-lg border p-4">Catalogue preview only. Your Points remain in your wallet. Redemption, cash withdrawals and gift-card fulfilment are not available at this launch.</p>
+        <p role="status" className="mb-4 rounded-lg border p-4">Catalogue preview only. Your Points remain in your wallet. Redemption is not available at this launch. PayPal withdrawal requests are not open yet.</p>
         {error && <div role="alert" className="mb-4 rounded-lg border border-destructive p-4"><p>{error}</p><Button variant="outline" onClick={() => load()}>Retry</Button></div>}
         {rewards.length === 0 ? (
           <EmptyState title="No rewards available" description="New rewards will appear here when published by administrators." />
