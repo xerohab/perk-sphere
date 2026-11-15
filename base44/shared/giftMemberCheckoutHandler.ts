@@ -14,7 +14,7 @@ export function createGiftMemberCheckoutHandler({getClient,getSecret,post}){
    try{while(true){const {done,value}=await reader.read();if(done)break;size+=value.byteLength;if(size>12288)return reply(413,{error:'request_too_large'});raw+=decoder.decode(value,{stream:true});}raw+=decoder.decode();}catch{return reply(400,{error:'invalid_request'});}finally{await reader.cancel().catch(()=>{});}
    let command;try{command=giftMemberCheckoutRequest(JSON.parse(raw));}catch{return reply(400,{error:'invalid_request'});}
    const current=async()=>enabled()&&(await member())?.id===actor&&enabled();if(!await current())return reply(403,{error:'request_denied'});
-   const {action,...body}=command,path=action==='quote'?'/v1/perk-sphere/gifts/quotes':'/v1/perk-sphere/gifts/checkouts/prepare';
+   const {action,...body}=command,path=action==='confirmation'?'/v1/perk-sphere/gifts/confirmations':action==='quote'?'/v1/perk-sphere/gifts/quotes':'/v1/perk-sphere/gifts/checkouts/prepare';
    const result=await post(path,{...body,actor:{role:'member',user_reference:actor}});if(!result?.ok||!await current())throw Error();
    const data=projectGiftMemberCheckoutResult(result.data,command);if(!await current())throw Error();return reply(200,{data});
   }catch{return reply(503,{error:'checkout_unavailable'});}

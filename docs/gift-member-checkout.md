@@ -7,3 +7,13 @@ The existing Linux client signs only the fixed `/v1/perk-sphere/gifts/quotes` an
 The trusted callback verifies the existing inbound HMAC before service-role account lookup. It checks current account role/status and the member gate; it does not verify buyer market, age, recipient semantics or funding. Its nonce is a signed request identity, not an SDK session token. The member gateway's separate SDK checks are the login-session boundary. The Linux quote/checkout policy adapters still require independently verified buyer/recipient evidence and approved terms.
 
 These two functions and their contract are source preparation only; this commit does not publish them, enable their gate or mount Linux routes. No checkout UI is offered and no provider transaction is created. Exact quote/preparation request identities must be retained across uncertainty; an unavailable response is not proof that no database record was committed. Production composition, genuine member/provider acceptance and independent backup/restore remain outstanding.
+
+### Member declaration follow-up — 15 November 2026
+
+The `giftMemberCheckout` gateway now accepts a `confirmation` action at the fixed signed `/v1/perk-sphere/gifts/confirmations` endpoint. Read requests contain `operation: read`, `offerReference` and `fields`; revision requests additionally contain `requestReference`, `expectedVersion`, `country`, nullable `region` and boolean `approved`. The authenticated account supplies ownership. The authority callback binds permission `gift_buyer:confirm` to the exact command digest.
+
+Declarations are explicitly self-reported (`source: member_confirmation`, `independentlyVerified: false`). Recipient values are fingerprinted for scope binding, not stored by the declaration service. Country and optional region are saved. Reads require an active account and matching audit evidence. Revisions require compare-and-swap versioning; identical retries preserve the original audit entry. Withdrawal or a subsequent revision invalidates previously bound quotes.
+
+`GiftMemberConfirmation` provides an explicit-load form, approval/withdrawal controls, same-request retry after an uncertain save, and account/offer-change response protection. It takes the selected offer and recipient fields from its parent. It is not mounted in the public checkout: authoritative offer recipient-field metadata still needs wiring before that integration. No user-facing arbitrary JSON input has been added.
+
+All service, confirmation read/write and member gateway gates remain operator-controlled. This batch does not publish or activate checkout, payment, capture, fulfilment or voucher delivery. Production acceptance still requires real provider configuration and the complete mounted checkout flow.
