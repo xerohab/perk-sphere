@@ -17,6 +17,7 @@ const navItems = [
   { label: "Points", path: "/admin/points", icon: Coins, permission: "ledger.view" },
   { label: "Loyalty XP", path: "/admin/loyalty", icon: TrendingUp, permission: "loyalty.view" },
   { label: "Rewards", path: "/admin/rewards", icon: Gift, permission: "rewards.view" },
+  { label: "PayPal payouts", path: "/admin/paypal-payouts", icon: Coins, permission: "payouts.manage" },
   { label: "Redemptions", path: "/admin/redemptions", icon: ClipboardCheck, permission: "redemptions.view" },
   { label: "Reward Review", path: "/admin/reward-review", icon: ClipboardCheck, permission: "rewards.view" },
   { label: "Destinations", path: "/admin/destinations", icon: Globe, permission: "destinations.view" },

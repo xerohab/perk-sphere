@@ -19,3 +19,21 @@ The owner selected the existing planned £50 minimum and the administrator-confi
 PayPal Payouts can replace the manual send step after business account approval, adequate PayPal balance, credentials and sandbox/live acceptance. Use a persisted sender batch/item identity, strict recipient/currency/amount binding, authenticated status/webhook evidence and recovery of uncertain responses. A successful HTTP submission is not proof the recipient was paid. Automatic sending remains disabled and no credentials or financial gates were changed in this release.
 
 Official reference: https://www.paypal.com/uk/cshelp/article/what-is-the-payouts-api-formerly-known-as-mass-pay-and-how-to-apply-for-it-help250
+
+## Implemented request workflow
+
+The member Wallet now mounts `PaypalPayoutPanel`; staff with `payouts.manage` have `/admin/paypal-payouts`. The new permission belongs to Super Admin only. Gateway entries are `paypalPayouts` and `managePaypalPayouts`; SDK identity and permission are rechecked before and after dispatch. The signed source callback separately revalidates the staff account and permission for the requested action/payout. Member bodies cannot choose ownership.
+
+The Linux `/v1/perk-sphere/paypal-payouts/member` and `/admin` routes use service HMAC and nonce authentication, rate limits, strict commands and redacted failures. Requests reserve an existing GBP cash balance atomically. Each original request ID binds its amount and PayPal email. A £50 minimum applies to every request. Member cancellation and staff rejection release an unpaid hold exactly once. The generic hold-release endpoint refuses payout-managed holds.
+
+Staff claim transitions `requested` to `processing`; only the claiming staff account can record the completed PayPal transaction. Processing cannot be cancelled or rejected. A unique completed PayPal transaction ID, original email/amount and staff evidence note are required to record `sent`. Settlement reduces both GBP balance and reserved balance once, with cash journal, hold, payout state and immutable audit in one transaction. Cumulative budget allocation remains consumed after payment. This records staff attestation of a manual payment; the app does not independently verify or send it through PayPal.
+
+The queue prioritizes processing and requested items; pagination and overdue indicators are available. Client commands survive uncertain replies in per-member tab session storage, freeze original terms and retry the same identity. Corrupt recovery data blocks replacement requests. Account changes suppress late output. Full PayPal email destinations are visible only in authenticated member-owned responses or the authorized staff queue; they must not enter analytics or generic logs.
+
+## Deployment and activation
+
+Apply the five existing `20261031_cash_*` migrations and then `20261115_paypal_payout_requests.sql`. Install the cash modules and three payout modules together, preserving live server overlays. Existing tables receive additive paid-status support; no member cash, conversion rate, budget or PayPal credential is seeded.
+
+Linux requires `PERKSPHERE_CASH_ACCOUNTING_ENABLED` and `PERKSPHERE_PAYPAL_PAYOUT_REQUESTS_ENABLED`; member conversion, cash reads and policy/budget administration retain their existing independent gates. Base44 requires `PERKSPHERE_PAYPAL_PAYOUT_REQUESTS_ENABLED`, `PERKSPHERE_CASH_SOURCE_ENABLED`, `PERKSPHERE_CASH_WALLET_READ_ENABLED` and `PERKSPHERE_LINUX_LEDGER_AUTHORITATIVE`; conversion also needs `PERKSPHERE_CASH_MEMBER_ENABLED`. Set admin policy and budget gates for configuration, create explicit disabled rules first, then approve the real rate and funding ceiling. No money can be created from a missing rule or empty budget.
+
+Automatic PayPal Payouts remains outside this manual-send release. No automated payment credentials are required for staff sending in PayPal. Production activation must not invent a rate or claim an unverified funding reserve.

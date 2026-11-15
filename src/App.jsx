@@ -55,6 +55,7 @@ const RewardReview = lazy(() => import('@/pages/user/RewardReview'));
 // Admin panel - lazy loaded
 const AdminLayout = lazy(() => import('@/components/admin/AdminLayout'));
 const AdminDashboard = lazy(() => import('@/pages/admin/AdminDashboard'));
+const AdminPaypalPayouts = lazy(() => import('@/pages/admin/AdminPaypalPayouts'));
 const AdminLaunchChecks = lazy(() => import('@/pages/admin/AdminLaunchChecks'));
 const AdminUsers = lazy(() => import('@/pages/admin/AdminUsers'));
 const AdminUserDetail = lazy(() => import('@/pages/admin/AdminUserDetail'));
@@ -176,6 +177,7 @@ const AppRoutes = () => (
           <Route path="/admin/audit" element={<AdminAuditLog />} />
           <Route path="/admin/roles" element={<AdminRoles />} />
           <Route path="/admin/settings" element={<AdminSettings />} />
+          <Route path="/admin/paypal-payouts" element={<AdminPaypalPayouts />} />
           <Route path="/admin/gift-sources" element={<AdminGiftSources />} />
           <Route path="/admin/gift-checkout-recovery" element={<AdminGiftCheckoutRecovery />} />
         </Route>

@@ -80,7 +80,7 @@ export default function Home() {
       <section className="mx-auto max-w-6xl px-4 pt-8 sm:px-6" aria-label="Launch availability">
         <div className="rounded-2xl border border-border bg-card p-5 text-sm text-muted-foreground">
           <h2 className="font-semibold text-foreground">Start with games, check-in and partner tasks</h2>
-          <p className="mt-2">Check each activity’s displayed reward and eligibility before taking part. Social account connections are available, but social linking reward claims are paused. PayPal withdrawals are planned with a £50 minimum; requests are not open yet. XP conversion and top-ups remain unavailable.</p>
+          <p className="mt-2">Check each activity’s displayed reward and eligibility before taking part. Social account connections are available, but social linking reward claims are paused. PayPal withdrawals have a £50 minimum and are available only when the request form is enabled in your Wallet. XP conversion and top-ups remain unavailable.</p>
           <Link to={isAuthenticated ? "/earn" : "/register"} className="mt-3 inline-block font-medium text-indigo-600 underline dark:text-indigo-400">{isAuthenticated ? "See ways to earn" : "Create your account"}</Link>
         </div>
       </section>
@@ -118,7 +118,7 @@ export default function Home() {
             </div>
             <h3 className="mt-4 text-2xl font-bold">Points</h3>
             <p className="mt-2 text-muted-foreground">
-              Perk Sphere Points record what you earn from eligible activities. They are separate from Loyalty XP. Store redemption and cash withdrawals are not available at this launch.
+              Perk Sphere Points record what you earn from eligible activities. They are separate from Loyalty XP. Store redemption is paused. Check your Wallet for PayPal withdrawal availability.
             </p>
           </div>
           <div className="rounded-2xl border border-border bg-gradient-to-br from-amber-50 to-background p-8 dark:from-amber-950/20 dark:to-background">

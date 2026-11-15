@@ -3,7 +3,7 @@ import {useAuth} from '@/lib/AuthContext';
 import {base44} from '@/api/base44Client';
 import {Button} from '@/components/ui/button';
 import {readMemberCashWallet,formatGbpPence} from '@/lib/member-cash-wallet-client';
-const labels={points_conversion:'Points converted to GBP accounting balance',withdrawal_hold:'Internal withdrawal hold — no payment',withdrawal_release:'Internal hold released — no payment'};
+const labels={points_conversion:'Points converted to GBP accounting balance',withdrawal_hold:'Internal withdrawal hold — no payment',withdrawal_release:'Internal hold released — no payment',withdrawal_paid:'PayPal payment recorded by staff'};
 function Panel({user}){
  const [visible,setVisible]=useState(false),[data,setData]=useState(null),[busy,setBusy]=useState(false),[notice,setNotice]=useState('');
  const mounted=useRef(false),generation=useRef(0),running=useRef(false);
@@ -17,12 +17,12 @@ function Panel({user}){
  if(!visible)return null;
  return <section className="rounded-2xl border p-5 space-y-4" aria-labelledby="cash-record-heading">
   <h2 id="cash-record-heading" className="font-semibold">GBP accounting record</h2>
-  <p className="text-sm">This read-only record does not submit a conversion or payment. Withdrawals, payouts, gift cards and top-ups are unavailable.</p>
+  <p className="text-sm">This read-only record does not submit a conversion or payment. Use the PayPal withdrawals section for requests when available.</p>
   <Button variant="outline" disabled={busy} onClick={()=>load(0)}>{busy?'Checking…':'Refresh cash record'}</Button>
   {notice&&<p role="status" className="text-sm">{notice}</p>}
   {data&&<>
    <dl className="grid gap-3 sm:grid-cols-3"><div><dt className="text-sm text-muted-foreground">Recorded total</dt><dd className="font-semibold">{formatGbpPence(data.balance_pence)}</dd></div><div><dt className="text-sm text-muted-foreground">Reserved internally</dt><dd className="font-semibold">{formatGbpPence(data.reserved_pence)}</dd></div><div><dt className="text-sm text-muted-foreground">Unreserved balance</dt><dd className="font-semibold">{formatGbpPence(data.available_pence)}</dd></div></dl>
-   <p className="text-sm">The planned withdrawal threshold is {formatGbpPence(data.withdrawal_threshold_pence)}. Reaching it does not enable withdrawals or confirm provider funding.</p>
+   <p className="text-sm">The withdrawal minimum is {formatGbpPence(data.withdrawal_threshold_pence)}. Reaching it does not itself submit a request or confirm payment funding.</p>
    {data.cash_actions_blocked&&<p role="status" className="text-sm">This account requires cash review. This view does not clear a review or release funds.</p>}
    <h3 className="font-medium">Recorded activity</h3>
    {data.history.length===0?<p className="text-sm">No recorded cash activity.</p>:<ol className="space-y-3">{data.history.map(row=><li key={row.operation_uuid} className="rounded border p-3 text-sm space-y-1"><p className="font-medium">{labels[row.operation_type]}</p><p>Balance change: {formatGbpPence(row.balance_delta_pence)} · Reserve change: {formatGbpPence(row.reserve_delta_pence)}</p>{row.points_spent!=='0'&&<p>Points spent: {BigInt(row.points_spent).toLocaleString('en-GB')}</p>}<time dateTime={row.created_at}>{new Date(row.created_at).toLocaleString()}</time></li>)}</ol>}

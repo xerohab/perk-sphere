@@ -6,6 +6,7 @@ import {isProviderConfigured} from '../../shared/oauth.ts';
 import {socialLinkEvidence} from '../../shared/socialEvidence.ts';
 import {readPartnerTaskPolicy} from '../../shared/partnerTaskPolicy.ts';
 import {readCashEligibility} from '../../shared/cashEligibility.ts';
+import {loadStaff,evaluateAccess} from '../../shared/permissions.ts';
 const PATH='/functions/trustedLaunchSource';
 const headers={'Cache-Control':'no-store'};
 const fail=(status,error)=>Response.json({ok:false,error},{status,headers});
@@ -43,6 +44,12 @@ async function handleRequest(req) {
   if(action==='social_link_evidence'){
    if(Object.keys(body).sort().join(',')!=='action,provider,user_reference')return fail(400,'invalid_request');
    return Response.json({ok:true,data:await socialLinkEvidence(admin,{provider:body.provider,userReference:body.user_reference})},{headers});
+  }
+  if(action==='paypal_payout_staff'){
+   if(Object.keys(body).sort().join(',')!=='action,operation,payout_uuid,user_reference'||!['list','claim','reject','sent'].includes(body.operation)||typeof body.user_reference!=='string'||!/^[A-Za-z0-9_:@.-]{1,191}$/.test(body.user_reference)||(body.operation==='list'?body.payout_uuid!==null:typeof body.payout_uuid!=='string'||!/^[a-f0-9]{8}(?:-[a-f0-9]{4}){3}-[a-f0-9]{12}$/.test(body.payout_uuid)))return fail(400,'invalid_request');
+   const enabled=()=>secrets.get('PERKSPHERE_PAYPAL_PAYOUT_REQUESTS_ENABLED')==='true';
+   const user=await admin.entities.User.get(body.user_reference).catch(()=>null),staff=await loadStaff(admin,user);
+   return Response.json({ok:true,data:{user_reference:body.user_reference,operation:body.operation,payout_uuid:body.payout_uuid,authorized:enabled()&&evaluateAccess(user,staff,'payouts.manage').ok}},{headers});
   }
   if(action==='cash_eligibility'){
    if(Object.keys(body).sort().join(',')!=='action,operation,user_reference')return fail(400,'invalid_request');
