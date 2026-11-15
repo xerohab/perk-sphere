@@ -34,7 +34,7 @@ export default function PaypalPayoutPanel({admin=false}){
     try{sessionStorage.removeItem(storageKey);if(sessionStorage.getItem(storageKey)!==null)throw Error();saved.current=null;setPending(null);}
     catch{setBlocked(true);setNotice('The request is confirmed, but recovery storage could not be cleared. Contact support before another request.');return;}
     setReport(old=>old?.scope===scope?{...old,items:[result.request,...(old.items||[]).filter(r=>r.payout_uuid!==result.request.payout_uuid)].slice(0,25)}:{scope,enabled:true,items:[result.request],has_more:false});
-    setNotice(command.action==='submit'?'Request received. The amount is reserved until it is paid or cancelled.':command.action==='sent'?'Payment recorded as sent by staff.':'Request status updated.');setConsent(false);setTransaction('');setReason('');
+    setNotice(command.action==='submit'?(result.request.status==='sent'?'Your original request is already recorded as sent.':['rejected','cancelled'].includes(result.request.status)?'Your original request is closed. No additional amount was reserved.':'Request received. The amount is reserved until it is paid or cancelled.'):command.action==='sent'?'Payment recorded as sent by staff.':'Request status updated.');setConsent(false);setTransaction('');setReason('');
    }
   }catch(error){if(live()){
    if(command.action==='submit'&&error?.response?.status===409&&error.response.data?.error==='PAYOUT_INSUFFICIENT_FUNDS'){

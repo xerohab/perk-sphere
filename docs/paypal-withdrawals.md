@@ -2,9 +2,9 @@
 
 Gift cards are deferred at the owner's request. Member voucher URLs redirect to the Wallet. Historical provider modules and staff recovery pages are retained for audit; this change does not delete records or rotate credentials. Current source and recovery screens remain paused, and are not launch requirements for the new payout method.
 
-The owner selected the existing planned £50 minimum and the administrator-configured Points-to-GBP rate. There is no invented conversion rate. PayPal request submission remains closed until the actual accounting and payout workflow below is implemented and verified. The published copy explicitly states this; no request form accepts unsupported financial instructions.
+The owner selected the existing planned £50 minimum and the administrator-configured Points-to-GBP rate. There is no invented conversion rate. The manual request workflow below is implemented and database-tested. Actual Points-to-GBP conversion still requires an explicitly configured, enabled rate and approved funding budget. No conversion rate or funding amount is supplied automatically.
 
-## Required manual workflow
+## Manual workflow requirements
 
 - Authenticate and recheck current member eligibility and approved conversion policy. Use exact GBP pence, not floating point. Verify approved funding capacity.
 - Submit an immutable amount and PayPal destination using one durable request UUID. In one database transaction reserve the available GBP balance and create the payout request, deadline and audit. Enforce £50 per request. A retry cannot create a second hold or change the original destination.
@@ -37,3 +37,6 @@ Apply the five existing `20261031_cash_*` migrations and then `20261115_paypal_p
 Linux requires `PERKSPHERE_CASH_ACCOUNTING_ENABLED` and `PERKSPHERE_PAYPAL_PAYOUT_REQUESTS_ENABLED`; member conversion, cash reads and policy/budget administration retain their existing independent gates. Base44 requires `PERKSPHERE_PAYPAL_PAYOUT_REQUESTS_ENABLED`, `PERKSPHERE_CASH_SOURCE_ENABLED`, `PERKSPHERE_CASH_WALLET_READ_ENABLED` and `PERKSPHERE_LINUX_LEDGER_AUTHORITATIVE`; conversion also needs `PERKSPHERE_CASH_MEMBER_ENABLED`. Set admin policy and budget gates for configuration, create explicit disabled rules first, then approve the real rate and funding ceiling. No money can be created from a missing rule or empty budget.
 
 Automatic PayPal Payouts remains outside this manual-send release. No automated payment credentials are required for staff sending in PayPal. Production activation must not invent a rate or claim an unverified funding reserve.
+
+
+Release verification: API commit `9d300443885ec7432dab4a41cdf268e7984a7502` passed the PayPal, ledger and gift GitHub checks, including real isolated MariaDB tests. The six cash/payout migrations and selected modules were installed on the live API with its existing source overlays preserved. Source and database backups were created before installation. The API and database health checks passed; unsigned payout requests return 401. No real member conversion, payout request or PayPal transfer was created as a test. Browser member acceptance remains separate from this server verification.
