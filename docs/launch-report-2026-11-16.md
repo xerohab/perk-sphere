@@ -1,5 +1,12 @@
 # PerkSphere release verification — 16 November 2026
 
+## PayPal activation update — 16 November 2026
+
+The owner subsequently selected a £100 total funding ceiling and authorized activation. The audited GBP budget is enabled at 10,000 pence, version 2; conversion policy version 2 is enabled at 200 Points per 100 pence. Funding is owner-declared, not independently verified bank/provider evidence. Member cash and PayPal request gates are enabled on the API and app. Service and database health passed after restart. The signed member list route returned HTTP 200 with minimum 2,000 pence, target 24 hours, automatic_payments false and zero requests; no payout or cash conversion was created. Requests remain in exact £20 blocks and staff make transfers manually. No payment was sent by this activation.
+
+The earlier paused-state checks below are retained as historical evidence. They no longer describe current withdrawal availability. Genuine member end-to-end acceptance and a real manual payout remain unverified.
+
+
 Decision: automated and public-page checks pass. Official-launch acceptance is still pending a genuine signed-in member journey. PayPal withdrawals must remain paused until a funded conversion budget is approved. A £20 request increment is not a total funding ceiling.
 
 ## Release identities

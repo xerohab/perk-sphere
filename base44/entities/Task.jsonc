@@ -214,6 +214,16 @@
     },
     "terms": {
       "type": "string"
+    },
+    "bot_generation_key": {
+      "type": "string"
+    },
+    "bot_review_required": {
+      "type": "boolean",
+      "default": false
+    },
+    "bot_review_note": {
+      "type": "string"
     }
   },
   "required": [

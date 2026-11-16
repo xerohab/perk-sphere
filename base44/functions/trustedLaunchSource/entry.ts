@@ -7,10 +7,11 @@ import {socialLinkEvidence} from '../../shared/socialEvidence.ts';
 import {readPartnerTaskPolicy} from '../../shared/partnerTaskPolicy.ts';
 import {readCashEligibility} from '../../shared/cashEligibility.ts';
 import {loadStaff,evaluateAccess} from '../../shared/permissions.ts';
+import {botPlan,createBotDraft} from '../../shared/dailyTaskBot.ts';
 const PATH='/functions/trustedLaunchSource';
 const headers={'Cache-Control':'no-store'};
 const fail=(status,error)=>Response.json({ok:false,error},{status,headers});
-// Signed read-only launch/source API. The extension configuration API keeps its
+// Signed launch/source API. Task-bot writes create private zero-reward drafts only. The extension configuration API keeps its
 // existing URL and contract. Nonce storage is the only authentication-side write.
 async function handleRequest(req) {
  if(req.method!=='POST')return fail(405,'method_not_allowed');
@@ -19,6 +20,14 @@ async function handleRequest(req) {
   const auth=await verifyTrustedRequest(req,admin,PATH);
   if(!auth.ok)return fail(auth.status,auth.code);
   const body=JSON.parse(auth.rawBody),action=body?.action;
+  if(action==='task_bot_plan'){
+   if(Object.keys(body).join(',')!=='action')return fail(400,'invalid_request');
+   return Response.json({ok:true,data:await botPlan(admin)},{headers});
+  }
+  if(action==='task_bot_create_draft'){
+   if(Object.keys(body).sort().join(',')!=='action,generation_key')return fail(400,'invalid_request');
+   return Response.json({ok:true,data:await createBotDraft(admin,body.generation_key)},{headers});
+  }
   if(action==='launch_readiness'){
    if(Object.keys(body).join(',')!=='action')return fail(400,'invalid_request');
    const controls=await admin.entities.Setting.filter({key:'perk_sphere_balance_reset_freeze'});

@@ -10,6 +10,7 @@ export function fullWatchError(task){
  return null;
 }
 export function taskActivationError(task,{partnerTasksEnabled=false}={}){
+ if(task?.bot_review_required===true)return 'Bot drafts require reward, verified duration, player binding and worker registration review before publishing.';
  if(task?.reward_processing==='linux_partner'&&!partnerTasksEnabled)return 'Partner task rewards are not activated. Complete the independent transactional verification integration before publishing.';
  return fullWatchError(task);
 }

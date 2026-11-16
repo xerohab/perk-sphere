@@ -8,6 +8,7 @@ import ResponsiveTable from "@/components/perk/ResponsiveTable";
 import StatusBadge from "@/components/perk/StatusBadge";
 import ConfirmDialog from "@/components/perk/ConfirmDialog";
 import TaskWizard from "@/components/perk/TaskWizard";
+import DailyTaskBotAdmin from "@/components/perk/DailyTaskBotAdmin";
 import VerifiedStreakAdmin from "@/components/perk/VerifiedStreakAdmin";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -78,7 +79,7 @@ export default function AdminTasks() {
   const typeLabel = (t) => TASK_TYPES.find((x) => x.value === t)?.label || t;
 
   const cols = [
-    { key: "name", label: "Task", render: (t) => (<div><p className="font-medium">{t.name}</p><p className="text-xs text-muted-foreground">{typeLabel(t.task_type)}{t.verification_mode === "trusted_automatic" ? " · Trusted Auto" : t.verification_mode === "manual" ? " · Manual" : ""}</p></div>) },
+    { key: "name", label: "Task", render: (t) => (<div><p className="font-medium">{t.name}</p>{t.bot_review_required && <p className="text-xs text-amber-700">Bot draft · Review required</p>}<p className="text-xs text-muted-foreground">{typeLabel(t.task_type)}{t.verification_mode === "trusted_automatic" ? " · Trusted Auto" : t.verification_mode === "manual" ? " · Manual" : ""}</p></div>) },
     { key: "destination_name", label: "Destination", render: (t) => t.destination_name || "—" },
     { key: "points_reward", label: "Reward", render: (t) => {
       const hasReward = t.points_reward > 0 || t.xp_reward > 0;
@@ -113,6 +114,7 @@ export default function AdminTasks() {
     <div>
       <PageHeader title="Tasks" description={`${tasks.filter((t) => t.active && !t.archived).length} active · ${tasks.length} total`} actions={<Button size="sm" onClick={() => { setEditing(null); setWizardOpen(true); }}><Plus className="mr-1 h-4 w-4" /> Create Task</Button>} />
 
+      <DailyTaskBotAdmin />
       <VerifiedStreakAdmin tasks={tasks} />
 
       <Tabs defaultValue="tasks" onValueChange={(v) => v === "analytics" && !stats && loadStats()}> 
