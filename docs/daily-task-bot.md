@@ -6,7 +6,7 @@ At 09:00 Europe/London a single runner on the API host fetches the fixed public 
 
 The catalog exposes sanitized public-page metadata, never playback URLs or member information. Coming-soon, paid, adult, non-HTTPS and YouTube content are excluded. Full-episode duration comes only from an enabled media-probe/provider record whose hash matches the current media URL. Missing duration yields a clearly blocked draft, not a guessed runtime. Source titles are data and are never executed or passed to an LLM.
 
-Drafts have zero Points/XP, are inactive/private, and carry `bot_review_required`. Publication rejects that flag. Automated reward publication is NOT enabled: an operator still needs to verify duration, approve reward rates and destination eligibility, add the XeroStreams player task binding and register the new task with the Linux verification worker. Existing workers accept explicitly registered tasks, so creating a Task record alone does not enable rewards. Do not clear the review flag before those steps are verified.
+Private drafting does not enable destination tracking. Drafts have zero Points/XP, are inactive/private, and carry `bot_review_required`. Publication rejects that flag. Automated reward publication is NOT enabled: an operator still needs to verify duration, approve reward rates and destination eligibility, add the XeroStreams player task binding and register the new task with the Linux verification worker. Existing workers accept explicitly registered tasks, so creating a Task record alone does not enable rewards. Do not clear the review flag before those steps are verified.
 
 ## Durable dispatch
 

@@ -57,7 +57,7 @@ export async function createBotDraft(admin,generationKey,{fetchImpl,now=Date.now
  if(existing.length>1)throw Error('Duplicate drafts require review');if(existing.length===1)return {task_id:existing[0].id,existing:true};
  const plan=await botPlan(admin,{fetchImpl,now}),candidate=plan.candidates.find(c=>c.generation_key===generationKey);if(!candidate)throw Error('Content no longer eligible for drafting');
  const destinations=await admin.entities.Website.filter({domain:'xerostreams.com'},'-created_date',2);
- if(destinations.length!==1||destinations[0].eligibility!=='allowed'||destinations[0].status==='inactive'||destinations[0].tracking_enabled===false)throw Error('An enabled Allowed XeroStreams destination is required');
+ if(destinations.length!==1||destinations[0].eligibility!=='allowed'||destinations[0].status==='inactive')throw Error('An enabled Allowed XeroStreams destination is required');
  const website=destinations[0],d=candidate.duration;
  const task=await admin.entities.Task.create({name:`${candidate.mode==='full_episode'?'Watch the full episode':'Watch '+candidate.required_seconds+' seconds'}: ${candidate.title}`,
  description:candidate.review_note,task_type:'watch_video',destination_type:'website',destination_id:website.id,destination_name:website.site_name||'XeroStreams',destination_platform:'website',content_id:candidate.content_id,content_url:candidate.content_url,content_title:candidate.title,
