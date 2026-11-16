@@ -1,5 +1,5 @@
 import {test} from 'node:test';import assert from 'node:assert/strict';import {mkdtempSync,rmSync} from 'node:fs';import {tmpdir} from 'node:os';import {join} from 'node:path';
-import {botSource,botCandidates,defaultBotSource,readCatalog,createBotDraft} from '../base44/shared/dailyTaskBot.ts';
+import {botSource,botCandidates,defaultBotSource,readCatalog,createBotDraft,refreshBotCatalog,botPlan} from '../base44/shared/dailyTaskBot.ts';
 import {taskActivationError} from '../base44/shared/fullWatch.ts';import runner from '../scripts/daily-task-bot.cjs';
 const now=Date.parse('2026-11-16T12:00:00Z'),id='a'.repeat(24),key=`xerostreams:${id}`;
 const item={content_id:id,title:'Latest episode',content_type:'episode',content_url:`https://xerostreams.com/Watch?id=${id}`,updated_at:'2026-11-15T12:00:00Z',duration:{seconds:2400,source:'operator_media_probe',verified_at:'2026-11-15T13:00:00Z',media_url_sha256:'f'.repeat(64)}};
@@ -13,3 +13,16 @@ test('draft is private, zero reward and repeat returns same task',async()=>{let 
 test('runner never redispatches ambiguous creation, even tomorrow',async()=>{const stateDir=mkdtempSync(join(tmpdir(),'ps-bot-'));let sends=0;try{const send=async p=>{if(p.action==='task_bot_plan')return plan();sends++;throw Error('timeout after remote creation');};assert.equal((await runner.runDailyTaskBot({send,stateDir,now})).held,1);await runner.runDailyTaskBot({send,stateDir,now});const nextSend=async p=>p.action==='task_bot_plan'?plan(now+86400000):send(p);await runner.runDailyTaskBot({send:nextSend,stateDir,now:now+86400000});assert.equal(sends,1);}finally{rmSync(stateDir,{recursive:true});}});
 test('parallel invocations dispatch content once',async()=>{const stateDir=mkdtempSync(join(tmpdir(),'ps-bot-'));let sends=0;try{const send=async p=>{if(p.action==='task_bot_plan')return plan();sends++;await new Promise(r=>setTimeout(r,5));return reply({task_id:'c'.repeat(24),existing:false});};await Promise.all([runner.runDailyTaskBot({send,stateDir,now}),runner.runDailyTaskBot({send,stateDir,now})]);assert.equal(sends,1);}finally{rmSync(stateDir,{recursive:true});}});
 test('daily cap is total across repeated scans',async()=>{const stateDir=mkdtempSync(join(tmpdir(),'ps-bot-'));let sends=0;try{const candidates=['a','b','c'].map(x=>({...candidate(),generation_key:`xerostreams:${x.repeat(24)}`}));const send=async p=>p.action==='task_bot_plan'?reply({...plan().body.data,source:{...source,daily_max:1},candidates}):(sends++,reply({task_id:'c'.repeat(24),existing:false}));await runner.runDailyTaskBot({send,stateDir,now});await runner.runDailyTaskBot({send,stateDir,now});assert.equal(sends,1);}finally{rmSync(stateDir,{recursive:true});}});
+
+test('authenticated catalog cache is sanitized, bounded and expires',async()=>{
+ let snapshot;const admin={entities:{TaskBotSource:{filter:async()=>[source]},Setting:{filter:async()=>snapshot?[snapshot]:[],create:async data=>snapshot={...data,id:'d'.repeat(24)},update:async(id,data)=>snapshot={...snapshot,...data}}}};
+ await refreshBotCatalog(admin,[{...item,private_media_url:'secret'}],new Date(now).toISOString(),{now});
+ assert.ok(!snapshot.value.includes('secret'));assert.equal((await botPlan(admin,{now})).candidates.length,1);
+ await assert.rejects(botPlan(admin,{now:now+27*3600000}),/catalog_unavailable/);
+ await assert.rejects(refreshBotCatalog(admin,[item],new Date(now-120000).toISOString(),{now}),/Invalid catalog/);
+});
+test('runner refreshes catalog through authenticated authority before planning',async()=>{
+ const actions=[];const send=async p=>{actions.push(p.action);return p.action==='task_bot_plan'?plan():reply({cached_items:1});};
+ await runner.runDailyTaskBot({send,stateDir:'/unused',now,dryRun:true,refreshCatalog:async()=>[item]});
+ assert.deepEqual(actions,['task_bot_refresh_catalog','task_bot_plan']);
+});

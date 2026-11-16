@@ -30,12 +30,28 @@ export function botCandidates(source,items,now=Date.now()){
   review_note:item.duration?'Confirm rewards, current destination eligibility, player binding and worker registration before publishing.':'Verify the media duration first, then confirm rewards, destination eligibility, player binding and worker registration.'
  }));
 }
-export async function botPlan(admin,{fetchImpl=fetch,now=Date.now()}={}){
+
+const CACHE_KEY='perksphere_task_bot_xerostreams_catalog_v1';
+export async function refreshBotCatalog(admin,items,capturedAt,{now=Date.now()}={}){
+ if(!Array.isArray(items)||items.length>30||!Number.isFinite(Date.parse(capturedAt))||Math.abs(Date.parse(capturedAt)-now)>60000)throw Error('Invalid catalog snapshot');
+ // Revalidate all data from the fixed first-party fetch. Discard undeclared fields.
+ const valid=botCandidates({...defaultBotSource,mode:'partial',partial_seconds:60},items,now).map(c=>({content_id:c.content_id,title:c.title,content_type:c.content_type,content_url:c.content_url,updated_at:c.updated_at,duration:c.duration?{seconds:c.duration.seconds,source:c.duration.source,verified_at:c.duration.verified_at,media_url_sha256:c.duration.media_url_sha256}:null}));
+ const rows=await admin.entities.Setting.filter({key:CACHE_KEY},'-created_date',2);if(rows.length>1)throw Error('Duplicate catalog snapshots require review');
+ const value=JSON.stringify({captured_at:capturedAt,items:valid});
+ if(rows.length)await admin.entities.Setting.update(rows[0].id,{value});else await admin.entities.Setting.create({key:CACHE_KEY,value,category:'task_bot',description:'Sanitized catalog metadata fetched by the authenticated Linux task runner. No credentials or playback URLs.'});
+ return {cached_items:valid.length};
+}
+async function cachedBotCatalog(admin,now){
+ const rows=await admin.entities.Setting.filter({key:CACHE_KEY},'-created_date',2);if(rows.length!==1)throw Error('Catalog snapshot unavailable');
+ const snapshot=JSON.parse(rows[0].value);if(!Number.isFinite(Date.parse(snapshot.captured_at))||Date.parse(snapshot.captured_at)>now||now-Date.parse(snapshot.captured_at)>26*3600000||!Array.isArray(snapshot.items)||snapshot.items.length>30)throw Error('Catalog snapshot expired');
+ return snapshot.items;
+}
+export async function botPlan(admin,{fetchImpl,now=Date.now()}={}){
  let source;try{({source}=await loadBotSource(admin));}catch{throw Error('task_bot_source_unavailable');}
- let candidates=[];if(source.enabled){let items;try{items=await readCatalog({fetchImpl});}catch{throw Error('task_bot_catalog_unavailable');}try{candidates=botCandidates(source,items,now);}catch{throw Error('task_bot_candidates_unavailable');}}
+ let candidates=[];if(source.enabled){let items;try{items=fetchImpl?await readCatalog({fetchImpl}):await cachedBotCatalog(admin,now);}catch{throw Error('task_bot_catalog_unavailable');}try{candidates=botCandidates(source,items,now);}catch{throw Error('task_bot_candidates_unavailable');}}
  return {source,candidates,generated_at:new Date(now).toISOString(),publication_mode:'private_drafts_only'};
 }
-export async function createBotDraft(admin,generationKey,{fetchImpl=fetch,now=Date.now()}={}){
+export async function createBotDraft(admin,generationKey,{fetchImpl,now=Date.now()}={}){
  if(typeof generationKey!=='string'||!/^xerostreams:[a-f0-9]{24}$/.test(generationKey))throw Error('Invalid content reference');
  const existing=await admin.entities.Task.filter({bot_generation_key:generationKey},'-created_date',2);
  if(existing.length>1)throw Error('Duplicate drafts require review');if(existing.length===1)return {task_id:existing[0].id,existing:true};

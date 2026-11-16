@@ -7,7 +7,7 @@ import {socialLinkEvidence} from '../../shared/socialEvidence.ts';
 import {readPartnerTaskPolicy} from '../../shared/partnerTaskPolicy.ts';
 import {readCashEligibility} from '../../shared/cashEligibility.ts';
 import {loadStaff,evaluateAccess} from '../../shared/permissions.ts';
-import {botPlan,createBotDraft} from '../../shared/dailyTaskBot.ts';
+import {botPlan,createBotDraft,refreshBotCatalog} from '../../shared/dailyTaskBot.ts';
 const PATH='/functions/trustedLaunchSource';
 const headers={'Cache-Control':'no-store'};
 const fail=(status,error)=>Response.json({ok:false,error},{status,headers});
@@ -20,6 +20,10 @@ async function handleRequest(req) {
   const auth=await verifyTrustedRequest(req,admin,PATH);
   if(!auth.ok)return fail(auth.status,auth.code);
   const body=JSON.parse(auth.rawBody),action=body?.action;
+  if(action==='task_bot_refresh_catalog'){
+   if(Object.keys(body).sort().join(',')!=='action,captured_at,items')return fail(400,'invalid_request');
+   return Response.json({ok:true,data:await refreshBotCatalog(admin,body.items,body.captured_at)},{headers});
+  }
   if(action==='task_bot_plan'){
    if(Object.keys(body).join(',')!=='action')return fail(400,'invalid_request');
    return Response.json({ok:true,data:await botPlan(admin)},{headers});
