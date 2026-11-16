@@ -76,7 +76,7 @@ async function handleRequest(req) {
    registered_at:member?.created_date||null,
    zero_balances:!!member&&(member.points_balance??0)===0&&(member.loyalty_xp??0)===0
   }},{headers});
- }catch{return fail(503,'launch_source_unavailable');}
+ }catch(error){return fail(503,['task_bot_source_unavailable','task_bot_catalog_unavailable','task_bot_candidates_unavailable'].includes(error?.message)?error.message:'launch_source_unavailable');}
 }
 export default handleRequest;
 if (typeof Deno !== 'undefined') Deno.serve(handleRequest);

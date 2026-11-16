@@ -31,7 +31,9 @@ export function botCandidates(source,items,now=Date.now()){
  }));
 }
 export async function botPlan(admin,{fetchImpl=fetch,now=Date.now()}={}){
- const {source}=await loadBotSource(admin);return {source,candidates:source.enabled?botCandidates(source,await readCatalog({fetchImpl}),now):[],generated_at:new Date(now).toISOString(),publication_mode:'private_drafts_only'};
+ let source;try{({source}=await loadBotSource(admin));}catch{throw Error('task_bot_source_unavailable');}
+ let candidates=[];if(source.enabled){let items;try{items=await readCatalog({fetchImpl});}catch{throw Error('task_bot_catalog_unavailable');}try{candidates=botCandidates(source,items,now);}catch{throw Error('task_bot_candidates_unavailable');}}
+ return {source,candidates,generated_at:new Date(now).toISOString(),publication_mode:'private_drafts_only'};
 }
 export async function createBotDraft(admin,generationKey,{fetchImpl=fetch,now=Date.now()}={}){
  if(typeof generationKey!=='string'||!/^xerostreams:[a-f0-9]{24}$/.test(generationKey))throw Error('Invalid content reference');
