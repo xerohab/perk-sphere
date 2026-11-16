@@ -1,0 +1,17 @@
+[Unit]
+Description=PerkSphere daily private task drafts
+Wants=network-online.target
+After=network-online.target perksphere-api.service
+
+[Service]
+Type=oneshot
+WorkingDirectory=/home/perksphere/api
+StateDirectory=perksphere-task-bot
+StateDirectoryMode=0700
+ExecStart=/usr/bin/flock -n /var/lib/perksphere-task-bot/runner.lock /usr/bin/node /home/perksphere/releases/task-bot-76eaa3cc/daily-task-bot.cjs
+TimeoutStartSec=180
+UMask=0077
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ReadWritePaths=/var/lib/perksphere-task-bot

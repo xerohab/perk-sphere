@@ -1,0 +1,10 @@
+[Unit]
+Description=Scan XeroStreams for PerkSphere drafts daily
+
+[Timer]
+OnCalendar=*-*-* 09:00:00 Europe/London
+Persistent=true
+Unit=perksphere-task-bot.service
+
+[Install]
+WantedBy=timers.target
